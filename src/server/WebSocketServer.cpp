@@ -13,7 +13,7 @@
 #include "gma/ExecutionContext.hpp"
 #include "gma/util/Metrics.hpp"
 
-namespace gma {
+namespace krn {
 
 using tcp = boost::asio::ip::tcp;
 
@@ -147,4 +147,4 @@ void WebSocketServer::onAccept(boost::system::error_code ec, tcp::socket socket)
   doAccept();
 }
 
-} // namespace gma
+} // namespace krn

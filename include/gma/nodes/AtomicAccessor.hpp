@@ -7,7 +7,7 @@
 #include "gma/nodes/INode.hpp"
 #include "gma/AtomicStore.hpp"
 
-namespace gma {
+namespace krn {
 
 class AtomicAccessor final : public INode {
 public:
@@ -35,4 +35,4 @@ private:
   std::shared_ptr<INode> downstream_;
 };
 
-} // namespace gma
+} // namespace krn

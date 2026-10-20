@@ -10,7 +10,7 @@
 #include <utility>
 #include "gma/util/Logger.hpp"
 
-namespace gma {
+namespace krn {
 namespace util {
 
 // A very small, thread-safe in-process metrics registry.
@@ -102,10 +102,10 @@ private:
       auto c = snapshotCounters();
       auto g = snapshotGauges();
       if (!c.empty() || !g.empty()) {
-        std::vector<gma::util::Field> fields;
+        std::vector<krn::util::Field> fields;
         for (const auto& [k, v] : c) fields.push_back({"c:" + k, std::to_string(static_cast<int64_t>(v))});
         for (const auto& [k, v] : g) fields.push_back({"g:" + k, std::to_string(v)});
-        gma::util::logger().log(gma::util::LogLevel::Info, "metrics.report", fields);
+        krn::util::logger().log(krn::util::LogLevel::Info, "metrics.report", fields);
       }
     }
   }
@@ -215,8 +215,8 @@ private:
 // -----------------------------------------------------------------------------
 // Optional convenience macros
 // -----------------------------------------------------------------------------
-#define GMA_METRIC_INC(name, d) ::gma::util::MetricRegistry::instance().increment((name), (d))
-#define GMA_METRIC_HIT(name)    ::gma::util::MetricRegistry::instance().increment((name), 1.0)
-#define GMA_METRIC_SET(name, v) ::gma::util::MetricRegistry::instance().setGauge((name), (v))
+#define GMA_METRIC_INC(name, d) ::krn::util::MetricRegistry::instance().increment((name), (d))
+#define GMA_METRIC_HIT(name)    ::krn::util::MetricRegistry::instance().increment((name), 1.0)
+#define GMA_METRIC_SET(name, v) ::krn::util::MetricRegistry::instance().setGauge((name), (v))
 
-} // namespace gma
+} // namespace krn

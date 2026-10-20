@@ -4,7 +4,7 @@
 
 #include <exception>
 
-namespace gma {
+namespace krn {
 
 ExprNode::ExprNode(expr::Compiled fn, std::shared_ptr<INode> downstream)
   : fn_(std::move(fn)), downstream_(std::move(downstream)) {}
@@ -27,7 +27,7 @@ void ExprNode::onValue(const StreamValue& sv) {
   } catch (const std::exception& ex) {
     // A FunctionMap leaf (via {"op":"fn"}) threw — drop this tick rather than
     // propagate, matching Worker's fn-exception discipline.
-    gma::util::logger().log(gma::util::LogLevel::Error,
+    krn::util::logger().log(krn::util::LogLevel::Error,
                             "expr.eval_exception",
                             {{"symbol", sv.symbol}, {"err", ex.what()}});
     return;
@@ -43,4 +43,4 @@ void ExprNode::shutdown() noexcept {
   downstream_.reset();
 }
 
-} // namespace gma
+} // namespace krn

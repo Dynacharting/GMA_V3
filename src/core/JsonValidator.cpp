@@ -6,7 +6,7 @@
 #include <stdexcept>
 #include <string>
 
-namespace gma {
+namespace krn {
 
 void JsonValidator::validateRequest(const rapidjson::Document& doc) {
   if (!doc.IsObject()) {
@@ -32,8 +32,8 @@ void JsonValidator::validateRequest(const rapidjson::Document& doc) {
   // Recursively validate the tree structure
   validateTree(doc["tree"]);
 
-  gma::util::logger().log(
-    gma::util::LogLevel::Debug,
+  krn::util::logger().log(
+    krn::util::LogLevel::Debug,
     "Request validated",
     { {"id", id} }
   );
@@ -114,4 +114,4 @@ void JsonValidator::validateTree(const rapidjson::Value& v, int depth) {
   }
 }
 
-} // namespace gma
+} // namespace krn

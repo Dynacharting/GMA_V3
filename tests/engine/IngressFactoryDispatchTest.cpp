@@ -14,7 +14,7 @@
 #include <string>
 #include <vector>
 
-using namespace gma::engine;
+using namespace krn::engine;
 
 namespace {
 

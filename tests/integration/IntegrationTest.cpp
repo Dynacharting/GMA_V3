@@ -20,7 +20,7 @@
 #include <atomic>
 #include <rapidjson/document.h>
 
-using namespace gma;
+using namespace krn;
 
 namespace {
 

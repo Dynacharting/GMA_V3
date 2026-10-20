@@ -112,14 +112,14 @@
 #include <string>
 #include <vector>
 
-using namespace gma;
+using namespace krn;
 
 namespace enc1335 {
 
 // ─── Terminal ──────────────────────────────────────────────────────────────
-class Sink final : public gma::INode {
+class Sink final : public krn::INode {
 public:
-  void onValue(const gma::StreamValue& sv) override {
+  void onValue(const krn::StreamValue& sv) override {
     std::lock_guard<std::mutex> lk(mx_);
     if (const double* d = std::get_if<double>(&sv.value)) vals_.push_back(*d);
     else                                                  nonNumeric_.push_back(sv.symbol);
@@ -143,7 +143,7 @@ private:
 rapidjson::Document& corpusDoc() {
   static rapidjson::Document doc = [] {
     rapidjson::Document d;
-    std::ifstream ifs = gma::testsupport::openCorpusRequests();
+    std::ifstream ifs = krn::testsupport::openCorpusRequests();
     if (!ifs.is_open()) { d.SetNull(); return d; }
     rapidjson::IStreamWrapper isw(ifs);
     d.ParseStream(isw);
@@ -167,7 +167,7 @@ const rapidjson::Value* corpusRequest(int corpusId) {
 // `lastPrice` plus a bid/ask pair around it, and `volume`, so every corpus
 // field the sweep may bind is actually carried. `ev.type` is left at its
 // default, "tick" — the production event type MarketTickComputer registers for.
-void tick(gma::Dispatcher& d, const std::string& symbol, double price) {
+void tick(krn::Dispatcher& d, const std::string& symbol, double price) {
   auto payload = std::make_shared<rapidjson::Document>();
   payload->SetObject();
   auto& al = payload->GetAllocator();
@@ -175,7 +175,7 @@ void tick(gma::Dispatcher& d, const std::string& symbol, double price) {
   payload->AddMember("bid",       price - 0.01,  al);
   payload->AddMember("ask",       price + 0.01,  al);
   payload->AddMember("volume",    100.0 + price, al);
-  gma::Event ev;
+  krn::Event ev;
   ev.symbol  = symbol;
   ev.payload = payload;
   d.onTick(ev);
@@ -379,7 +379,7 @@ TEST(ClockCoherentPull, PerTickTruthIsReadFromTheStoreAndIsStableAcrossRuns) {
   using namespace enc1335;
   const rapidjson::Value* req = corpusRequest(kCorpus51);
   ASSERT_NE(req, nullptr) << "corpus_id 51 not found: "
-                          << gma::testsupport::corpusNotFoundDiagnostic();
+                          << krn::testsupport::corpusNotFoundDiagnostic();
 
   std::vector<double> first;
   for (int rep = 0; rep < 5; ++rep) {
@@ -445,7 +445,7 @@ TEST(ClockCoherentPull, PerTickTruthIsReadFromTheStoreAndIsStableAcrossRuns) {
 TEST(ClockCoherentPull, EveryClockQueuedBeforeAnyRuns_StillCarriesItsOwnTicksSample) {
   using namespace enc1335;
   const rapidjson::Value* req = corpusRequest(kCorpus51);
-  ASSERT_NE(req, nullptr) << gma::testsupport::corpusNotFoundDiagnostic();
+  ASSERT_NE(req, nullptr) << krn::testsupport::corpusNotFoundDiagnostic();
 
   DriveResult oracle = drive(*req, kAAPL, kTicks, 1, Mode::DrainEachTick, kProbe51);
   ASSERT_FALSE(oracle.threw) << oracle.error;
@@ -504,7 +504,7 @@ TEST(ClockCoherentPull, EveryClockQueuedBeforeAnyRuns_StillCarriesItsOwnTicksSam
 TEST(ClockCoherentPull, LiveIngressSequenceEqualsThePerTickTruth) {
   using namespace enc1335;
   const rapidjson::Value* req = corpusRequest(kCorpus51);
-  ASSERT_NE(req, nullptr) << gma::testsupport::corpusNotFoundDiagnostic();
+  ASSERT_NE(req, nullptr) << krn::testsupport::corpusNotFoundDiagnostic();
 
   DriveResult oracle = drive(*req, kAAPL, kTicks, 1, Mode::DrainEachTick, kProbe51);
   ASSERT_FALSE(oracle.threw) << oracle.error;
@@ -545,7 +545,7 @@ TEST(ClockCoherentPull, LiveIngressSequenceEqualsThePerTickTruth) {
 TEST(ClockCoherentPull, PullOnlyFanInSamplesBothPortsAsOfOneClockTick) {
   using namespace enc1335;
   const rapidjson::Value* req = corpusRequest(111);
-  ASSERT_NE(req, nullptr) << gma::testsupport::corpusNotFoundDiagnostic();
+  ASSERT_NE(req, nullptr) << krn::testsupport::corpusNotFoundDiagnostic();
 
   DriveResult oracle = drive(*req, requestStreamKeys(*req), kTicks, 1, Mode::DrainEachTick);
   ASSERT_FALSE(oracle.threw) << oracle.error;
@@ -578,7 +578,7 @@ TEST(ClockCoherentPull, PullOnlyFanInSamplesBothPortsAsOfOneClockTick) {
 TEST(ClockCoherentPull, EveryCorpusAtomicAccessorSitsAtAClockHop) {
   using namespace enc1335;
   rapidjson::Document& doc = corpusDoc();
-  ASSERT_FALSE(doc.IsNull()) << gma::testsupport::corpusNotFoundDiagnostic();
+  ASSERT_FALSE(doc.IsNull()) << krn::testsupport::corpusNotFoundDiagnostic();
   ASSERT_TRUE(doc.IsArray());
   EXPECT_EQ(doc.Size(), 272u)
       << "the corpus size moved; re-measure the 95-of-95 census quoted in "
@@ -634,7 +634,7 @@ TEST(ClockCoherentPull, EveryCorpusAtomicAccessorSitsAtAClockHop) {
 TEST(ClockCoherentPull, NoCorpusEntryEmitsADifferentSequenceUnderLiveIngress) {
   using namespace enc1335;
   rapidjson::Document& doc = corpusDoc();
-  ASSERT_FALSE(doc.IsNull()) << gma::testsupport::corpusNotFoundDiagnostic();
+  ASSERT_FALSE(doc.IsNull()) << krn::testsupport::corpusNotFoundDiagnostic();
   ASSERT_TRUE(doc.IsArray());
 
   constexpr std::size_t kSweepTicks = 30;

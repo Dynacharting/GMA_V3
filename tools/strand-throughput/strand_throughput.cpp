@@ -90,7 +90,7 @@
 #include "gma/rt/Strand.hpp"
 #include "gma/rt/ThreadPool.hpp"
 
-using namespace gma;
+using namespace krn;
 using Clock = std::chrono::steady_clock;
 
 namespace {
@@ -177,7 +177,7 @@ RunResult runOne(unsigned threads, int subs, std::size_t ticksPerSub,
       // which is the whole point of that backstop — so the legacy arm cannot
       // go through it. It builds the same two nodes by hand, through the same
       // real builder entry points, with no strand anywhere.
-      auto head = gma::nodes::Listener::Create(symbols[i], "px", term,
+      auto head = krn::nodes::Listener::Create(symbols[i], "px", term,
                                    deps.pool, deps.dispatcher, /*strand=*/nullptr);
       if (!head) { std::fprintf(stderr, "listener build failed\n"); std::exit(2); }
       tree::BuiltChain bc;

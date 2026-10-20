@@ -41,7 +41,7 @@
 #include <cstdint>
 #include <string>
 
-namespace gma::engine {
+namespace krn::engine {
 
 // Receives the numeric fields of one tick, in the source's natural order.
 // An abstract sink rather than a `std::function`: the Dispatcher's sink
@@ -103,4 +103,4 @@ public:
   virtual void forEachNumber(NumericFieldSink& sink) const = 0;
 };
 
-} // namespace gma::engine
+} // namespace krn::engine

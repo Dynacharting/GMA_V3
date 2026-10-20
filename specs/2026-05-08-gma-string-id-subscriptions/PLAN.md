@@ -55,7 +55,7 @@ green; the int-keyed unit tests still pass.
    - The body's `fn(key_, sv)` call site is unchanged in structure.
    - Single Responder ctor call site outside ClientSession is at
      `tests/connection/...` (verify via
-     `grep -rn 'std::make_shared<gma::nodes::Responder>'`); update
+     `grep -rn 'std::make_shared<krn::nodes::Responder>'`); update
      fixture to pass a `RequestKey{1}` literal.
 3. Refactor `include/gma/server/ClientSession.hpp:77-78`:
    `unordered_map<int, ...> active_` and
@@ -76,7 +76,7 @@ green; the int-keyed unit tests still pass.
 5. `src/server/ClientSession.cpp:387-413` — sendFn lambda + Responder
    construction:
    - Lambda signature: `[weak](const RequestKey& reqKey, const
-     gma::StreamValue& sv) { ... }`.
+     krn::StreamValue& sv) { ... }`.
    - JSON emit body: replace `w.Key("key"); w.Int(reqKey);` with
      `writeRequestKeyJSON(w, reqKey);` (writes the appropriate
      field+value pair via std::visit on the variant).
@@ -127,7 +127,7 @@ hard dependencies.
   may appear elsewhere in the engine — e.g., in test fixtures
   that construct a Responder for unit testing the dispatch
   path. **Mitigation:** task 2's prep step is
-  `grep -rn 'std::make_shared<gma::nodes::Responder>\|Responder(' \
+  `grep -rn 'std::make_shared<krn::nodes::Responder>\|Responder(' \
    include/ src/ tests/` to enumerate every ctor site; each
   one gets the `RequestKey` upgrade in the same PR.
 - **Hot-path overhead.** `std::visit` on the variant inside

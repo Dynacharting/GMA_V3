@@ -15,7 +15,7 @@
 #include "gma/Event.hpp"
 #include "gma/engine/EventComputerRegistry.hpp"
 
-namespace gma::synthetic {
+namespace krn::synthetic {
 
 // ---------- SyntheticEventComputer ----------
 
@@ -105,4 +105,4 @@ void SyntheticConnector::stop() noexcept {
   _tickHandler.reset();
 }
 
-} // namespace gma::synthetic
+} // namespace krn::synthetic

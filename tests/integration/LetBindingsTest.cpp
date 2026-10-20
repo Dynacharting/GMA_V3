@@ -13,7 +13,7 @@
 #include <mutex>
 #include <vector>
 
-using namespace gma;
+using namespace krn;
 
 namespace {
 

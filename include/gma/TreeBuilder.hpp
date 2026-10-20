@@ -13,7 +13,7 @@
 #include "gma/rt/ThreadPool.hpp"
 #include <rapidjson/document.h>
 
-namespace gma {
+namespace krn {
 
 // Forward declarations of runtime dependencies
 class AtomicStore;
@@ -152,4 +152,4 @@ namespace tree {
   );
 
 } // namespace tree
-} // namespace gma
+} // namespace krn

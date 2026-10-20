@@ -41,7 +41,7 @@
 #include <atomic>
 #include <string>
 
-namespace gma {
+namespace krn {
 
 void Dispatcher::setSymbolTable(const data::SymbolTable* symbols) {
   _symbols.store(symbols, std::memory_order_release);
@@ -84,8 +84,8 @@ void Dispatcher::onRecord(const data::TickRecord& rec) {
     // So the flag is the mechanism, and it is load-bearing, not cosmetic.
     // Pinned by RecordIngressRefusalTest.MissingSymbolTableIsLoggedOnceNotPerRecord.
     if (!_warnedNoSymbolTable.exchange(true, std::memory_order_relaxed)) {
-      gma::util::logger().log(
-          gma::util::LogLevel::Warn,
+      krn::util::logger().log(
+          krn::util::LogLevel::Warn,
           "Dispatcher: onRecord with no SymbolTable installed — every record "
           "on this path is being dropped (logged once per Dispatcher)",
           { {"symbolId", std::to_string(rec.header.symbolId)} });
@@ -129,8 +129,8 @@ void Dispatcher::onRecord(const data::TickRecord& rec) {
     //
     // Once per Dispatcher, for the same benchmark-integrity reason as above.
     if (!_warnedUnresolvedSymbol.exchange(true, std::memory_order_relaxed)) {
-      gma::util::logger().log(
-          gma::util::LogLevel::Warn,
+      krn::util::logger().log(
+          krn::util::LogLevel::Warn,
           "Dispatcher: onRecord symbolId does not resolve to a ticker — record "
           "dropped (logged once per Dispatcher)",
           { {"symbolId", std::to_string(rec.header.symbolId)} });
@@ -147,4 +147,4 @@ void Dispatcher::onRecord(const data::TickRecord& rec) {
   ingest(symbol, recordEventType(), fields);
 }
 
-} // namespace gma
+} // namespace krn

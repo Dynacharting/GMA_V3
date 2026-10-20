@@ -28,7 +28,7 @@
 //       a RecordBatch and these PODs. That is where Arrow is linked and where
 //       it stops.
 //
-// Both halves live in namespace `gma::data`, which is deliberate: the type is
+// Both halves live in namespace `krn::data`, which is deliberate: the type is
 // one type, in one namespace, with one definition. The library boundary is a
 // *dependency* boundary, not a naming one.
 //
@@ -45,12 +45,12 @@
 // MBO rates (tens of millions of records per symbol-day) that single copy is a
 // measurable fraction of total cost — which is what ENC-1487 (B2) measures.
 // Resolve an id back to text only at an output boundary, through
-// `gma::data::SymbolTable` (include/gma/data/SymbolTable.hpp).
+// `krn::data::SymbolTable` (include/gma/data/SymbolTable.hpp).
 //
 
 #include <cstdint>
 
-namespace gma::data {
+namespace krn::data {
 
 // ---------------------------------------------------------------------------
 // Fixed point
@@ -79,13 +79,13 @@ std::int64_t toFixed(double px) noexcept;
 // replacing them, so the decode is a cast and not a lookup table.
 // ---------------------------------------------------------------------------
 
-// Mirrors gma::Side (connectors/market/include/gma/book/OrderBook.hpp).
+// Mirrors krn::Side (connectors/market/include/gma/book/OrderBook.hpp).
 enum class Side : std::uint8_t { Bid = 0, Ask = 1 };
 
-// Mirrors gma::Aggressor (same header).
+// Mirrors krn::Aggressor (same header).
 enum class Aggressor : std::uint8_t { Unknown = 0, Buy = 1, Sell = 2 };
 
-// Mirrors the gma::feed::FeedEvent variant set
+// Mirrors the krn::feed::FeedEvent variant set
 // (connectors/market/include/gma/feed/FeedEvent.hpp) one-for-one. That variant
 // is already the canonical event model in this repo; the schema does not invent
 // a second one.
@@ -148,7 +148,7 @@ static_assert(sizeof(RecordHeader) == 40,
 // consumes them identically (both update AtomicStore scalars and both clock
 // listeners); `kind` says which fields are meaningful.
 //
-// Replaces, on the Arrow path, the gma::Event{symbol, shared_ptr<Document>,
+// Replaces, on the Arrow path, the krn::Event{symbol, shared_ptr<Document>,
 // type} the JSON path uses. Field resolution happened in the normalizer, so
 // there is no MarketFieldMap lookup and no HasMember() probe per tick.
 struct TickRecord {
@@ -218,4 +218,4 @@ struct SnapshotRecord {
   SnapshotLevel level;
 };
 
-} // namespace gma::data
+} // namespace krn::data

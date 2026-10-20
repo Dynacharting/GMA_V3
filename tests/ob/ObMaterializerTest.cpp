@@ -3,7 +3,7 @@
 #include <cmath>
 #include <limits>
 
-using namespace gma::ob;
+using namespace krn::ob;
 
 // Build a known test snapshot
 static Snapshot makeTestSnap() {

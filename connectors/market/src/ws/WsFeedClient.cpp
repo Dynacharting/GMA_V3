@@ -11,7 +11,7 @@
 
 #include <algorithm>
 
-namespace gma::ws {
+namespace krn::ws {
 
 namespace beast     = boost::beast;
 namespace websocket = beast::websocket;
@@ -89,7 +89,7 @@ void WsFeedClient::start() {
   stopping_.store(false);
   reconnectAttempts_ = 0;
 
-  gma::util::logger().log(gma::util::LogLevel::Info,
+  krn::util::logger().log(krn::util::LogLevel::Info,
     "WsFeedClient.start",
     {{"host", url_.host}, {"port", url_.port},
      {"target", url_.target}, {"tls", url_.tls ? "true" : "false"}});
@@ -152,7 +152,7 @@ void WsFeedClient::onResolve(beast::error_code ec, tcp::resolver::results_type r
     beast::get_lowest_layer(*wss_).async_connect(results,
       beast::bind_front_handler(&WsFeedClient::onTcpConnect, shared_from_this()));
 #else
-    gma::util::logger().log(gma::util::LogLevel::Error,
+    krn::util::logger().log(krn::util::LogLevel::Error,
       "WsFeedClient: wss:// requires GMA_HAS_SSL (install libssl-dev and rebuild)");
     return;
 #endif
@@ -215,7 +215,7 @@ void WsFeedClient::onWsHandshake(beast::error_code ec) {
 
   reconnectAttempts_ = 0;
 
-  gma::util::logger().log(gma::util::LogLevel::Info,
+  krn::util::logger().log(krn::util::LogLevel::Info,
     "WsFeedClient.connected",
     {{"host", url_.host}, {"target", url_.target}});
   GMA_METRIC_HIT("feed_ws.connected");
@@ -260,7 +260,7 @@ void WsFeedClient::doRead() {
 void WsFeedClient::onRead(beast::error_code ec, std::size_t) {
   if (ec) {
     if (ec == websocket::error::closed) {
-      gma::util::logger().log(gma::util::LogLevel::Warn,
+      krn::util::logger().log(krn::util::LogLevel::Warn,
         "WsFeedClient: feed connection closed");
     } else {
       fail(ec, "read");
@@ -277,7 +277,7 @@ void WsFeedClient::onRead(beast::error_code ec, std::size_t) {
   try {
     handleMessage(text);
   } catch (const std::exception& ex) {
-    gma::util::logger().log(gma::util::LogLevel::Warn,
+    krn::util::logger().log(krn::util::LogLevel::Warn,
       "WsFeedClient.handleMessage exception",
       {{"err", ex.what()}});
   }
@@ -295,7 +295,7 @@ void WsFeedClient::scheduleReconnect() {
   int delaySec = std::min(1 << capped, MAX_RECONNECT_DELAY_SEC);
   ++reconnectAttempts_;
 
-  gma::util::logger().log(gma::util::LogLevel::Info,
+  krn::util::logger().log(krn::util::LogLevel::Info,
     "WsFeedClient.reconnect",
     {{"delaySec", std::to_string(delaySec)},
      {"attempt", std::to_string(reconnectAttempts_)}});
@@ -308,7 +308,7 @@ void WsFeedClient::scheduleReconnect() {
 }
 
 void WsFeedClient::fail(beast::error_code ec, const char* where) {
-  gma::util::logger().log(gma::util::LogLevel::Error,
+  krn::util::logger().log(krn::util::LogLevel::Error,
     "WsFeedClient failure",
     {{"where", where}, {"err", ec.message()}});
   GMA_METRIC_HIT("feed_ws.error");
@@ -400,4 +400,4 @@ void WsFeedClient::dispatchEvent(feed::FeedEvent& evt, bool dropBookMutations) {
   }, evt);
 }
 
-} // namespace gma::ws
+} // namespace krn::ws

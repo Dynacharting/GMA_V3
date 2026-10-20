@@ -69,9 +69,9 @@ The (test-only) `WsBridge` does this correctly (`src/ws/WsBridge.cpp:267-271, 30
 **Fix:** in all three paths, iterate the removed `chains_[key]` vector and call
 `node->shutdown()` on each, mirroring `WsBridge`.
 
-### H3 — Two different classes share the FQN `gma::util::MetricRegistry` — ODR violation (UB) — CONFIRMED
+### H3 — Two different classes share the FQN `krn::util::MetricRegistry` — ODR violation (UB) — CONFIRMED
 `include/gma/Metrics.hpp:20-123` vs `include/gma/util/Metrics.hpp:24-49`
-Both headers define `gma::util::MetricRegistry` with **completely different** members and
+Both headers define `krn::util::MetricRegistry` with **completely different** members and
 APIs. `src/util/Metrics.cpp` compiles the first; `main.cpp` includes only the second and
 calls `MetricRegistry::instance().startReporter(...)`. Two distinct definitions with the same
 mangled name in one binary is a textbook ODR violation (undefined behavior). It "works" today
@@ -79,7 +79,7 @@ only because the three overlapping method names coincide — `main.cpp` ends up 
 bodies compiled against a *different* object layout. The util header's non-overlapping API
 (`counter()/gauge()/snapshotJson()`) has no definition anywhere.
 **Fix:** collapse to one `MetricRegistry` in one header, or rename one (e.g.
-`gma::obmetrics::MetricRegistry`).
+`krn::obmetrics::MetricRegistry`).
 
 ### H4 — Live `ob::Provider` resolves only a fraction of the advertised `ob.*` key grammar — CONFIRMED **[2 streams]**
 `connectors/market/src/MarketConnector.cpp:156-159` wires `ob::Provider::get`;
@@ -430,7 +430,7 @@ Remediation 2026-06"** (ENC), clustered into 24 PR-sized (≤5h) tickets:
 | ENC-785 | C1, M1   | Order book: ITCH executions & trade prints double-consume the book |
 | ENC-786 | H4, L8, L9, L11 | Live ob.* provider resolves only 4 key families; ObMaterializer is dead code |
 | ENC-787 | H1       | ThreadPool::drain() lost-wakeup can hang shutdown forever |
-| ENC-788 | H3       | Duplicate gma::util::MetricRegistry — ODR violation / UB |
+| ENC-788 | H3       | Duplicate krn::util::MetricRegistry — ODR violation / UB |
 | ENC-789 | H2       | ClientSession teardown leaks keep-alive chain → timer-node threads leak |
 | ENC-790 | H5, H6   | Docker image non-portable: -march=native + no .dockerignore |
 | ENC-791 | M8, M11  | Dispatcher: unguarded _computers race + concurrent compute() |

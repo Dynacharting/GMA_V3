@@ -5,7 +5,7 @@
 
 #include <utility>
 
-using namespace gma::nodes;
+using namespace krn::nodes;
 
 namespace {
 
@@ -25,15 +25,15 @@ bool isPipelineOnlyKey(const std::string& field) {
 
 } // anonymous namespace
 
-gma::Result<std::shared_ptr<Listener>> Listener::Create(
+krn::Result<std::shared_ptr<Listener>> Listener::Create(
     std::string symbol,
     std::string field,
     std::shared_ptr<INode> downstream,
-    gma::rt::ThreadPool* pool,
-    gma::Dispatcher* dispatcher,
-    std::shared_ptr<gma::rt::Strand> strand) {
+    krn::rt::ThreadPool* pool,
+    krn::Dispatcher* dispatcher,
+    std::shared_ptr<krn::rt::Strand> strand) {
   if (isPipelineOnlyKey(field)) {
-    return gma::Error{
+    return krn::Error{
       "listener: field '" + field +
         "' is pipeline-only — see docs/atomic-keys.md; bind via "
         "AtomicAccessor downstream of a bare-key Listener clock",
@@ -54,9 +54,9 @@ gma::Result<std::shared_ptr<Listener>> Listener::Create(
 Listener::Listener(std::string symbol,
                    std::string field,
                    std::shared_ptr<INode> downstream,
-                   gma::rt::ThreadPool* pool,
-                   gma::Dispatcher* dispatcher,
-                   std::shared_ptr<gma::rt::Strand> strand)
+                   krn::rt::ThreadPool* pool,
+                   krn::Dispatcher* dispatcher,
+                   std::shared_ptr<krn::rt::Strand> strand)
   : symbol_(std::move(symbol))
   , field_(std::move(field))
   , downstream_(std::move(downstream))
@@ -77,7 +77,7 @@ void Listener::start() {
   }
 }
 
-void Listener::onValue(const gma::StreamValue& sv) {
+void Listener::onValue(const krn::StreamValue& sv) {
   if (stopping_.load(std::memory_order_acquire)) return;
 
   std::shared_ptr<INode> down;
@@ -142,7 +142,7 @@ void Listener::onValue(const gma::StreamValue& sv) {
       return;
     }
     pool_->post([d = std::move(down), sym = sv.symbol, val = sv.value]() mutable {
-      d->onValue(gma::StreamValue{std::move(sym), std::move(val)});
+      d->onValue(krn::StreamValue{std::move(sym), std::move(val)});
     });
   } else {
     down->onValue(sv);
@@ -159,11 +159,11 @@ void Listener::shutdown() noexcept {
       dispatcher_->unregisterListener(symbol_, field_, shared_from_this());
     }
   } catch (const std::exception& ex) {
-    gma::util::logger().log(gma::util::LogLevel::Error,
+    krn::util::logger().log(krn::util::LogLevel::Error,
                             "Listener shutdown error",
                             { {"symbol", symbol_}, {"err", ex.what()} });
   } catch (...) {
-    gma::util::logger().log(gma::util::LogLevel::Error,
+    krn::util::logger().log(krn::util::LogLevel::Error,
                             "Listener shutdown unknown error",
                             { {"symbol", symbol_} });
   }

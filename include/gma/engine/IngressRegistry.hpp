@@ -7,7 +7,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace gma::engine {
+namespace krn::engine {
 
 struct EngineRegistries;
 
@@ -82,4 +82,4 @@ private:
   }
 };
 
-} // namespace gma::engine
+} // namespace krn::engine

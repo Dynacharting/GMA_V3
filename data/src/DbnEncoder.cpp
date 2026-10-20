@@ -16,7 +16,7 @@
 #include <stdexcept>
 #include <string>
 
-namespace gma::data::dbn::enc {
+namespace krn::data::dbn::enc {
 
 void putU8(std::vector<std::byte>& v, std::uint8_t x) { v.push_back(std::byte{x}); }
 void putU16(std::vector<std::byte>& v, std::uint16_t x) { putLE(v, x, 2); }
@@ -154,4 +154,4 @@ std::vector<std::byte> DbnWriter::build(std::size_t* fixedBlockLenOut) const {
   return out;
 }
 
-}  // namespace gma::data::dbn::enc
+}  // namespace krn::data::dbn::enc

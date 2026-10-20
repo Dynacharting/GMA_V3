@@ -12,7 +12,7 @@
 #include <tuple>
 #include <vector>
 
-namespace gma {
+namespace krn {
 
 class AtomicStore {
 public:
@@ -80,4 +80,4 @@ private:
   std::size_t _maxFieldsPerStreamKey{0}; // 0 = unlimited
 };
 
-} // namespace gma
+} // namespace krn

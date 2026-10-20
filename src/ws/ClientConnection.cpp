@@ -3,7 +3,7 @@
 #include <boost/beast/version.hpp>
 #include <chrono>
 
-namespace gma { namespace ws {
+namespace krn { namespace ws {
 
 using namespace std::chrono_literals;
 
@@ -228,11 +228,11 @@ void ClientConnection::fail(ErrorCode ec, std::string_view where) {
   if (onError_) {
     onError_(ec, where);
   } else {
-    gma::util::logger().log(gma::util::LogLevel::Error,
+    krn::util::logger().log(krn::util::LogLevel::Error,
                             "ClientConnection failure",
                             {{"where", std::string(where)},
                              {"err", ec.message()}});
   }
 }
 
-}} // namespace gma::ws
+}} // namespace krn::ws

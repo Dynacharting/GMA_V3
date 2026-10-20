@@ -9,7 +9,7 @@
 #include <memory>
 #include <atomic>
 
-using namespace gma;
+using namespace krn;
 
 class TestListener : public INode {
 public:

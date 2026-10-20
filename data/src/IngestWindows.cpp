@@ -8,7 +8,7 @@
 #include <algorithm>
 #include <map>
 
-namespace gma::data {
+namespace krn::data {
 
 std::vector<Interval> mergeIntervals(std::vector<Interval> in) {
   // Drop empty and inverted intervals: a recorded [t, t) covers nothing, and an
@@ -128,4 +128,4 @@ Completeness isComplete(const std::vector<IngestWindowRow>& rows,
   return v;
 }
 
-}  // namespace gma::data
+}  // namespace krn::data

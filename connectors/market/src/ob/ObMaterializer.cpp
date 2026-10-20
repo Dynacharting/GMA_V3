@@ -4,7 +4,7 @@
 #include <limits>
 #include <cmath>
 
-namespace gma::ob {
+namespace krn::ob {
 
 static inline const Ladder& bySide(const Snapshot& s, Side side) {
   return (side == Side::Bid) ? s.bids : s.asks;
@@ -347,4 +347,4 @@ double eval(const Snapshot& s, const ObKey& k) {
   }
 }
 
-} // namespace gma::ob
+} // namespace krn::ob

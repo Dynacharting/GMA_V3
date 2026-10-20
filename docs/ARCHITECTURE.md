@@ -140,7 +140,7 @@ void onRecord(const data::TickRecord& rec);       // resolved fields, no DOM
 member constructing a `std::string` per member per tick for the raw-admission
 ledger, and each computer then probes the DOM by name. For a chart tick that is
 irrelevant; at MBO rates — tens of millions of records per symbol-day — it is
-the dominant cost, not the math. `onRecord` takes a `gma::data::TickRecord`
+the dominant cost, not the math. `onRecord` takes a `krn::data::TickRecord`
 (`include/gma/data/Record.hpp`, an Arrow-free POD inside `gma_engine`) whose
 fields the normalizer already resolved, so nothing on that path constructs a
 DOM or a per-field string.
@@ -197,7 +197,7 @@ All live under `include/gma/engine/`. Most are header-only static singletons wit
 ### Interface
 
 ```cpp
-namespace gma::engine {
+namespace krn::engine {
 
 struct EngineRegistries {
   const util::Config*      cfg;
@@ -228,13 +228,13 @@ public:
 4. **Connector registration** — construct connector objects and call `registerWith(regs)`. This is the "one line per connector" moment:
 
    ```cpp
-   gma::engine::EngineRegistries regs{
-     &cfg, gma::gThreadPool.get(), store.get(),
+   krn::engine::EngineRegistries regs{
+     &cfg, krn::gThreadPool.get(), store.get(),
      dispatcher.get(), &shutdown, &ioc
    };
-   gma::market::MarketConnector marketConnector;
+   krn::market::MarketConnector marketConnector;
    marketConnector.registerWith(regs);
-   // (future) gma::crypto::CoinbaseConnector{}.registerWith(regs);
+   // (future) krn::crypto::CoinbaseConnector{}.registerWith(regs);
    ```
 
 5. **Run** — `ioc.run()` until signal; `ShutdownCoordinator::stop()` drains registered steps in order.
@@ -289,7 +289,7 @@ Concrete recipe to add a connector named `cool`:
 4. **Add one line to `main.cpp`** (the composition root):
 
    ```cpp
-   gma::cool::CoolConnector coolConnector;
+   krn::cool::CoolConnector coolConnector;
    coolConnector.registerWith(regs);
    ```
 
@@ -490,7 +490,7 @@ Minor architectural debts that are deliberately unresolved — none block adding
 
 - **Source field mapping is connector-owned (ENC-35).** The old engine-level
   `include/gma/SourceProfile.hpp` and the `util::Config::sourceProfile` member
-  are **gone**. The replacement is `gma::market::MarketFieldMap`
+  are **gone**. The replacement is `krn::market::MarketFieldMap`
   (`connectors/market/include/gma/market/MarketFieldMap.hpp`:
   `name`/`priceFields`/`volumeFields`/`bidFields`/`askFields`/`timestampField`/
   `taEnabled`), owned by `MarketConnector` and populated from the

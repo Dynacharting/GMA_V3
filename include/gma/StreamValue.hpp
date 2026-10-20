@@ -7,7 +7,7 @@
 #include <variant>
 #include <vector>
 
-namespace gma {
+namespace krn {
 
 // Forward declarations first — ArgType, ArgValue, and RecordField form a
 // recursive cycle.
@@ -146,4 +146,4 @@ struct StreamValue {
   std::int64_t bucketStartMs{0};
 };
 
-} // namespace gma
+} // namespace krn

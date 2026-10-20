@@ -35,7 +35,7 @@ AtomicAccessor(ob.*)` inside a TreeBuilder spec. Make the
 asymmetry explicit at every layer that can produce a broken pipeline:
 
 - Documentation that names the rule and shows the canonical pattern.
-- A construction-time reject in `gma::nodes::Listener` for any field
+- A construction-time reject in `krn::nodes::Listener` for any field
   in the `ob.*` namespace, with a clear error message that points
   the developer at the AtomicAccessor pattern.
 - A TypeScript-side type narrowing on

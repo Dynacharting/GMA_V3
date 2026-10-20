@@ -32,7 +32,7 @@
 #include "gma/data/Schema.hpp"
 
 
-namespace gma::data {
+namespace krn::data {
 
 // ---------------------------------------------------------------------------
 // Planner
@@ -105,7 +105,7 @@ public:
   // `manifest` is the SAME JSON node graph TreeBuilder consumes. The planner
   // reads it as a logical plan's data requirements; it never interprets an
   // operator's arithmetic.
-  gma::Result<QueryPlan> plan(std::string_view manifestJson,
+  krn::Result<QueryPlan> plan(std::string_view manifestJson,
                               std::span<const std::string> symbols,
                               TimeRange window) const;
 
@@ -202,7 +202,7 @@ public:
   // breaks it (docs §5.2 requirement 4).
   //
   // Refuses a plan whose `crossSymbol` is true unless shardConcurrency == 1.
-  gma::Result<void> run(const QueryPlan& plan, TickFn onTick, BookFn onBook);
+  krn::Result<void> run(const QueryPlan& plan, TickFn onTick, BookFn onBook);
 
   SymbolTable& symbols() noexcept;
 
@@ -220,4 +220,4 @@ private:
   std::unique_ptr<Impl> impl_;
 };
 
-} // namespace gma::data
+} // namespace krn::data

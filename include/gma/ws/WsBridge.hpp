@@ -12,15 +12,15 @@
 #include "gma/rt/ThreadPool.hpp"
 #include "gma/nodes/INode.hpp"
 
-namespace gma::ws {
+namespace krn::ws {
 
 class WsBridge {
 public:
   using SendFn = std::function<void(const std::string&)>; // implement with your socket's send-text
 
-  WsBridge(std::shared_ptr<gma::Dispatcher> dispatcher,
-           std::shared_ptr<gma::AtomicStore>      store,
-           gma::rt::ThreadPool*                    pool = nullptr)
+  WsBridge(std::shared_ptr<krn::Dispatcher> dispatcher,
+           std::shared_ptr<krn::AtomicStore>      store,
+           krn::rt::ThreadPool*                    pool = nullptr)
     : dispatcher_(std::move(dispatcher)), store_(std::move(store)), pool_(pool) {}
 
   // Call these from your WebSocketServer at the right time:
@@ -38,17 +38,17 @@ private:
 
   // Active subscriptions per connection: connId -> (reqId -> head node)
   std::unordered_map<std::string,
-    std::unordered_map<std::string, std::shared_ptr<gma::INode>>> active_;
+    std::unordered_map<std::string, std::shared_ptr<krn::INode>>> active_;
 
   // Keep intermediate pipeline nodes alive (Listener uses weak_ptr downstream).
   std::unordered_map<std::string,
-    std::unordered_map<std::string, std::vector<std::shared_ptr<gma::INode>>>> chains_;
+    std::unordered_map<std::string, std::vector<std::shared_ptr<krn::INode>>>> chains_;
 
-  std::shared_ptr<gma::Dispatcher> dispatcher_;
-  std::shared_ptr<gma::AtomicStore>      store_;
-  gma::rt::ThreadPool*                    pool_ = nullptr;
+  std::shared_ptr<krn::Dispatcher> dispatcher_;
+  std::shared_ptr<krn::AtomicStore>      store_;
+  krn::rt::ThreadPool*                    pool_ = nullptr;
 
   static constexpr std::size_t MAX_SUBS_PER_CONN = 100;
 };
 
-} // namespace gma::ws
+} // namespace krn::ws

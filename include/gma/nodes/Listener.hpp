@@ -10,7 +10,7 @@
 #include "gma/rt/Strand.hpp"
 #include "gma/rt/ThreadPool.hpp"
 
-namespace gma {
+namespace krn {
 
 class Dispatcher;
 
@@ -37,20 +37,20 @@ public:
   // When present every value is delivered through it, so the whole DAG sees
   // values in the order the Dispatcher produced them. When null the Listener
   // keeps the pre-ENC-1005 behaviour exactly: a bare `pool->post`, unordered.
-  static gma::Result<std::shared_ptr<Listener>> Create(
+  static krn::Result<std::shared_ptr<Listener>> Create(
       std::string symbol,
       std::string field,
       std::shared_ptr<INode> downstream,
-      gma::rt::ThreadPool* pool,
-      gma::Dispatcher* dispatcher,
-      std::shared_ptr<gma::rt::Strand> strand = nullptr);
+      krn::rt::ThreadPool* pool,
+      krn::Dispatcher* dispatcher,
+      std::shared_ptr<krn::rt::Strand> strand = nullptr);
 
   Listener(std::string symbol,
            std::string field,
            std::shared_ptr<INode> downstream,
-           gma::rt::ThreadPool* pool,
-           gma::Dispatcher* dispatcher,
-           std::shared_ptr<gma::rt::Strand> strand = nullptr);
+           krn::rt::ThreadPool* pool,
+           krn::Dispatcher* dispatcher,
+           std::shared_ptr<krn::rt::Strand> strand = nullptr);
 
   // IMPORTANT:
   // Do NOT register with Dispatcher from the constructor.
@@ -78,7 +78,7 @@ public:
   // `rt::Strand::kUnattributedOrigin` for why that distinction needed an
   // observable at all. `Dispatcher::listenersFor()` is how a test reaches this
   // for a subscription built by a live `ClientSession`.
-  const std::shared_ptr<gma::rt::Strand>& strand() const noexcept {
+  const std::shared_ptr<krn::rt::Strand>& strand() const noexcept {
     return strand_;
   }
 
@@ -88,17 +88,17 @@ private:
 
   mutable std::mutex downMx_;
   std::weak_ptr<INode> downstream_;
-  gma::rt::ThreadPool* pool_;          // canonical type
-  gma::Dispatcher* dispatcher_;
+  krn::rt::ThreadPool* pool_;          // canonical type
+  krn::Dispatcher* dispatcher_;
   // This request DAG's serializing executor (ENC-1005). Shared by every
   // Listener in the same DAG — that sharing is what orders the two sides of a
   // join against each other, and what a per-SYMBOL shard could never do
   // (SPEC D4).
-  std::shared_ptr<gma::rt::Strand> strand_;
+  std::shared_ptr<krn::rt::Strand> strand_;
 
   std::atomic<bool> started_{false};
   std::atomic<bool> stopping_{false};
 };
 
 } // namespace nodes
-} // namespace gma
+} // namespace krn

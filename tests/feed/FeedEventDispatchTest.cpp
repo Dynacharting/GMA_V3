@@ -9,8 +9,8 @@
 #include <variant>
 #include <vector>
 
-using namespace gma;
-using namespace gma::feed;
+using namespace krn;
+using namespace krn::feed;
 
 // ===========================================================================
 // FeedEvent variant construction and access

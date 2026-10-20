@@ -5,7 +5,7 @@
 #include <vector>
 #include <atomic>
 
-using namespace gma;
+using namespace krn;
 
 // Helper to retrieve a value and assert its presence
 template<typename T>

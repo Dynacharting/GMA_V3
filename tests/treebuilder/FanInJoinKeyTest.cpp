@@ -64,7 +64,7 @@
 
 namespace {
 
-using namespace gma;
+using namespace krn;
 
 // Records BOTH the value and the symbol. The symbol is the point of half this
 // file: `ClientSession` serialises `sv.symbol` as the frame's `streamKey`, so
@@ -121,7 +121,7 @@ rapidjson::Document& corpusDoc() {
     // tests/support/CorpusPath.hpp. A null Document still means "not found",
     // and callers print corpusNotFoundDiagnostic() rather than guessing.
     rapidjson::Document d;
-    std::ifstream ifs = gma::testsupport::openCorpusRequests();
+    std::ifstream ifs = krn::testsupport::openCorpusRequests();
     if (!ifs.is_open()) { d.SetNull(); return d; }
     rapidjson::IStreamWrapper isw(ifs);
     d.ParseStream(isw);
@@ -662,7 +662,7 @@ bool requestHasCrossStreamKeyFanIn(const rapidjson::Value& v) {
 
 TEST_F(FanInJoinKey, EveryCrossStreamKeyCorpusRequestJoinsUnderByNone) {
   rapidjson::Document& corpus = corpusDoc();
-  ASSERT_FALSE(corpus.IsNull()) << gma::testsupport::corpusNotFoundDiagnostic();
+  ASSERT_FALSE(corpus.IsNull()) << krn::testsupport::corpusNotFoundDiagnostic();
   ASSERT_TRUE(corpus.IsArray());
 
   struct Row { int id; std::size_t injected; std::size_t byDefault; std::size_t byNone; };

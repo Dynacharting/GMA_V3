@@ -2,7 +2,7 @@
 
 #include "gma/util/Logger.hpp"
 
-namespace gma::rt {
+namespace krn::rt {
 
 void Strand::post(std::function<void()> fn) {
   if (!fn) return;
@@ -42,7 +42,7 @@ void Strand::post(std::function<void()> fn) {
   // the ordering guarantee is kept. Logged once per occurrence because running
   // DAG compute on an ingress or shutdown thread is a fact an operator should
   // be able to see, not a silent fallback.
-  gma::util::logger().log(gma::util::LogLevel::Warn,
+  krn::util::logger().log(krn::util::LogLevel::Warn,
     "Strand: thread pool refused the drain kick (stopping) — draining inline",
     {{"queued", std::to_string(queueDepth())}});
   drain();
@@ -78,10 +78,10 @@ void Strand::drain() {
     try {
       fn();
     } catch (const std::exception& e) {
-      gma::util::logger().log(gma::util::LogLevel::Error,
+      krn::util::logger().log(krn::util::LogLevel::Error,
         "Strand: task exception", {{"err", e.what()}});
     } catch (...) {
-      gma::util::logger().log(gma::util::LogLevel::Error,
+      krn::util::logger().log(krn::util::LogLevel::Error,
         "Strand: unknown task exception");
     }
   }
@@ -92,4 +92,4 @@ std::size_t Strand::queueDepth() const {
   return q_.size();
 }
 
-} // namespace gma::rt
+} // namespace krn::rt

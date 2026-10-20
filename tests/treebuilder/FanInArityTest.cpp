@@ -49,7 +49,7 @@
 
 namespace {
 
-using namespace gma;
+using namespace krn;
 
 class Sink final : public INode {
 public:
@@ -85,7 +85,7 @@ rapidjson::Document& corpusDoc() {
     // tests/support/CorpusPath.hpp. A null Document still means "not found",
     // and callers print corpusNotFoundDiagnostic() rather than guessing.
     rapidjson::Document d;
-    std::ifstream ifs = gma::testsupport::openCorpusRequests();
+    std::ifstream ifs = krn::testsupport::openCorpusRequests();
     if (!ifs.is_open()) { d.SetNull(); return d; }
     rapidjson::IStreamWrapper isw(ifs);
     d.ParseStream(isw);
@@ -461,7 +461,7 @@ TEST_F(FanInArity, NestedFanInThrowLeavesNothingSubscribed) {
 
 TEST_F(FanInArity, EveryCorpusAggregateDeclaresArityEqualToItsInputCount) {
   rapidjson::Document& doc = corpusDoc();
-  ASSERT_FALSE(doc.IsNull()) << gma::testsupport::corpusNotFoundDiagnostic();
+  ASSERT_FALSE(doc.IsNull()) << krn::testsupport::corpusNotFoundDiagnostic();
   ASSERT_FALSE(doc.HasParseError());
   ASSERT_TRUE(doc.IsArray());
 

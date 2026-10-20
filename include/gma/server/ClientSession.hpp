@@ -25,7 +25,7 @@
 #include "gma/rt/ThreadPool.hpp"
 #include "gma/server/RequestKey.hpp"
 
-namespace gma {
+namespace krn {
 namespace server {
 
 // ENC-1338 / ENC-1005 / SPEC specs/2026-09-20-gma-join-correctness D3, D4.
@@ -57,7 +57,7 @@ public:
   // inline too and the entire DAG compute would run on the WebSocket read
   // thread. The backstop has always had this guard; before ENC-1005 the
   // production site did not.
-  static std::shared_ptr<gma::rt::Strand> mint(gma::rt::ThreadPool* pool);
+  static std::shared_ptr<krn::rt::Strand> mint(krn::rt::ThreadPool* pool);
 
   // The `rt::Strand::origin()` tag `mint()` stamps. Compare against this rather
   // than re-spelling the literal.
@@ -230,7 +230,7 @@ private:
   //
   // Additive on the wire, so a client ignoring unknown keys is unaffected.
   void sendError(const std::string& where, const std::string& message,
-                 const std::optional<gma::server::RequestKey>& reqKey = std::nullopt);
+                 const std::optional<krn::server::RequestKey>& reqKey = std::nullopt);
 
 private:
   WebSocketServer*  server_{nullptr};
@@ -284,8 +284,8 @@ private:
   // Active requests for this session. Variant key supports both
   // smoke.js's int-keyed wire and embassy's string-id wire.
   std::mutex reqMu_;
-  std::unordered_map<gma::server::RequestKey, std::shared_ptr<INode>> active_;
-  std::unordered_map<gma::server::RequestKey, std::vector<std::shared_ptr<INode>>> chains_; // keeps pipeline alive
+  std::unordered_map<krn::server::RequestKey, std::shared_ptr<INode>> active_;
+  std::unordered_map<krn::server::RequestKey, std::vector<std::shared_ptr<INode>>> chains_; // keeps pipeline alive
 
   // Rate limiting: token-bucket for subscribe requests
   static constexpr int    RATE_LIMIT_BURST    = 20;   // max burst of subscribes
@@ -296,4 +296,4 @@ private:
   bool rateLimitCheck();
 };
 
-} // namespace gma
+} // namespace krn

@@ -8,16 +8,16 @@
 
 ## Problem
 
-`gma::SourceProfile` lives in the engine (`include/gma/SourceProfile.hpp`) and is embedded in `gma::util::Config` as `cfg.sourceProfile`, but every field on it is market-flavored: `priceFields`, `volumeFields`, `bidFields`, `askFields`, `taEnabled`. The struct's only product consumer is `MarketTA` in the market connector. The engine parses `source.*` INI keys directly. The contract audit calls this out as the residual vocabulary-leak (V6) — engine-level types and config keys that exist solely for one connector. Adding a second connector with its own field-mapping needs means today's design either grows a second engine type or reuses a name that doesn't fit.
+`krn::SourceProfile` lives in the engine (`include/gma/SourceProfile.hpp`) and is embedded in `krn::util::Config` as `cfg.sourceProfile`, but every field on it is market-flavored: `priceFields`, `volumeFields`, `bidFields`, `askFields`, `taEnabled`. The struct's only product consumer is `MarketTA` in the market connector. The engine parses `source.*` INI keys directly. The contract audit calls this out as the residual vocabulary-leak (V6) — engine-level types and config keys that exist solely for one connector. Adding a second connector with its own field-mapping needs means today's design either grows a second engine type or reuses a name that doesn't fit.
 
 ## Proposed change
 
-Move the struct out of the engine into the market connector and rename it: `gma::SourceProfile` → `gma::market::MarketFieldMap`, header at `connectors/market/include/gma/market/MarketFieldMap.hpp`. The market connector registers a `ConfigReaderFn` with `ConfigNamespaceRegistry` (built in ENC-30) that owns the new canonical prefix `market.source.*`; `MarketConnector` holds the populated `MarketFieldMap` as a member and threads it into the `MarketTickComputer` factory closure when registering with `EventComputerRegistry`. The engine's `Config` struct loses its `sourceProfile` field and stops parsing `source.*` keys entirely. For one release, the market connector also registers a deprecated `source` reader that forwards to the same handler with a logged warning so existing INI files keep working.
+Move the struct out of the engine into the market connector and rename it: `krn::SourceProfile` → `krn::market::MarketFieldMap`, header at `connectors/market/include/gma/market/MarketFieldMap.hpp`. The market connector registers a `ConfigReaderFn` with `ConfigNamespaceRegistry` (built in ENC-30) that owns the new canonical prefix `market.source.*`; `MarketConnector` holds the populated `MarketFieldMap` as a member and threads it into the `MarketTickComputer` factory closure when registering with `EventComputerRegistry`. The engine's `Config` struct loses its `sourceProfile` field and stops parsing `source.*` keys entirely. For one release, the market connector also registers a deprecated `source` reader that forwards to the same handler with a logged warning so existing INI files keep working.
 
 ## Scope
 
-- New header `connectors/market/include/gma/market/MarketFieldMap.hpp` containing `gma::market::MarketFieldMap` (same internal field names as today's `SourceProfile`).
-- Delete `include/gma/SourceProfile.hpp`. Remove `#include "gma/SourceProfile.hpp"` and the `sourceProfile` member from `gma::util::Config`. Remove the `source.*` parsing branches from `gma::util::Config::loadFromFile`.
+- New header `connectors/market/include/gma/market/MarketFieldMap.hpp` containing `krn::market::MarketFieldMap` (same internal field names as today's `SourceProfile`).
+- Delete `include/gma/SourceProfile.hpp`. Remove `#include "gma/SourceProfile.hpp"` and the `sourceProfile` member from `krn::util::Config`. Remove the `source.*` parsing branches from `krn::util::Config::loadFromFile`.
 - `MarketConnector::registerWith` registers a `ConfigReaderFn` for the `market` namespace (matches keys `market.source.*`), parses the tail into a `MarketFieldMap` member, and registers a deprecated `source` namespace reader that forwards with a `Logger::Warn`. Calls `reg.cfg->loadConfigNamespace()` (or however ENC-30 surfaces post-load dispatch) so any keys already loaded route through.
 - `MarketConnector` exposes the populated `MarketFieldMap` to its `tick` `EventComputerRegistry::registerFactory` closure so `MarketTickComputer` is constructed with the map.
 - `MarketTA` / `MarketTickComputer` swaps its `SourceProfile _profile` member for `MarketFieldMap _fieldMap` (or whatever name fits — type change only, internal logic unchanged).
@@ -36,8 +36,8 @@ Move the struct out of the engine into the market connector and rename it: `gma:
 
 ## Acceptance criteria
 
-1. `include/gma/SourceProfile.hpp` no longer exists; `connectors/market/include/gma/market/MarketFieldMap.hpp` exists. `git grep -nE "gma::SourceProfile|include.*SourceProfile.hpp"` returns no hits.
-2. `gma::util::Config` has no `sourceProfile` field, and `gma::util::Config::loadFromFile` contains no `source.` string literal — the engine no longer recognizes the prefix.
+1. `include/gma/SourceProfile.hpp` no longer exists; `connectors/market/include/gma/market/MarketFieldMap.hpp` exists. `git grep -nE "krn::SourceProfile|include.*SourceProfile.hpp"` returns no hits.
+2. `krn::util::Config` has no `sourceProfile` field, and `krn::util::Config::loadFromFile` contains no `source.` string literal — the engine no longer recognizes the prefix.
 3. `MarketConnector::registerWith` registers a `ConfigReaderFn` for the `market` namespace via `reg.configNs->registerNamespace("market", …)`. A new `MarketConfigDispatchTest` proves that loading a config containing `market.source.priceFields = a,b` populates `MarketConnector`'s field-map member with `{a, b}`.
 4. The market `EventComputerRegistry::registerFactory("tick", …)` factory closure consumes the populated `MarketFieldMap` so each `MarketTickComputer` instance reflects per-`MarketConnector` configuration.
 5. Loading an INI containing legacy `source.priceFields=…` succeeds, populates the same field-map, and emits exactly one `Logger::Warn` per unique deprecated prefix observed.
@@ -47,7 +47,7 @@ Move the struct out of the engine into the market connector and rename it: `gma:
 ## Constraints
 
 - **Performance:** No change. The map is read once at construction; runtime hot path is unchanged.
-- **Compatibility:** Wire format / INI keys: `source.*` continues to work for one release with a deprecation warning, then drops. C++ public type `gma::SourceProfile` is **removed** without an alias — there are no external consumers of the engine library outside this repo, and the removal is what the audit explicitly asks for. The MarketTickComputer constructor parameter changes type but the call sites are inside the connector.
+- **Compatibility:** Wire format / INI keys: `source.*` continues to work for one release with a deprecation warning, then drops. C++ public type `krn::SourceProfile` is **removed** without an alias — there are no external consumers of the engine library outside this repo, and the removal is what the audit explicitly asks for. The MarketTickComputer constructor parameter changes type but the call sites are inside the connector.
 - **Dependencies:** **Hard dependency on ENC-30.** This spec cannot land before ENC-30 (ConfigNamespaceRegistry wiring) — without it, `Config::loadFromFile` can't hand `market.*` keys to a market-side reader.
 - **Deadline:** None. Schedule after ENC-30 ships.
 
@@ -65,10 +65,10 @@ Move the struct out of the engine into the market connector and rename it: `gma:
 
 ## Alternatives considered
 
-- **Leave `SourceProfile` in `gma::` and just register a `ConfigReaderFn` that copies engine-side state into a market-side mirror.** Rejected: doesn't actually fix the audit's V6 complaint — engine still defines a market-flavored type. Half measures.
+- **Leave `SourceProfile` in `krn::` and just register a `ConfigReaderFn` that copies engine-side state into a market-side mirror.** Rejected: doesn't actually fix the audit's V6 complaint — engine still defines a market-flavored type. Half measures.
 - **Move the type but keep `source.*` config keys as the canonical name.** Rejected: every other connector will want its own namespace too; an unprefixed `source.*` invites future collisions and contradicts the connector-pluggability story we just shipped.
 - **Hard-break `source.*` immediately, no deprecation alias.** Rejected: trivial cost (a few lines on the connector for one release) buys a kinder migration for any persisted INI file.
-- **Keep `gma::SourceProfile` as a `using` alias for one release for source compat.** Rejected: there are no external consumers of the engine lib, and the audit's whole point is removing the engine-side name. An alias would prolong the cleanup.
+- **Keep `krn::SourceProfile` as a `using` alias for one release for source compat.** Rejected: there are no external consumers of the engine lib, and the audit's whole point is removing the engine-side name. An alias would prolong the cleanup.
 
 ## Risks
 

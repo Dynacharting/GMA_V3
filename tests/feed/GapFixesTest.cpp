@@ -35,7 +35,7 @@
 #include <string>
 #include <vector>
 
-using namespace gma;
+using namespace krn;
 
 // ===========================================================================
 // Helpers
@@ -225,7 +225,7 @@ TEST(GapFixesTest, DispatcherStoresBidAskSpread) {
     util::Config cfg;
 
     // ENC-35: bid/ask fields configured on a connector-owned MarketFieldMap.
-    gma::market::MarketFieldMap fm;
+    krn::market::MarketFieldMap fm;
     fm.bidFields = {"bid"};
     fm.askFields = {"ask"};
 

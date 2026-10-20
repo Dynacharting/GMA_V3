@@ -7,7 +7,7 @@
 #include <vector>
 #include <string>
 
-using namespace gma;
+using namespace krn;
 
 namespace {
 

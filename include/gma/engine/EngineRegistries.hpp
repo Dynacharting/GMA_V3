@@ -2,7 +2,7 @@
 
 namespace boost::asio { class io_context; }
 
-namespace gma {
+namespace krn {
 class AtomicProviderRegistry;
 class AtomicStore;
 class Dispatcher;
@@ -11,7 +11,7 @@ namespace rt   { class ThreadPool; class ShutdownCoordinator; }
 namespace util { class Config; class Logger; }
 }
 
-namespace gma::engine {
+namespace krn::engine {
 
 class ConfigNamespaceRegistry;
 class EventComputerRegistry;
@@ -52,4 +52,4 @@ struct EngineRegistries {
   util::Logger*              log        { nullptr };
 };
 
-} // namespace gma::engine
+} // namespace krn::engine

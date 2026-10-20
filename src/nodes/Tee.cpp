@@ -1,6 +1,6 @@
 #include "gma/nodes/Tee.hpp"
 
-namespace gma {
+namespace krn {
 
 Tee::Tee(std::vector<std::shared_ptr<INode>> outputs)
   : outputs_(std::move(outputs)) {}
@@ -46,4 +46,4 @@ std::size_t Tee::size() const noexcept {
   return outputs_.size();
 }
 
-} // namespace gma
+} // namespace krn

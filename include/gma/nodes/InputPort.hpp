@@ -5,7 +5,7 @@
 #include <utility>
 #include "gma/nodes/INode.hpp"
 
-namespace gma {
+namespace krn {
 
 // ---------------------------------------------------------------------------
 // STRUCTURAL INPUT IDENTITY FOR FAN-IN NODES
@@ -79,4 +79,4 @@ private:
   const std::size_t           idx_;
 };
 
-} // namespace gma
+} // namespace krn

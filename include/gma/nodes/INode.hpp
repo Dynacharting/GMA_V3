@@ -5,7 +5,7 @@
 #include "gma/StreamValue.hpp"
 #include "gma/AtomicStore.hpp"
 
-namespace gma {
+namespace krn {
 
 class INode {
 public:
@@ -115,4 +115,4 @@ public:
   }
 };
 
-} // namespace gma
+} // namespace krn

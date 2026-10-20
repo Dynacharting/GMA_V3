@@ -17,7 +17,7 @@
   #include <windows.h>
 #endif
 
-namespace gma {
+namespace krn {
 namespace util {
 
 std::string Config::trim(const std::string& s) {
@@ -256,8 +256,8 @@ bool Config::synthesizeIngressFromLegacy() {
     synthesizedWS = true;
   }
   if (synthesizedWS) {
-    gma::util::logger().log(
-        gma::util::LogLevel::Warn,
+    krn::util::logger().log(
+        krn::util::LogLevel::Warn,
         "config.deprecated_keys",
         {{"keys", "feedUrl/feedSymbols/feeds.N.*"},
          {"replacement", "ingress.N.kind = market.wsclient + ingress.N.url|adapter|symbols"},
@@ -269,7 +269,7 @@ bool Config::synthesizeIngressFromLegacy() {
 std::size_t Config::dispatchPendingKeys() {
   std::size_t consumed = 0;
   for (const auto& [k, v] : _pendingKeys) {
-    if (gma::engine::ConfigNamespaceRegistry::dispatch(k, v)) {
+    if (krn::engine::ConfigNamespaceRegistry::dispatch(k, v)) {
       ++consumed;
     }
   }
@@ -278,4 +278,4 @@ std::size_t Config::dispatchPendingKeys() {
 }
 
 } // namespace util
-} // namespace gma
+} // namespace krn

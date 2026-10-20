@@ -3,14 +3,14 @@
 #include <string>
 #include <vector>
 
-namespace gma::market {
+namespace krn::market {
 
 // Connector-side mapping from source-specific JSON field names to the
 // canonical fields the market tick computer needs (price, volume, bid,
 // ask, timestamp). Each vector is tried in order; first match wins.
 // Defaults match the legacy NASDAQ-style feed payload.
 //
-// Replaces the engine-level gma::SourceProfile per ENC-35 (audit V6):
+// Replaces the engine-level krn::SourceProfile per ENC-35 (audit V6):
 // engine code no longer knows about market-flavored fields. The connector
 // owns this struct and populates it from the `market.source.*` config
 // namespace via ConfigNamespaceRegistry.
@@ -38,4 +38,4 @@ struct MarketFieldMap {
   bool taEnabled = true;
 };
 
-} // namespace gma::market
+} // namespace krn::market

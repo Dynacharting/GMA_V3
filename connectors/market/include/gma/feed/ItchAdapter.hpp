@@ -8,7 +8,7 @@
 #include <string>
 #include <unordered_map>
 
-namespace gma::feed {
+namespace krn::feed {
 
 /// Feed adapter for the NASDAQ ITCH JSON protocol.
 ///
@@ -62,4 +62,4 @@ private:
     std::unordered_map<uint64_t, OrderState> orders_;
 };
 
-} // namespace gma::feed
+} // namespace krn::feed

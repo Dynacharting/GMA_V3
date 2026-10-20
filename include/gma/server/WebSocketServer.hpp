@@ -7,7 +7,7 @@
 
 #include <boost/asio/ip/tcp.hpp>
 
-namespace gma {
+namespace krn {
 
 // Forward declarations to keep this header stable
 class ExecutionContext;
@@ -71,4 +71,4 @@ private:
   std::size_t                                                 next_session_id_{1};
 };
 
-} // namespace gma
+} // namespace krn

@@ -2,7 +2,7 @@
 #include <string_view>
 #include "gma/engine/EngineRegistries.hpp"
 
-namespace gma::engine {
+namespace krn::engine {
 
 // Contract every connector implements. The composition root constructs one
 // instance per linked connector and drives it through a strict lifecycle:
@@ -29,4 +29,4 @@ public:
   virtual void stop() noexcept = 0;
 };
 
-} // namespace gma::engine
+} // namespace krn::engine

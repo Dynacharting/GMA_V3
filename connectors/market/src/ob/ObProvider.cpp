@@ -7,7 +7,7 @@
 #include <optional>
 #include <string>
 
-namespace gma::ob {
+namespace krn::ob {
 namespace {
 
 // Depth hint for price-band / price-keyed queries whose required ladder depth
@@ -86,4 +86,4 @@ double Provider::getImpl(const std::string& symbol, const std::string& fullKey) 
   return eval(snap, k);
 }
 
-} // namespace gma::ob
+} // namespace krn::ob

@@ -4,7 +4,7 @@
 #include <cmath>
 #include <limits>
 
-using namespace gma::ob;
+using namespace krn::ob;
 
 static Snapshot makeProviderSnap() {
     Snapshot s;

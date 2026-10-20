@@ -8,7 +8,7 @@
 #include "gma/nodes/INode.hpp"
 #include "gma/rt/ThreadPool.hpp"
 
-namespace gma {
+namespace krn {
 
 // Periodic tick source. Spawns a dedicated timer thread that sleeps for
 // `period` between ticks and posts each tick to the thread pool.
@@ -33,7 +33,7 @@ class Interval final : public INode {
 public:
   Interval(std::chrono::milliseconds period,
            std::shared_ptr<INode> child,
-           gma::rt::ThreadPool* pool);
+           krn::rt::ThreadPool* pool);
 
   ~Interval();
 
@@ -49,12 +49,12 @@ private:
   struct State {
     State(std::chrono::milliseconds p,
           std::shared_ptr<INode> c,
-          gma::rt::ThreadPool* pl)
+          krn::rt::ThreadPool* pl)
       : period(p), child(std::move(c)), pool(pl) {}
 
     const std::chrono::milliseconds period;
     const std::shared_ptr<INode> child;
-    gma::rt::ThreadPool* const pool;
+    krn::rt::ThreadPool* const pool;
 
     std::atomic<bool> stopping{false};
     std::mutex mx;
@@ -68,4 +68,4 @@ private:
   std::thread timerThread_;
 };
 
-} // namespace gma
+} // namespace krn

@@ -16,7 +16,7 @@
 #include <sstream>
 #include <vector>
 
-namespace gma::data::ingest {
+namespace krn::data::ingest {
 
 // ===========================================================================
 // THE TWO RULINGS THIS TICKET OWED. Text, so that the tool's output, the Linear
@@ -949,4 +949,4 @@ arrow::Result<Report> run(const Options& opts) {
   return rep;
 }
 
-}  // namespace gma::data::ingest
+}  // namespace krn::data::ingest

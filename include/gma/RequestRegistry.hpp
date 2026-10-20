@@ -5,7 +5,7 @@
 #include <shared_mutex>
 #include "gma/nodes/INode.hpp"
 
-namespace gma {
+namespace krn {
 class RequestRegistry {
 public:
     void registerRequest(const std::string& id, std::shared_ptr<INode> root);

@@ -13,7 +13,7 @@
 #include <numeric>
 #include <type_traits>
 
-namespace gma {
+namespace krn {
 
 // Minimum threshold for denominators to avoid division by near-zero values.
 static constexpr double EPSILON = 1e-6;
@@ -60,7 +60,7 @@ std::vector<std::pair<std::string, ArgType>> computeAllAtomicValues(
     if (cfg.taBBands_n <= 0 || cfg.taRSI <= 0 ||
         cfg.taMACD_fast <= 0 || cfg.taMACD_slow <= 0 || cfg.taMACD_signal <= 0 ||
         cfg.taMomentum <= 0 || cfg.taATR <= 0 || cfg.taVolAvg <= 0) {
-      gma::util::logger().log(gma::util::LogLevel::Warn,
+      krn::util::logger().log(krn::util::LogLevel::Warn,
         "computeAllAtomicValues: skipping — invalid TA config (zero or negative period)");
       return {};
     }
@@ -435,4 +435,4 @@ void MarketTickComputer::compute(const std::string& symbol,
   }
 }
 
-} // namespace gma
+} // namespace krn

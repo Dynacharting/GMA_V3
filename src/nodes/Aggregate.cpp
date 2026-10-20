@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include <utility>
 
-namespace gma {
+namespace krn {
 
 Aggregate::Aggregate(std::size_t arity,
                      std::shared_ptr<INode> parent,
@@ -46,7 +46,7 @@ std::size_t Aggregate::pipelineEdgeValues() noexcept {
 void Aggregate::onValue(const StreamValue& sv) {
   pipelineEdgeValues_.fetch_add(1, std::memory_order_relaxed);
   if (!warnedOnPipelineValue_.exchange(true, std::memory_order_acq_rel)) {
-    gma::util::logger().log(gma::util::LogLevel::Warn,
+    krn::util::logger().log(krn::util::LogLevel::Warn,
       "Aggregate: value arrived on the pipeline edge, not on a declared input "
       "port, and was dropped. A fan-in node joins its own 'inputs'; it cannot "
       "consume an upstream value (SPEC specs/2026-09-20-gma-join-correctness "
@@ -100,7 +100,7 @@ void Aggregate::onPortValue(std::size_t portIndex, const StreamValue& sv) {
     if (inserted) {
       if (buf_.size() > MAX_SYMBOLS) {
         buf_.erase(it);
-        gma::util::logger().log(gma::util::LogLevel::Warn,
+        krn::util::logger().log(krn::util::LogLevel::Warn,
           "Aggregate: max symbols reached, dropping",
           {{"symbol", sv.symbol}});
         return;
@@ -154,4 +154,4 @@ void Aggregate::shutdown() noexcept {
     if (p) p->shutdown();
 }
 
-} // namespace gma
+} // namespace krn

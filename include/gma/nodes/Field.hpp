@@ -6,7 +6,7 @@
 #include <string>
 #include "gma/nodes/INode.hpp"
 
-namespace gma {
+namespace krn {
 
 // Extracts one named field from a Record flowing through and forwards its
 // value downstream (ENC-643). The inverse of Pack. Inputs that are not a
@@ -26,4 +26,4 @@ private:
   mutable std::mutex mx_;
 };
 
-} // namespace gma
+} // namespace krn

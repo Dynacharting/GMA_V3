@@ -12,8 +12,8 @@
 #include <memory>
 #include <string>
 
-using namespace gma;
-using namespace gma::engine;
+using namespace krn;
+using namespace krn::engine;
 
 namespace {
 

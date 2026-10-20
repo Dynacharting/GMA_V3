@@ -7,7 +7,7 @@
 #include <vector>
 #include "gma/nodes/INode.hpp"
 
-namespace gma {
+namespace krn {
 
 // Fan-out node: forwards each incoming StreamValue, unchanged, to every
 // downstream output. This is the data-plane multi-downstream primitive that
@@ -42,4 +42,4 @@ private:
   std::vector<std::shared_ptr<INode>> outputs_;
 };
 
-} // namespace gma
+} // namespace krn

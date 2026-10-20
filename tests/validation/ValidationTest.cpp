@@ -3,7 +3,7 @@
 #include <rapidjson/document.h>
 #include <string>
 
-using namespace gma;
+using namespace krn;
 using namespace rapidjson;
 
 // Helper: parse JSON string into Document

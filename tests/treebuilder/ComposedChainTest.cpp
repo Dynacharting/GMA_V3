@@ -93,7 +93,7 @@
 
 namespace {
 
-using namespace gma;
+using namespace krn;
 
 // ─── Recording terminal ─────────────────────────────────────────────────────
 class Sink final : public INode {
@@ -144,7 +144,7 @@ rapidjson::Document& corpusDoc() {
     // tests/support/CorpusPath.hpp. A null Document still means "not found",
     // and callers print corpusNotFoundDiagnostic() rather than guessing.
     rapidjson::Document d;
-    std::ifstream ifs = gma::testsupport::openCorpusRequests();
+    std::ifstream ifs = krn::testsupport::openCorpusRequests();
     if (!ifs.is_open()) { d.SetNull(); return d; }
     rapidjson::IStreamWrapper isw(ifs);
     d.ParseStream(isw);
@@ -511,7 +511,7 @@ TEST_F(ComposedChain, Corpus111PullOnlyJoinFiresForTheFirstTime) {
 // change (SPEC §3), not an engine one.
 TEST_F(ComposedChain, EveryNodePlusPipelineEntryReachesTheTerminalOnlyViaThePipeline) {
   rapidjson::Document& doc = corpusDoc();
-  ASSERT_FALSE(doc.IsNull()) << gma::testsupport::corpusNotFoundDiagnostic();
+  ASSERT_FALSE(doc.IsNull()) << krn::testsupport::corpusNotFoundDiagnostic();
   ASSERT_FALSE(doc.HasParseError());
   ASSERT_TRUE(doc.IsArray());
 
@@ -651,7 +651,7 @@ TEST_F(ComposedChain, EveryNodePlusPipelineEntryReachesTheTerminalOnlyViaThePipe
 // two groups rather than asserting the ruling's wording.
 TEST_F(ComposedChain, NodeOnlyCorpusRequestsAreUnaffected) {
   rapidjson::Document& doc = corpusDoc();
-  ASSERT_FALSE(doc.IsNull()) << gma::testsupport::corpusNotFoundDiagnostic();
+  ASSERT_FALSE(doc.IsNull()) << krn::testsupport::corpusNotFoundDiagnostic();
   ASSERT_TRUE(doc.IsArray());
 
   int seen = 0, driven = 0, timerDriven = 0, silent = 0;
@@ -1314,7 +1314,7 @@ TEST_F(ComposedChain, PackAtPipelineZeroWithNoNodeIsNotAPlacementError) {
 // corpus's ONLY pipeline stage type at all, 104 uses of it.
 TEST_F(ComposedChain, NoCheckedInCorpusRequestIsRefusedForFanInPlacement) {
   rapidjson::Document& doc = corpusDoc();
-  ASSERT_FALSE(doc.IsNull()) << gma::testsupport::corpusNotFoundDiagnostic();
+  ASSERT_FALSE(doc.IsNull()) << krn::testsupport::corpusNotFoundDiagnostic();
   ASSERT_FALSE(doc.HasParseError()) << "corpus_requests.json failed to parse";
   ASSERT_TRUE(doc.IsArray());
   EXPECT_EQ(doc.Size(), 272u)

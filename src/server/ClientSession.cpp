@@ -37,7 +37,7 @@
 #include <vector>
 #include <cstdint>
 
-namespace gma {
+namespace krn {
 
 namespace websocket = boost::beast::websocket;
 namespace beast     = boost::beast;
@@ -52,7 +52,7 @@ namespace {
 // on `rt::Strand::Attribution`. Static storage duration, as `Attribution`
 // requires.
 constexpr const char* kSubscriptionStrandOrigin =
-    "gma::ClientSession::handleSubscribe";
+    "krn::ClientSession::handleSubscribe";
 } // namespace
 
 const char* SubscriptionStrandMint::origin() noexcept {
@@ -62,11 +62,11 @@ const char* SubscriptionStrandMint::origin() noexcept {
 // ENC-1338 / ENC-1005 / SPEC D3, D4. See the long comment in the header: this
 // is D3's named mint site, and the null-pool guard below is what ENC-1005's
 // M10 removes. Both are gated by `tests/ws/SubscriptionStrandMintTest.cpp`.
-std::shared_ptr<gma::rt::Strand>
-SubscriptionStrandMint::mint(gma::rt::ThreadPool* pool) {
+std::shared_ptr<krn::rt::Strand>
+SubscriptionStrandMint::mint(krn::rt::ThreadPool* pool) {
   if (!pool) return nullptr;          // <-- the guard M10 deletes
-  return std::make_shared<gma::rt::Strand>(
-      pool, gma::rt::Strand::Attribution(kSubscriptionStrandOrigin));
+  return std::make_shared<krn::rt::Strand>(
+      pool, krn::rt::Strand::Attribution(kSubscriptionStrandOrigin));
 }
 
 } // namespace server
@@ -112,7 +112,7 @@ void ClientSession::run() {
       strand_,
       [self](beast::error_code ec) {
         if (ec) {
-          gma::util::logger().log(gma::util::LogLevel::Error,
+          krn::util::logger().log(krn::util::LogLevel::Error,
                                   "ws.accept_failed",
                                   { {"err", ec.message()} });
           return;
@@ -125,7 +125,7 @@ void ClientSession::run() {
           self->sessionId_ = self->server_->registerSession(self);
         }
 
-        gma::util::logger().log(gma::util::LogLevel::Info,
+        krn::util::logger().log(krn::util::LogLevel::Info,
                                 "ws.accepted",
                                 { {"sessionId", std::to_string(self->sessionId_)} });
 
@@ -156,7 +156,7 @@ void ClientSession::onRead(beast::error_code ec, std::size_t) {
     return;
   }
   if (ec) {
-    gma::util::logger().log(gma::util::LogLevel::Error,
+    krn::util::logger().log(krn::util::LogLevel::Error,
                             "ws.read_failed",
                             { {"err", ec.message()} });
     close();
@@ -228,7 +228,7 @@ void ClientSession::close() {
         self->strand_,
         [self](beast::error_code ec) {
           if (ec) {
-            gma::util::logger().log(gma::util::LogLevel::Warn,
+            krn::util::logger().log(krn::util::LogLevel::Warn,
                                     "ws.close_failed",
                                     { {"err", ec.message()} });
           }
@@ -336,7 +336,7 @@ void ClientSession::enqueue(std::string payload, const CoalesceKeyView* ckey) {
     if (!evictOldestCoalescable()) {
       // Nothing shedable — the queue is pure protocol traffic, which really is
       // unbounded memory growth. Keep the original protection.
-      gma::util::logger().log(gma::util::LogLevel::Warn,
+      krn::util::logger().log(krn::util::LogLevel::Warn,
                               "ws.outbox_overflow",
                               {{"sessionId", std::to_string(sessionId_)},
                                {"queueSize", std::to_string(outbox_.size())}});
@@ -418,7 +418,7 @@ void ClientSession::replaceFrame(std::size_t i,
 void ClientSession::noteBackpressure(const char* policy) {
   if (backpressureLogged_) return;  // one Info line per session, not per frame
   backpressureLogged_ = true;
-  gma::util::logger().log(gma::util::LogLevel::Info,
+  krn::util::logger().log(krn::util::LogLevel::Info,
                           "ws.outbox_backpressure",
                           {{"sessionId", std::to_string(sessionId_)},
                            {"queueSize", std::to_string(outbox_.size())},
@@ -484,7 +484,7 @@ void ClientSession::startWrite() {
 void ClientSession::onWrite(beast::error_code ec, std::size_t) {
   // This handler is on-strand.
   if (ec) {
-    gma::util::logger().log(gma::util::LogLevel::Error,
+    krn::util::logger().log(krn::util::LogLevel::Error,
                             "ws.write_failed",
                             { {"err", ec.message()} });
     // If writes fail, tear down session to prevent stuck state.
@@ -515,7 +515,7 @@ void ClientSession::onWrite(beast::error_code ec, std::size_t) {
 // Protocol helpers
 // ------------------------------
 void ClientSession::sendError(const std::string& where, const std::string& message,
-                              const std::optional<gma::server::RequestKey>& reqKey) {
+                              const std::optional<krn::server::RequestKey>& reqKey) {
   ::rapidjson::StringBuffer sb;
   ::rapidjson::Writer<::rapidjson::StringBuffer> w(sb);
 
@@ -527,7 +527,7 @@ void ClientSession::sendError(const std::string& where, const std::string& messa
   // the same renderer `update`/`subscribed`/`canceled` use — `key` for an int
   // subscription, `requestId` for a string one. Absent for connection-level
   // failures, which have no request to name.
-  if (reqKey) gma::server::writeRequestKeyJSON(w, *reqKey);
+  if (reqKey) krn::server::writeRequestKeyJSON(w, *reqKey);
   w.EndObject();
 
   GMA_METRIC_HIT("ws.msg_out");
@@ -599,16 +599,16 @@ void ClientSession::handleSubscribe(const ::rapidjson::Document& doc) {
 
     // Request key — int (smoke.js / legacy clients) or string
     // (embassy / saved-scene). See gma/server/RequestKey.hpp.
-    if (gma::server::requestObjHasBothKeyAndId(r)) {
+    if (krn::server::requestObjHasBothKeyAndId(r)) {
       sendError("subscribe", "request must have key (int) OR id (int|string), not both");
       continue;
     }
-    auto keyOpt = gma::server::parseRequestKeyFromObj(r);
+    auto keyOpt = krn::server::parseRequestKeyFromObj(r);
     if (!keyOpt) {
       sendError("subscribe", "request missing valid 'key' (int) or 'id' (int|string)");
       continue;
     }
-    gma::server::RequestKey key = std::move(*keyOpt);
+    krn::server::RequestKey key = std::move(*keyOpt);
 
     if (!r.HasMember("streamKey") || !r["streamKey"].IsString()) {
       sendError("subscribe", "request missing 'streamKey' string", key);
@@ -647,8 +647,8 @@ void ClientSession::handleSubscribe(const ::rapidjson::Document& doc) {
     // unsynchronised by design.
     const std::uint64_t subId = nextSubId_++;
     auto weak = weak_from_this();
-    auto sendFn = [weak, subId](const gma::server::RequestKey& reqKey,
-                                const gma::StreamValue& sv) {
+    auto sendFn = [weak, subId](const krn::server::RequestKey& reqKey,
+                                const krn::StreamValue& sv) {
       try {
         auto self = weak.lock();
         if (!self) return;
@@ -658,9 +658,9 @@ void ClientSession::handleSubscribe(const ::rapidjson::Document& doc) {
 
         w.StartObject();
         w.Key("type");   w.String("update");
-        gma::server::writeRequestKeyJSON(w, reqKey);
+        krn::server::writeRequestKeyJSON(w, reqKey);
         w.Key("streamKey"); w.String(sv.symbol.c_str());
-        w.Key("value");  gma::util::writeArgTypeJson(w, sv.value);
+        w.Key("value");  krn::util::writeArgTypeJson(w, sv.value);
         // ENC-1280 / SPEC specs/2026-09-20-timestamps-on-the-wire D9: the
         // epoch-ms start of the wall-clock-aligned bucket this value belongs
         // to, stamped by TumblingWindow / BucketTime from the same boundary
@@ -686,14 +686,14 @@ void ClientSession::handleSubscribe(const ::rapidjson::Document& doc) {
         // subscription's streams never supersede each other.
         self->sendUpdate(sb.GetString(), subId, sv.symbol);
       } catch (const std::exception& ex) {
-        gma::util::logger().log(gma::util::LogLevel::Error,
+        krn::util::logger().log(krn::util::LogLevel::Error,
           "ws.sendFn exception",
-          {{"err", ex.what()}, {"reqKey", gma::server::keyDebugString(reqKey)}});
+          {{"err", ex.what()}, {"reqKey", krn::server::keyDebugString(reqKey)}});
       }
     };
 
-    std::shared_ptr<gma::INode> terminal =
-      std::make_shared<gma::nodes::Responder>(sendFn, key);
+    std::shared_ptr<krn::INode> terminal =
+      std::make_shared<krn::nodes::Responder>(sendFn, key);
 
     // Build a validated request JSON object to pass to TreeBuilder.
     ::rapidjson::Document rq;
@@ -724,23 +724,23 @@ void ClientSession::handleSubscribe(const ::rapidjson::Document& doc) {
     try {
       if (r.HasMember("pipeline") && r["pipeline"].IsArray()) {
         for (const auto& elem : r["pipeline"].GetArray()) {
-          if (elem.IsObject()) gma::JsonValidator::validateTree(elem);
+          if (elem.IsObject()) krn::JsonValidator::validateTree(elem);
         }
       }
       if (r.HasMember("stages") && r["stages"].IsArray()) {
         for (const auto& elem : r["stages"].GetArray()) {
-          if (elem.IsObject()) gma::JsonValidator::validateTree(elem);
+          if (elem.IsObject()) krn::JsonValidator::validateTree(elem);
         }
       }
       if (r.HasMember("node") && r["node"].IsObject()) {
-        gma::JsonValidator::validateTree(r["node"]);
+        krn::JsonValidator::validateTree(r["node"]);
       }
     } catch (const std::exception& ex) {
       sendError("validate", ex.what(), key);
       continue;
     }
 
-    gma::tree::Deps deps;
+    krn::tree::Deps deps;
     deps.store      = exec_->store();
     deps.pool       = exec_->pool();
     deps.dispatcher = dispatcher_;
@@ -780,7 +780,7 @@ void ClientSession::handleSubscribe(const ::rapidjson::Document& doc) {
     // INLINING a mint here does not compile, because `rt::Strand::Attribution`
     // has a private constructor and `SubscriptionStrandMint` is its only
     // friend. Before ENC-1338 neither mutation reddened a single test.
-    deps.strand = gma::server::SubscriptionStrandMint::mint(deps.pool);
+    deps.strand = krn::server::SubscriptionStrandMint::mint(deps.pool);
 
     try {
       // Check subscription limit BEFORE building the pipeline to avoid
@@ -796,7 +796,7 @@ void ClientSession::handleSubscribe(const ::rapidjson::Document& doc) {
 
       // Build pipeline OUTSIDE the lock — buildForRequest may be expensive
       // and should not block other subscribe/cancel operations.
-      auto built = gma::tree::buildForRequest(rq, deps, terminal);
+      auto built = krn::tree::buildForRequest(rq, deps, terminal);
 
       {
         std::lock_guard<std::mutex> lk(reqMu_);
@@ -825,7 +825,7 @@ void ClientSession::handleSubscribe(const ::rapidjson::Document& doc) {
       ::rapidjson::Writer<::rapidjson::StringBuffer> w(sb);
       w.StartObject();
       w.Key("type"); w.String("subscribed");
-      gma::server::writeRequestKeyJSON(w, key);
+      krn::server::writeRequestKeyJSON(w, key);
       w.EndObject();
 
       GMA_METRIC_HIT("ws.subscribe");
@@ -835,10 +835,10 @@ void ClientSession::handleSubscribe(const ::rapidjson::Document& doc) {
       // Log structured field uses "key" or "requestId" mirroring the
       // wire so operators grepping forum's instruction_id can hop
       // straight into gma's view.
-      gma::util::logger().log(gma::util::LogLevel::Info,
+      krn::util::logger().log(krn::util::LogLevel::Info,
                               "ws.subscribe",
-                              { {gma::server::isInt(key) ? "key" : "requestId",
-                                 gma::server::isInt(key)
+                              { {krn::server::isInt(key) ? "key" : "requestId",
+                                 krn::server::isInt(key)
                                      ? std::to_string(std::get<int>(key))
                                      : std::get<std::string>(key)},
                                 {"streamKey", streamKey},
@@ -866,14 +866,14 @@ void ClientSession::handleCancel(const ::rapidjson::Document& doc) {
   }
 
   // Normalize to a vector<RequestKey>.
-  std::vector<gma::server::RequestKey> toCancel;
+  std::vector<krn::server::RequestKey> toCancel;
   if (hasKeys) {
     for (auto& v : doc["keys"].GetArray()) {
       if (!v.IsInt()) {
         sendError("cancel", "keys must be integers");
         continue;
       }
-      toCancel.push_back(gma::server::requestKeyInt(v.GetInt()));
+      toCancel.push_back(krn::server::requestKeyInt(v.GetInt()));
     }
   } else {  // hasIds
     for (auto& v : doc["ids"].GetArray()) {
@@ -881,13 +881,13 @@ void ClientSession::handleCancel(const ::rapidjson::Document& doc) {
         sendError("cancel", "ids must be strings");
         continue;
       }
-      toCancel.push_back(gma::server::requestKeyStr(v.GetString()));
+      toCancel.push_back(krn::server::requestKeyStr(v.GetString()));
     }
   }
 
   for (auto& key : toCancel) {
-    std::shared_ptr<gma::INode> root;
-    std::vector<std::shared_ptr<gma::INode>> chainVec;
+    std::shared_ptr<krn::INode> root;
+    std::vector<std::shared_ptr<krn::INode>> chainVec;
     {
       std::lock_guard<std::mutex> lk(reqMu_);
       auto it = active_.find(key);
@@ -917,20 +917,20 @@ void ClientSession::handleCancel(const ::rapidjson::Document& doc) {
     ::rapidjson::Writer<::rapidjson::StringBuffer> w(sb);
     w.StartObject();
     w.Key("type"); w.String("canceled");
-    gma::server::writeRequestKeyJSON(w, key);
+    krn::server::writeRequestKeyJSON(w, key);
     w.EndObject();
 
     GMA_METRIC_HIT("ws.cancel");
     GMA_METRIC_HIT("ws.msg_out");
     sendText(sb.GetString());
 
-    gma::util::logger().log(gma::util::LogLevel::Info,
+    krn::util::logger().log(krn::util::LogLevel::Info,
                             "ws.cancel",
-                            { {gma::server::isInt(key) ? "key" : "requestId",
-                               gma::server::isInt(key)
+                            { {krn::server::isInt(key) ? "key" : "requestId",
+                               krn::server::isInt(key)
                                    ? std::to_string(std::get<int>(key))
                                    : std::get<std::string>(key)} });
   }
 }
 
-} // namespace gma
+} // namespace krn

@@ -40,7 +40,7 @@
 
 namespace {
 
-using namespace gma::data;
+using namespace krn::data;
 
 // --- fixtures --------------------------------------------------------------
 

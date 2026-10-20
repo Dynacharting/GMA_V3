@@ -6,7 +6,7 @@
 #include <string>
 #include <cmath>
 
-using namespace gma;
+using namespace krn;
 
 // Helpers to retrieve typed values from the store (guard against nullopt UB)
 static double getDouble(const AtomicStore& store, const std::string& sym, const std::string& key) {

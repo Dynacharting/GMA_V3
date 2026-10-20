@@ -3,7 +3,7 @@
 
 #include <utility>
 
-namespace gma {
+namespace krn {
 
 AtomicAccessor::AtomicAccessor(std::string symbol,
                                std::string field,
@@ -81,4 +81,4 @@ void AtomicAccessor::shutdown() noexcept {
   downstream_.reset();
 }
 
-} // namespace gma
+} // namespace krn

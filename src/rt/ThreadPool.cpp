@@ -2,7 +2,7 @@
 #include <cassert>
 #include "gma/util/Logger.hpp"
 
-namespace gma::rt {
+namespace krn::rt {
 
 ThreadPool::ThreadPool(unsigned nThreads) {
   if (nThreads == 0) nThreads = 1;
@@ -59,10 +59,10 @@ void ThreadPool::workerLoop() {
     try {
       fn();
     } catch (const std::exception& e) {
-      gma::util::logger().log(gma::util::LogLevel::Error,
+      krn::util::logger().log(krn::util::LogLevel::Error,
         "ThreadPool: task exception", {{"err", e.what()}});
     } catch (...) {
-      gma::util::logger().log(gma::util::LogLevel::Error,
+      krn::util::logger().log(krn::util::LogLevel::Error,
         "ThreadPool: unknown task exception");
     }
     // Decrement under mx_ so the change is ordered against drain()'s predicate
@@ -79,8 +79,8 @@ void ThreadPool::workerLoop() {
   }
 }
 
-} // namespace gma::rt
+} // namespace krn::rt
 
-namespace gma {
-  std::shared_ptr<gma::rt::ThreadPool> gThreadPool;
+namespace krn {
+  std::shared_ptr<krn::rt::ThreadPool> gThreadPool;
 }

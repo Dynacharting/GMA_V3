@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-namespace gma::expr {
+namespace krn::expr {
 namespace {
 
 // Recursion guard for compile-time tree walking. Matches JsonValidator's
@@ -76,9 +76,9 @@ Compiled compileNode(const rapidjson::Value& v, std::set<std::string>* refs,
     if (!v.HasMember("name") || !v["name"].IsString())
       throw std::runtime_error("expr: 'fn' requires a string 'name'");
     const std::string fnName = v["name"].GetString();
-    gma::Func fn;
+    krn::Func fn;
     try {
-      fn = gma::FunctionMap::instance().getFunction(fnName);
+      fn = krn::FunctionMap::instance().getFunction(fnName);
     } catch (...) {
       throw std::runtime_error("expr: unknown fn '" + fnName + "'");
     }
@@ -134,4 +134,4 @@ Compiled compile(const rapidjson::Value& spec, std::set<std::string>* refs) {
   return compileNode(spec, refs, 0);
 }
 
-} // namespace gma::expr
+} // namespace krn::expr

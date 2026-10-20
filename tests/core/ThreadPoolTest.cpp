@@ -5,8 +5,8 @@
 #include <vector>
 #include <chrono>
 
-using namespace gma;
-using namespace gma::rt;
+using namespace krn;
+using namespace krn::rt;
 
 TEST(ThreadPoolTest, ExecutesTasks) {
     ThreadPool pool(4);

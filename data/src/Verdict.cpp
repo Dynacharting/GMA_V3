@@ -6,7 +6,7 @@
 
 #include <cstring>
 
-namespace gma::data {
+namespace krn::data {
 
 arrow::Status asFinding(arrow::Status s) {
   if (s.ok()) return s;
@@ -28,4 +28,4 @@ int exitCodeFor(const arrow::Status& s) {
   return isFinding(s) ? 1 : 2;
 }
 
-}  // namespace gma::data
+}  // namespace krn::data

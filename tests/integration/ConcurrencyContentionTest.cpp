@@ -25,7 +25,7 @@
 #include <thread>
 #include <vector>
 
-using namespace gma;
+using namespace krn;
 
 // ---------------------------------------------------------------------------
 // Write-write contention on ONE (symbol,field). N threads hammer the same key,

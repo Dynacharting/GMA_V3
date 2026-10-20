@@ -10,14 +10,14 @@
 
 #include "gma/engine/IngressRegistry.hpp"
 
-namespace gma {
+namespace krn {
 class FeedServer;
 class OrderBookManager;
 namespace ws { class WsFeedClient; }
 namespace feed { class IFeedAdapter; }
-} // namespace gma
+} // namespace krn
 
-namespace gma::market {
+namespace krn::market {
 
 // Wraps a FeedServer instance: start() runs the server (acceptor opens +
 // async_accept loop); stop() noexcept shuts it down. Constructed by the
@@ -49,4 +49,4 @@ private:
   bool started_{false};
 };
 
-} // namespace gma::market
+} // namespace krn::market

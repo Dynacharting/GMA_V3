@@ -5,7 +5,7 @@
 #include <vector>
 #include <mutex>
 
-namespace gma {
+namespace krn {
 namespace util {
 
 enum class LogLevel : int {
@@ -60,4 +60,4 @@ private:
 Logger& logger();
 
 } // namespace util
-} // namespace gma
+} // namespace krn

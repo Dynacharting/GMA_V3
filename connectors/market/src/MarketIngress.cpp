@@ -4,7 +4,7 @@
 #include "gma/server/FeedServer.hpp"
 #include "gma/ws/WsFeedClient.hpp"
 
-namespace gma::market {
+namespace krn::market {
 
 // ---------- FeedServerIngress ----------
 
@@ -44,4 +44,4 @@ void WsFeedClientIngress::stop() noexcept {
   started_ = false;
 }
 
-} // namespace gma::market
+} // namespace krn::market

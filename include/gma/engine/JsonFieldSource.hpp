@@ -38,7 +38,7 @@
 
 #include "gma/engine/FieldSource.hpp"
 
-namespace gma::engine {
+namespace krn::engine {
 
 class JsonFieldSource final : public FieldSource {
 public:
@@ -103,4 +103,4 @@ private:
   const rapidjson::Value* payload_;
 };
 
-} // namespace gma::engine
+} // namespace krn::engine

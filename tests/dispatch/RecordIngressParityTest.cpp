@@ -84,7 +84,7 @@
 #include <utility>
 #include <vector>
 
-using namespace gma;
+using namespace krn;
 
 namespace {
 
@@ -1331,28 +1331,28 @@ namespace {
 //     setLevel). If that ever stops being true, this guard needs a real
 //     save/restore and this comment is the warning.
 //   * It is the global logger and not a local `Logger`, because the Dispatcher
-//     logs through `gma::util::logger()` and a test against a local instance
+//     logs through `krn::util::logger()` and a test against a local instance
 //     would prove nothing about the code under test.
 class GlobalLogCapture {
 public:
-  GlobalLogCapture() : savedLevel_(gma::util::logger().level()) {
+  GlobalLogCapture() : savedLevel_(krn::util::logger().level()) {
     char tmpl[] = "/tmp/ENC-1486-logcap-XXXXXX";
     const int fd = ::mkstemp(tmpl);
     path_ = tmpl;
     if (fd >= 0) ::close(fd);
-    gma::util::logger().setLevel(gma::util::LogLevel::Warn);
-    gma::util::logger().setFile(path_);
+    krn::util::logger().setLevel(krn::util::LogLevel::Warn);
+    krn::util::logger().setFile(path_);
   }
 
   ~GlobalLogCapture() {
-    gma::util::logger().setFile("");          // flush + close, back to stdout
-    gma::util::logger().setLevel(savedLevel_);
+    krn::util::logger().setFile("");          // flush + close, back to stdout
+    krn::util::logger().setLevel(savedLevel_);
     std::remove(path_.c_str());
   }
 
   // Flushes by closing, so call this once, at the end of a drive.
   std::string contents() const {
-    gma::util::logger().setFile("");
+    krn::util::logger().setFile("");
     std::ifstream f(path_);
     return std::string((std::istreambuf_iterator<char>(f)),
                        std::istreambuf_iterator<char>());
@@ -1368,7 +1368,7 @@ public:
   }
 
 private:
-  gma::util::LogLevel savedLevel_;
+  krn::util::LogLevel savedLevel_;
   std::string         path_;
 };
 
