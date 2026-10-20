@@ -5,7 +5,7 @@
 #include "gma/ob/FunctionalSnapshotSource.hpp"
 #include "gma/ob/ObKey.hpp" // for Mode
 
-namespace gma::ob {
+namespace krn::ob {
 
 class Provider {
 public:
@@ -24,4 +24,4 @@ private:
   std::size_t defAgg_;
 };
 
-} // namespace gma::ob
+} // namespace krn::ob

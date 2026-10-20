@@ -6,7 +6,7 @@
 #include <shared_mutex>
 #include <vector>
 
-namespace gma {
+namespace krn {
 using Func = std::function<double(const std::vector<double>&)>;
 
 /// Parametric function: receives the ordered numeric inputs AND a map of

@@ -4,7 +4,7 @@ import os, re, json, sys
 
 ROOT = sys.argv[1] if len(sys.argv) > 1 else "."
 
-DERIVES = re.compile(r'class\s+([A-Za-z0-9_]+)\s*(?:final\s*)?:\s*public\s+(?:(?:gma::)?INode|.*INode)')
+DERIVES = re.compile(r'class\s+([A-Za-z0-9_]+)\s*(?:final\s*)?:\s*public\s+(?:(?:krn::)?INode|.*INode)')
 ON_VALUE = re.compile(r'void\s+(\w+)::onValue\s*\(')
 SHUTDOWN = re.compile(r'void\s+(\w+)::shutdown\s*\(')
 

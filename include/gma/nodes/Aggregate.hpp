@@ -12,7 +12,7 @@
 #include "gma/nodes/JoinBy.hpp"
 #include "gma/Span.hpp"
 
-namespace gma {
+namespace krn {
 
 // Fan-in node: joins N DECLARED INPUTS into one tuple and forwards it
 // downstream.
@@ -165,4 +165,4 @@ private:
   std::unordered_map<std::string, SymBuf> buf_;
 };
 
-} // namespace gma
+} // namespace krn

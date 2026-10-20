@@ -6,7 +6,7 @@
 #include <vector>
 #include <atomic>
 
-using namespace gma;
+using namespace krn;
 
 TEST(StressTest, ConcurrentAtomicStoreWrites) {
     AtomicStore store;

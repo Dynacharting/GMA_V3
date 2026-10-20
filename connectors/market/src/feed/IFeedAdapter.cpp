@@ -3,7 +3,7 @@
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
 
-namespace gma::feed {
+namespace krn::feed {
 
 std::string IFeedAdapter::subscribeMessage(const std::vector<std::string>& symbols) {
     rapidjson::StringBuffer sb;
@@ -18,4 +18,4 @@ std::string IFeedAdapter::subscribeMessage(const std::vector<std::string>& symbo
     return sb.GetString();
 }
 
-} // namespace gma::feed
+} // namespace krn::feed

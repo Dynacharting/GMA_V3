@@ -64,7 +64,7 @@ so filter at the GoogleTest layer via `--gtest_filter`.
 
 **Tasks:**
 
-1. **`include/gma/nodes/VectorReducer.hpp`** — declare a small `final` class extending `INode`. Members: `fn_` (`gma::Func` from `FunctionMap.hpp:10` — already `double(const vector<double>&)`), `downstream_` (`shared_ptr<INode>`), `stopping_` atomic, `mx_` (only for `downstream_` swap on shutdown). Ctor `(Func, shared_ptr<INode>)`. Override `onValue` (extracts `vector<double>` from the variant `sv.value`, applies `fn_`, emits `StreamValue{symbol, double}`) and `shutdown() noexcept`.
+1. **`include/gma/nodes/VectorReducer.hpp`** — declare a small `final` class extending `INode`. Members: `fn_` (`krn::Func` from `FunctionMap.hpp:10` — already `double(const vector<double>&)`), `downstream_` (`shared_ptr<INode>`), `stopping_` atomic, `mx_` (only for `downstream_` swap on shutdown). Ctor `(Func, shared_ptr<INode>)`. Override `onValue` (extracts `vector<double>` from the variant `sv.value`, applies `fn_`, emits `StreamValue{symbol, double}`) and `shutdown() noexcept`.
 
 2. **`src/nodes/VectorReducer.cpp`** — implement `onValue`: if `sv.value` doesn't hold `vector<double>`, log at `Warn` (`"VectorReducer: non-vector input dropped"`) and drop. Otherwise apply `fn_` to the held vector, construct `StreamValue{sv.symbol, ArgType{double}}`, snapshot `downstream_` under the lock, release, call downstream. Catches reducer exceptions same way `Worker.cpp:33-41` does (log `Error`, drop the value, leave state consistent).
 
@@ -118,7 +118,7 @@ Phase 1).
 ## Cross-cutting concerns
 
 - **Migrations:** none. No schema, no wire-protocol, no config-file changes. `gma.conf` is untouched.
-- **Observability:** the existing `gma::util::logger` is used for the two new warn/error paths (per-symbol cap, non-vector input, reducer exception). No new metrics — both nodes sit off the smoke's measured surface.
+- **Observability:** the existing `krn::util::logger` is used for the two new warn/error paths (per-symbol cap, non-vector input, reducer exception). No new metrics — both nodes sit off the smoke's measured surface.
 - **Docs:** `docs/window-nodes.md` (new). `CLAUDE.md` Code Conventions section gets a one-liner on the new node types only if Phase 2 surfaces a convention worth pinning (e.g., the empty-bucket no-emit choice) — defer to /verify time.
 
 ## Out of plan

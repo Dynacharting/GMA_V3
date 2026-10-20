@@ -3,7 +3,7 @@
 #include <cmath>
 #include <deque>
 
-using namespace gma::ta;
+using namespace krn::ta;
 
 // --- SMA ---
 TEST(IndicatorsTest, SmaBasic) {

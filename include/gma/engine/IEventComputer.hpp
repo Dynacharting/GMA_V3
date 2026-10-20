@@ -4,14 +4,14 @@
 
 #include "gma/engine/FieldSource.hpp"
 
-namespace gma {
+namespace krn {
 struct Event;         // gma/Event.hpp
 class AtomicStore;    // gma/AtomicStore.hpp
 class Dispatcher;     // gma/Dispatcher.hpp
 namespace rt { class ThreadPool; }
 }
 
-namespace gma::engine {
+namespace krn::engine {
 
 // Invocation context passed to every IEventComputer::compute() call.
 // ComputeContext is deliberately lightweight so connectors can mock it in unit tests.
@@ -69,4 +69,4 @@ public:
   void computeEvent(const Event& e, ComputeContext& ctx);
 };
 
-} // namespace gma::engine
+} // namespace krn::engine

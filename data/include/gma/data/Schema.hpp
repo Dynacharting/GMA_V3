@@ -49,7 +49,7 @@
 
 namespace arrow { class MemoryPool; }
 
-namespace gma::data {
+namespace krn::data {
 
 // ---------------------------------------------------------------------------
 // Schemas (docs/data-layer.md §8.3, §8.4)
@@ -189,4 +189,4 @@ arrow::Status decodeBookSnapshots(const arrow::RecordBatch& batch,
                                   SymbolTable& symbols, SymbolTable& venues,
                                   std::vector<SnapshotRecord>& out);
 
-} // namespace gma::data
+} // namespace krn::data

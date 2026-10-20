@@ -5,7 +5,7 @@
 #include "gma/StreamValue.hpp"
 #include "gma/Expr.hpp"
 
-namespace gma::nodes {
+namespace krn::nodes {
 
 // Numeric coercion shared by the expression-driven nodes (Expr, Filter,
 // Switch): numbers map through; non-numeric values (strings, vectors, nested
@@ -33,4 +33,4 @@ inline expr::Env envFromValue(const StreamValue& sv) {
   return env;
 }
 
-} // namespace gma::nodes
+} // namespace krn::nodes

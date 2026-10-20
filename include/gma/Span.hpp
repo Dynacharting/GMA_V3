@@ -31,12 +31,12 @@ private:
 
 } // namespace gma_detail
 
-namespace gma {
+namespace krn {
 // Forward declare ArgType so this header can be included almost anywhere.
 struct ArgType_fwd_tag;
-} // namespace gma
+} // namespace krn
 
-namespace gma {
+namespace krn {
 
 // Authoritative Span alias template
 template <class T>
@@ -45,4 +45,4 @@ using Span = gma_detail::basic_span<T>;
 // After ArgType is known, other headers may do:
 //   using ArgSpan = Span<const ArgType>;
 //   using Span_t  = ArgSpan;
-} // namespace gma
+} // namespace krn

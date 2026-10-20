@@ -12,7 +12,7 @@
 #include <mutex>
 #include <sstream>
 
-namespace gma {
+namespace krn {
 
 // Manager: sequencing, gap/stale control, tick quantization,
 // event bus for deltas, venue-key resolver, validation & admin.
@@ -181,4 +181,4 @@ public:
     void setAllowNegativePrices(bool allow) { allowNegativePrices_ = allow; }
 };
 
-} // namespace gma
+} // namespace krn

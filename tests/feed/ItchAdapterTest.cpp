@@ -9,8 +9,8 @@
 #include <string>
 #include <vector>
 
-using namespace gma;
-using namespace gma::feed;
+using namespace krn;
+using namespace krn::feed;
 
 // ---------------------------------------------------------------------------
 // Helper — build a JSON string from key/value pairs

@@ -2,7 +2,7 @@
 #include "gma/ob/ObSnapshot.hpp"
 #include "gma/ob/ObKey.hpp"
 
-namespace gma::ob {
+namespace krn::ob {
 
 // Core dispatcher
 double eval(const Snapshot& s, const ObKey& k);
@@ -23,4 +23,4 @@ double imbalanceLevels(const Snapshot&, Range);
 double imbalanceBand(const Snapshot&, double p1, double p2, double tick);
 double meta(const Snapshot&, const std::string& field);
 
-} // namespace gma::ob
+} // namespace krn::ob

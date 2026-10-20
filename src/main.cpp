@@ -49,12 +49,12 @@ static unsigned short parsePort(const char* str, unsigned short fallback) {
 // (ENC-1006).
 // ---------------------------
 static int runServer(int argc, char* argv[]) {
-  using namespace gma::util;
+  using namespace krn::util;
 
   // Shutdown coordinator — declared early so it outlives servers.
   // Signal handling is wired below via boost::asio::signal_set, once the
   // io_context exists (async-signal-safe — see "0) Signals" near ioc).
-  gma::rt::ShutdownCoordinator shutdown;
+  krn::rt::ShutdownCoordinator shutdown;
 
   // 1) Config
   //    argv[1] = wsPort (optional)
@@ -99,30 +99,30 @@ static int runServer(int argc, char* argv[]) {
 
   // 3) Engine bootstrap: register generic worker functions and node types.
   //    Connectors register their own event computers in registerWith().
-  gma::registerBuiltinFunctions();
-  gma::registerBuiltinNodeTypes();
+  krn::registerBuiltinFunctions();
+  krn::registerBuiltinNodeTypes();
 
   // 4) Thread pool (global)
   unsigned poolSize = cfg.threadPoolSize > 0
       ? static_cast<unsigned>(cfg.threadPoolSize)
       : std::thread::hardware_concurrency();
   if (poolSize == 0) poolSize = 4;
-  gma::gThreadPool = std::make_shared<gma::rt::ThreadPool>(poolSize);
-  shutdown.registerStep("pool-drain",   80, []{ if (gma::gThreadPool) gma::gThreadPool->drain(); });
-  shutdown.registerStep("pool-destroy", 85, []{ gma::gThreadPool.reset(); });
+  krn::gThreadPool = std::make_shared<krn::rt::ThreadPool>(poolSize);
+  shutdown.registerStep("pool-drain",   80, []{ if (krn::gThreadPool) krn::gThreadPool->drain(); });
+  shutdown.registerStep("pool-destroy", 85, []{ krn::gThreadPool.reset(); });
 
   // 5) Core components
-  auto store = std::make_shared<gma::AtomicStore>();
+  auto store = std::make_shared<krn::AtomicStore>();
   store->setCaps(static_cast<std::size_t>(std::max(0, cfg.maxSymbols)),
                  static_cast<std::size_t>(std::max(0, cfg.maxFieldsPerSymbol)));
-  auto dispatcher = std::make_shared<gma::Dispatcher>(gma::gThreadPool.get(), store.get(), cfg);
+  auto dispatcher = std::make_shared<krn::Dispatcher>(krn::gThreadPool.get(), store.get(), cfg);
 
   // 6) Metrics reporter
   if (cfg.metricsEnabled) {
-    gma::util::MetricRegistry::instance().startReporter(
+    krn::util::MetricRegistry::instance().startReporter(
         static_cast<unsigned>(cfg.metricsIntervalSec));
     shutdown.registerStep("metrics-stop", 10, []{
-      gma::util::MetricRegistry::instance().stopReporter();
+      krn::util::MetricRegistry::instance().stopReporter();
     });
   }
 
@@ -140,14 +140,14 @@ static int runServer(int argc, char* argv[]) {
     if (!ec) shutdown.stop();
   });
 
-  gma::ExecutionContext exec(store.get(), gma::gThreadPool.get());
+  krn::ExecutionContext exec(store.get(), krn::gThreadPool.get());
 
   // ENC-1006: the acceptor is opened in the constructor and throws on a
   // failed open/bind/listen. Catch it here so an occupied port produces an
   // actionable message + non-zero exit instead of terminate().
-  std::unique_ptr<gma::WebSocketServer> wsPtr;
+  std::unique_ptr<krn::WebSocketServer> wsPtr;
   try {
-    wsPtr = std::make_unique<gma::WebSocketServer>(ioc, &exec, dispatcher.get(), wsPort);
+    wsPtr = std::make_unique<krn::WebSocketServer>(ioc, &exec, dispatcher.get(), wsPort);
   } catch (const boost::system::system_error& ex) {
     std::cerr << "[fatal] cannot start WebSocket server on port " << wsPort
               << ": " << ex.what() << "\n"
@@ -156,7 +156,7 @@ static int runServer(int argc, char* argv[]) {
     shutdown.stop();
     return EXIT_FAILURE;
   }
-  gma::WebSocketServer& ws = *wsPtr;
+  krn::WebSocketServer& ws = *wsPtr;
   ws.run();
   shutdown.registerStep("ws-stop-accept",    5,  [&ws]{ try { ws.stopAccept(); } catch (...) {} });
   shutdown.registerStep("ws-close-sessions", 40, [&ws]{ try { ws.closeAll(); } catch (...) {} });
@@ -166,22 +166,22 @@ static int runServer(int argc, char* argv[]) {
   //    single ShutdownCoordinator step that calls stop() in reverse-registration
   //    order. With one connector today the reverse-order is trivial; the
   //    pattern is future-proof.
-  gma::engine::EngineRegistries regs{
-    &cfg, gma::gThreadPool.get(), store.get(), dispatcher.get(), &shutdown, &ioc,
-    &gma::engine::EventTypeRegistry::singleton(),
-    &gma::engine::EventComputerRegistry::singleton(),
-    &gma::engine::NodeTypeRegistry::singleton(),
-    &gma::engine::IngressRegistry::singleton(),
-    &gma::engine::ConfigNamespaceRegistry::singleton(),
-    &gma::AtomicProviderRegistry::singleton(),
-    &gma::FunctionMap::instance(),
-    &gma::util::logger(),
+  krn::engine::EngineRegistries regs{
+    &cfg, krn::gThreadPool.get(), store.get(), dispatcher.get(), &shutdown, &ioc,
+    &krn::engine::EventTypeRegistry::singleton(),
+    &krn::engine::EventComputerRegistry::singleton(),
+    &krn::engine::NodeTypeRegistry::singleton(),
+    &krn::engine::IngressRegistry::singleton(),
+    &krn::engine::ConfigNamespaceRegistry::singleton(),
+    &krn::AtomicProviderRegistry::singleton(),
+    &krn::FunctionMap::instance(),
+    &krn::util::logger(),
   };
-  std::vector<gma::engine::IConnector*> connectors;
-  gma::market::MarketConnector marketConnector;
+  std::vector<krn::engine::IConnector*> connectors;
+  krn::market::MarketConnector marketConnector;
   marketConnector.registerWith(regs);
   connectors.push_back(&marketConnector);
-  // (future) gma::crypto::CoinbaseConnector{}.registerWith(regs);
+  // (future) krn::crypto::CoinbaseConnector{}.registerWith(regs);
 
   // ENC-31: ensure cfg.ingress[] is populated even when the user provided
   // no INI (loadFromFile not called). Idempotent.
@@ -220,7 +220,7 @@ static int runServer(int argc, char* argv[]) {
 
     if (!forumUrl.empty()) {
       try {
-        auto pulled = gma::forum::ConnectorsClient::fetchIngresses(
+        auto pulled = krn::forum::ConnectorsClient::fetchIngresses(
             forumUrl, forumTenantId, forumAuthToken);
         cfg.ingress = std::move(pulled);
         logger().log(
@@ -266,12 +266,12 @@ static int runServer(int argc, char* argv[]) {
   // Engine-driven ingress (ENC-31): read cfg.ingress[], lookup each kind in
   // IngressRegistry, instantiate, start in registration order. A single
   // ShutdownCoordinator step at priority 35 stops them in reverse order.
-  std::vector<std::unique_ptr<gma::engine::IIngressSource>> ingresses;
+  std::vector<std::unique_ptr<krn::engine::IIngressSource>> ingresses;
   std::vector<std::string> ingressKinds;  // parallel to `ingresses` (skips are not pushed)
   for (const auto& entry : cfg.ingress) {
-    const auto* factory = gma::engine::IngressRegistry::find(entry.kind);
+    const auto* factory = krn::engine::IngressRegistry::find(entry.kind);
     if (!factory) {
-      gma::util::logger().log(gma::util::LogLevel::Warn,
+      krn::util::logger().log(krn::util::LogLevel::Warn,
         "ingress.unknown_kind",
         {{"kind", entry.kind}});
       continue;
@@ -283,7 +283,7 @@ static int runServer(int argc, char* argv[]) {
         ingressKinds.push_back(entry.kind);
       }
     } catch (const std::exception& ex) {
-      gma::util::logger().log(gma::util::LogLevel::Error,
+      krn::util::logger().log(krn::util::LogLevel::Error,
         "ingress.factory_threw",
         {{"kind", entry.kind}, {"err", ex.what()}});
     }
@@ -296,7 +296,7 @@ static int runServer(int argc, char* argv[]) {
       ingresses[i]->start();
     } catch (const std::exception& ex) {
       const std::string kind = i < ingressKinds.size() ? ingressKinds[i] : std::string{"?"};
-      gma::util::logger().log(gma::util::LogLevel::Error, "ingress.start_failed",
+      krn::util::logger().log(krn::util::LogLevel::Error, "ingress.start_failed",
                               {{"kind", kind}, {"err", ex.what()}});
       std::cerr << "[fatal] cannot start ingress '" << kind << "': " << ex.what() << "\n"
                 << "        (is another gma_server already listening there? "

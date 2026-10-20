@@ -58,7 +58,7 @@
 | `src/core/AtomicFunctions.cpp` | 11 | `computeMedian` takes `std::deque` by value instead of const ref |
 | `src/core/TreeBuilder.cpp` | 278 | Unused variable `cap` with `(void)cap` suppression |
 | `src/core/TreeBuilder.cpp` | 19, 21 | Duplicate `#include "gma/rt/ThreadPool.hpp"` |
-| `src/core/TreeBuilder.cpp` | 293, 410 | Direct dependency on global `gma::gThreadPool` — untestable, violates DI |
+| `src/core/TreeBuilder.cpp` | 293, 410 | Direct dependency on global `krn::gThreadPool` — untestable, violates DI |
 | `src/core/MarketDispatcher.cpp` | 74, 120 | Bare `catch(...)` swallows all exceptions with zero logging |
 | `src/core/JsonValidator.cpp` | — | Minimal validation: no size limits, no tree structure validation, no node type validation, no parameter range checks |
 | `JsonValidator.hpp` | 12-22 | `requireMember` is a template on `T` but `T` is never used |

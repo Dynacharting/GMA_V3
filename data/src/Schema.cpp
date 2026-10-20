@@ -11,7 +11,7 @@
 #include <string>
 #include <unordered_map>
 
-namespace gma::data {
+namespace krn::data {
 namespace {
 
 // ---------------------------------------------------------------------------
@@ -85,7 +85,7 @@ class DictColumn {
         // indistinguishable from a provider gap, which is exactly the
         // confusion SPEC D11 exists to prevent one level up.
         return arrow::Status::Invalid(
-            "gma::data: ", what_, " id ", id,
+            "krn::data: ", what_, " id ", id,
             " is not interned in the table supplied to the encoder");
       }
       ARROW_RETURN_NOT_OK(values_.Append(table_.name(id)));
@@ -121,13 +121,13 @@ using VenueColumn  = DictColumn<arrow::Int16Builder>;
 arrow::Result<std::vector<SymbolId>> internDictionary(
     const arrow::Array& column, SymbolTable& table, const char* what) {
   if (column.type_id() != arrow::Type::DICTIONARY) {
-    return arrow::Status::Invalid("gma::data: ", what,
+    return arrow::Status::Invalid("krn::data: ", what,
                                   " column is not a dictionary array");
   }
   const auto& dict = static_cast<const arrow::DictionaryArray&>(column);
   const auto& values = *dict.dictionary();
   if (values.type_id() != arrow::Type::STRING) {
-    return arrow::Status::Invalid("gma::data: ", what,
+    return arrow::Status::Invalid("krn::data: ", what,
                                   " dictionary values are not utf8");
   }
   const auto& strings = static_cast<const arrow::StringArray&>(values);
@@ -139,13 +139,13 @@ arrow::Result<std::vector<SymbolId>> internDictionary(
   // encoder refuses an un-interned id to avoid, arriving from the other end.
   if (strings.null_count() != 0) {
     return arrow::Status::Invalid(
-        "gma::data: ", what, " dictionary holds ", strings.null_count(),
+        "krn::data: ", what, " dictionary holds ", strings.null_count(),
         " null value(s); a null ticker would decode to an interned \"\", which "
         "is indistinguishable from a provider gap");
   }
   if (dict.indices()->null_count() != 0) {
     return arrow::Status::Invalid(
-        "gma::data: ", what, " dictionary indices hold ",
+        "krn::data: ", what, " dictionary indices hold ",
         dict.indices()->null_count(),
         " null(s), but the column is declared non-nullable");
   }
@@ -172,11 +172,11 @@ arrow::Result<SymbolId> dictIdAt(const arrow::Array& column,
       slot = static_cast<const arrow::Int32Array&>(idx).Value(row);
       break;
     default:
-      return arrow::Status::Invalid("gma::data: ", what,
+      return arrow::Status::Invalid("krn::data: ", what,
                                     " dictionary indices are neither int16 nor int32");
   }
   if (slot < 0 || static_cast<std::size_t>(slot) >= ids.size()) {
-    return arrow::Status::Invalid("gma::data: ", what,
+    return arrow::Status::Invalid("krn::data: ", what,
                                   " dictionary index out of range");
   }
   return ids[static_cast<std::size_t>(slot)];
@@ -196,11 +196,11 @@ arrow::Result<const ArrayType*> column(const arrow::RecordBatch& batch,
                                        const char* name) {
   auto col = batch.GetColumnByName(name);
   if (col == nullptr) {
-    return arrow::Status::Invalid("gma::data: batch has no column '", name, "'");
+    return arrow::Status::Invalid("krn::data: batch has no column '", name, "'");
   }
   const auto* typed = dynamic_cast<const ArrayType*>(col.get());
   if (typed == nullptr) {
-    return arrow::Status::Invalid("gma::data: column '", name, "' has type ",
+    return arrow::Status::Invalid("krn::data: column '", name, "' has type ",
                                   col->type()->ToString(),
                                   ", which is not what the canonical schema declares");
   }
@@ -251,7 +251,7 @@ arrow::Result<Enum> enumAt(const arrow::UInt8Array& column, std::int64_t row,
   const std::uint8_t raw = column.Value(row);
   if (raw > maxValue) {
     return arrow::Status::Invalid(
-        "gma::data: row ", row, " column '", what, "' holds ",
+        "krn::data: row ", row, " column '", what, "' holds ",
         static_cast<unsigned>(raw), ", which is outside the declared domain "
         "0..", static_cast<unsigned>(maxValue),
         " — refusing to produce a record whose enum matches no enumerator "
@@ -294,18 +294,18 @@ arrow::Status requireCanonicalBatch(const arrow::RecordBatch& batch,
                                     const std::shared_ptr<arrow::Schema>& expected,
                                     const char* what) {
   if (expected == nullptr) {
-    return arrow::Status::Invalid("gma::data: no canonical schema for ", what);
+    return arrow::Status::Invalid("krn::data: no canonical schema for ", what);
   }
   if (!batch.schema()->Equals(*expected, /*check_metadata=*/false)) {
     return arrow::Status::Invalid(
-        "gma::data: batch schema does not match the canonical ", what,
+        "krn::data: batch schema does not match the canonical ", what,
         " schema.\n  got:      ", batch.schema()->ToString(),
         "\n  expected: ", expected->ToString());
   }
   const auto version = schemaVersionOf(*batch.schema());
   if (version != kSchemaVersion) {
     return arrow::Status::Invalid(
-        "gma::data: batch declares ", kSchemaVersionKey, "=", version,
+        "krn::data: batch declares ", kSchemaVersionKey, "=", version,
         " but this build understands ", kSchemaVersion,
         " — refusing to guess a column layout");
   }
@@ -314,7 +314,7 @@ arrow::Status requireCanonicalBatch(const arrow::RecordBatch& batch,
     const auto& col = *batch.column(c);
     if (col.null_count() != 0) {
       return arrow::Status::Invalid(
-          "gma::data: ", what, " column '", batch.schema()->field(c)->name(),
+          "krn::data: ", what, " column '", batch.schema()->field(c)->name(),
           "' holds ", col.null_count(),
           " null(s), but every column of every canonical schema is declared "
           "non-nullable and the PODs have no absent state");
@@ -345,7 +345,7 @@ struct HeaderColumns {
     symbol = batch.GetColumnByName("symbol");
     venue  = batch.GetColumnByName("venue");
     if (symbol == nullptr || venue == nullptr) {
-      return arrow::Status::Invalid("gma::data: batch is missing symbol or venue");
+      return arrow::Status::Invalid("krn::data: batch is missing symbol or venue");
     }
     ARROW_ASSIGN_OR_RAISE(symbolIds, internDictionary(*symbol, symbols, "symbol"));
     ARROW_ASSIGN_OR_RAISE(venueIds, internDictionary(*venue, venues, "venue"));
@@ -537,7 +537,7 @@ arrow::Result<std::shared_ptr<arrow::RecordBatch>> encodeTicksImpl(
     arrow::MemoryPool* pool) {
   auto schema = schemaFor(kind);
   if (schema == nullptr) {
-    return arrow::Status::Invalid("gma::data: encodeTicks: unknown RecordKind");
+    return arrow::Status::Invalid("krn::data: encodeTicks: unknown RecordKind");
   }
   pool = poolOr(pool);
   HeaderBuilders hdr(symbols, venues, pool);
@@ -554,7 +554,7 @@ arrow::Result<std::shared_ptr<arrow::RecordBatch>> encodeTicksImpl(
   for (const auto& r : records) {
     if (r.kind != kind) {
       return arrow::Status::Invalid(
-          "gma::data: encodeTicks was asked for kind ",
+          "krn::data: encodeTicks was asked for kind ",
           static_cast<int>(kind), " but a record carries kind ",
           static_cast<int>(r.kind),
           " — a mixed vector would silently drop half its fields");
@@ -698,7 +698,7 @@ arrow::Status decodeTicks(const arrow::RecordBatch& batch, RecordKind kind,
                           std::vector<TickRecord>& out) {
   if (kind != RecordKind::Trade && kind != RecordKind::Quote) {
     return arrow::Status::Invalid(
-        "gma::data: decodeTicks handles Trade and Quote only; "
+        "krn::data: decodeTicks handles Trade and Quote only; "
         "book kinds go through decodeBookEvents / decodeBookSnapshots");
   }
   ARROW_RETURN_NOT_OK(requireCanonicalBatch(
@@ -836,4 +836,4 @@ arrow::Status decodeBookSnapshots(const arrow::RecordBatch& batch,
   return arrow::Status::OK();
 }
 
-} // namespace gma::data
+} // namespace krn::data

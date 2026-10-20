@@ -6,7 +6,7 @@
 #include <algorithm>
 #include <utility>
 
-namespace gma::ta {
+namespace krn::ta {
 
 inline double NaN() { return std::numeric_limits<double>::quiet_NaN(); }
 inline bool isFinite(double x) { return std::isfinite(x); }
@@ -120,4 +120,4 @@ inline double rsi_update(RsiState& st, double newPx, size_t period) {
   return 100.0 - (100.0 / (1.0 + rs));
 }
 
-} // namespace gma::ta
+} // namespace krn::ta

@@ -6,7 +6,7 @@
 #include "gma/nodes/INode.hpp"
 #include "gma/Expr.hpp"
 
-namespace gma {
+namespace krn {
 
 // Predicate gate (ENC-649): forwards each incoming value DOWNSTREAM UNCHANGED
 // when a compiled predicate expression over that value is truthy (>0.5), and
@@ -30,4 +30,4 @@ private:
   mutable std::mutex mx_;
 };
 
-} // namespace gma
+} // namespace krn

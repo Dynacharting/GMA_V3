@@ -4,7 +4,7 @@
 #include <deque>
 #include <string>
 
-namespace gma {
+namespace krn {
 
 struct TickEntry {
   double   price;
@@ -16,4 +16,4 @@ struct TickEntry {
 
 using SymbolHistory = std::deque<TickEntry>;
 
-} // namespace gma
+} // namespace krn

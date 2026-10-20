@@ -4,8 +4,8 @@
 #include <string>
 #include <vector>
 
-using namespace gma;
-using namespace gma::ws;
+using namespace krn;
+using namespace krn::ws;
 
 // Helper: capture the JSON string sent by WSResponder
 static std::string captureOnValue(const StreamValue& sv) {

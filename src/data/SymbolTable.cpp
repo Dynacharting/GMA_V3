@@ -5,7 +5,7 @@
 #include <cmath>
 #include <mutex>
 
-namespace gma::data {
+namespace krn::data {
 
 SymbolId SymbolTable::intern(std::string_view text) {
   // Fast path: already present. Taken under a shared lock so concurrent
@@ -68,4 +68,4 @@ std::int64_t toFixed(double px) noexcept {
   return static_cast<std::int64_t>(std::llround(px * static_cast<double>(kPriceScale)));
 }
 
-} // namespace gma::data
+} // namespace krn::data

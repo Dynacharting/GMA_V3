@@ -7,7 +7,7 @@
 #include <cctype>
 #include <chrono>
 
-namespace gma { namespace util {
+namespace krn { namespace util {
 
 static thread_local std::map<std::string, std::string> t_ctx;
 
@@ -161,4 +161,4 @@ Logger::Scoped::~Scoped() {
   }
 }
 
-}} // namespace gma::util
+}} // namespace krn::util

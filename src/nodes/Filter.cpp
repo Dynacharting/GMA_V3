@@ -4,7 +4,7 @@
 
 #include <exception>
 
-namespace gma {
+namespace krn {
 
 Filter::Filter(expr::Compiled predicate, std::shared_ptr<INode> downstream)
   : pred_(std::move(predicate)), downstream_(std::move(downstream)) {}
@@ -23,7 +23,7 @@ void Filter::onValue(const StreamValue& sv) {
   try {
     verdict = pred_(nodes::envFromValue(sv));
   } catch (const std::exception& ex) {
-    gma::util::logger().log(gma::util::LogLevel::Error,
+    krn::util::logger().log(krn::util::LogLevel::Error,
                             "filter.predicate_exception",
                             {{"symbol", sv.symbol}, {"err", ex.what()}});
     return;  // predicate threw -> drop (fail closed)
@@ -39,4 +39,4 @@ void Filter::shutdown() noexcept {
   downstream_.reset();
 }
 
-} // namespace gma
+} // namespace krn

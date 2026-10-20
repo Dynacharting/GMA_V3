@@ -1,11 +1,11 @@
 #include "gma/nodes/Interval.hpp"
 #include "gma/util/Logger.hpp"
 
-namespace gma {
+namespace krn {
 
 Interval::Interval(std::chrono::milliseconds period,
                    std::shared_ptr<INode> child,
-                   gma::rt::ThreadPool* pool)
+                   krn::rt::ThreadPool* pool)
   : state_(std::make_shared<State>(period, std::move(child), pool))
 {
 }
@@ -50,7 +50,7 @@ void Interval::timerLoop(const std::shared_ptr<State>& st) {
         st->child->onValue(StreamValue{"", 0.0});
       }
     } catch (const std::exception& ex) {
-      gma::util::logger().log(gma::util::LogLevel::Error,
+      krn::util::logger().log(krn::util::LogLevel::Error,
         "Interval::timerLoop: onValue exception",
         {{"err", ex.what()}});
     }
@@ -77,4 +77,4 @@ void Interval::shutdown() noexcept {
   }
 }
 
-} // namespace gma
+} // namespace krn

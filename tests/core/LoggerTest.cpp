@@ -4,7 +4,7 @@
 #include <fstream>
 #include <string>
 
-using namespace gma::util;
+using namespace krn::util;
 
 TEST(LoggerTest, DefaultLevelIsInfo) {
     Logger lg;

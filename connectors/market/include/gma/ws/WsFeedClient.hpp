@@ -17,7 +17,7 @@
 
 #include "gma/feed/FeedEvent.hpp"
 
-namespace gma {
+namespace krn {
 
 class Dispatcher;
 class OrderBookManager;
@@ -116,4 +116,4 @@ private:
 };
 
 } // namespace ws
-} // namespace gma
+} // namespace krn

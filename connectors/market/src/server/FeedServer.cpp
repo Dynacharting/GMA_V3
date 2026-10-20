@@ -19,7 +19,7 @@
 
 #include <rapidjson/document.h>
 
-namespace gma {
+namespace krn {
 
 using tcp = boost::asio::ip::tcp;
 
@@ -86,7 +86,7 @@ private:
     // without producing a complete line.
     if (pending_.size() > MAX_PENDING) {
       GMA_METRIC_HIT("feed.pending_overflow");
-      gma::util::logger().log(gma::util::LogLevel::Warn,
+      krn::util::logger().log(krn::util::LogLevel::Warn,
                               "feed.pending_overflow",
                               {{"size", std::to_string(pending_.size())}});
       close();
@@ -121,7 +121,7 @@ private:
     // Guard against oversized lines (DoS prevention).
     if (line.size() > MAX_LINE_SIZE) {
       GMA_METRIC_HIT("feed.tick_bad");
-      gma::util::logger().log(gma::util::LogLevel::Warn,
+      krn::util::logger().log(krn::util::LogLevel::Warn,
                               "feed.line.too_large",
                               {{"size", std::to_string(line.size())}});
       return;
@@ -132,7 +132,7 @@ private:
       doc.Parse(line.c_str());
       if (doc.HasParseError() || !doc.IsObject()) {
         GMA_METRIC_HIT("feed.tick_bad");
-        gma::util::logger().log(gma::util::LogLevel::Warn,
+        krn::util::logger().log(krn::util::LogLevel::Warn,
                                 "feed.line.bad_json",
                                 {{"line", line.substr(0, 200)}});
         return;
@@ -157,12 +157,12 @@ private:
 
     } catch (const std::exception& ex) {
       GMA_METRIC_HIT("feed.tick_bad");
-      gma::util::logger().log(gma::util::LogLevel::Error,
+      krn::util::logger().log(krn::util::LogLevel::Error,
                               "feed.handleLine exception",
                               {{"err", ex.what()}});
     } catch (...) {
       GMA_METRIC_HIT("feed.tick_bad");
-      gma::util::logger().log(gma::util::LogLevel::Error,
+      krn::util::logger().log(krn::util::LogLevel::Error,
                               "feed.handleLine unknown exception");
     }
   }
@@ -172,19 +172,19 @@ private:
 
     if (!doc.HasMember("symbol") || !doc["symbol"].IsString()) {
       GMA_METRIC_HIT("feed.tick_bad");
-      gma::util::logger().log(gma::util::LogLevel::Warn,
+      krn::util::logger().log(krn::util::LogLevel::Warn,
                               "feed.line.missing_symbol",
                               {{"line", line.substr(0, 200)}});
       return;
     }
 
-    gma::Event t;
+    krn::Event t;
     t.symbol = doc["symbol"].GetString();
 
     // Reject empty or absurdly long symbols.
     if (t.symbol.empty() || t.symbol.size() > 64) {
       GMA_METRIC_HIT("feed.tick_bad");
-      gma::util::logger().log(gma::util::LogLevel::Warn,
+      krn::util::logger().log(krn::util::LogLevel::Warn,
                               "feed.line.bad_symbol",
                               {{"len", std::to_string(t.symbol.size())}});
       return;
@@ -292,7 +292,7 @@ private:
 
     } else {
       GMA_METRIC_HIT("feed.ob_bad");
-      gma::util::logger().log(gma::util::LogLevel::Warn,
+      krn::util::logger().log(krn::util::LogLevel::Warn,
                               "feed.ob.unknown_action",
                               {{"action", action}});
     }
@@ -321,7 +321,7 @@ private:
       }
     } else {
       GMA_METRIC_HIT("feed.control_bad");
-      gma::util::logger().log(gma::util::LogLevel::Warn,
+      krn::util::logger().log(krn::util::LogLevel::Warn,
                               "feed.control.unknown_action",
                               {{"action", action}});
     }
@@ -334,7 +334,7 @@ private:
     idleTimer_.expires_after(IDLE_TIMEOUT);
     idleTimer_.async_wait([self](boost::system::error_code ec) {
       if (!ec) {
-        gma::util::logger().log(gma::util::LogLevel::Warn,
+        krn::util::logger().log(krn::util::LogLevel::Warn,
                                 "feed.session.idle_timeout");
         GMA_METRIC_HIT("feed.idle_timeout");
         self->close();
@@ -443,7 +443,7 @@ void FeedServer::onAccept(boost::system::error_code ec, tcp::socket socket) {
       std::lock_guard<std::mutex> lk(mu_);
       if (sessions_.size() >= MAX_FEED_SESSIONS) {
         GMA_METRIC_HIT("feed.conn_rejected");
-        gma::util::logger().log(gma::util::LogLevel::Warn,
+        krn::util::logger().log(krn::util::LogLevel::Warn,
                                 "feed.max_sessions_reached",
                                 {{"max", std::to_string(MAX_FEED_SESSIONS)}});
         // Let socket close on scope exit.
@@ -463,4 +463,4 @@ void FeedServer::onAccept(boost::system::error_code ec, tcp::socket socket) {
   doAccept();
 }
 
-} // namespace gma
+} // namespace krn

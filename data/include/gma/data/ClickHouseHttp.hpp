@@ -47,7 +47,7 @@
 #include <string_view>
 #include <vector>
 
-namespace gma::data::ch {
+namespace krn::data::ch {
 
 // ---------------------------------------------------------------------------
 // WHICH SERVER — the same precedence `data/schema/apply.py` resolves, and for
@@ -130,4 +130,4 @@ std::string tsvEscape(std::string_view s);
 // symbol one day.
 std::string sqlQuote(std::string_view s);
 
-}  // namespace gma::data::ch
+}  // namespace krn::data::ch

@@ -7,7 +7,7 @@
 
 #include <rapidjson/document.h>
 
-namespace gma::expr {
+namespace krn::expr {
 
 // Evaluation environment: named input value -> double. The Expr node (ENC-645)
 // populates this from its wired inputs; absent names evaluate to 0.0.
@@ -38,4 +38,4 @@ using Compiled = std::function<double(const Env&)>;
 // a caller can discover which inputs an expression needs to be wired).
 Compiled compile(const rapidjson::Value& spec, std::set<std::string>* refs = nullptr);
 
-} // namespace gma::expr
+} // namespace krn::expr

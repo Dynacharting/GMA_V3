@@ -36,7 +36,7 @@
 
 namespace arrow { class Schema; }
 
-namespace gma::data {
+namespace krn::data {
 
 // Where a sink's rows go. Separated from IL1Store so a sink can write to
 // a plain Arrow IPC file (the parity fixture) without a backend configured.
@@ -137,4 +137,4 @@ private:
   std::unique_ptr<Impl> impl_;
 };
 
-} // namespace gma::data
+} // namespace krn::data

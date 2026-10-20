@@ -25,7 +25,7 @@
 #include <thread>
 #include <vector>
 
-using namespace gma;
+using namespace krn;
 
 // Stub terminal node
 class CorpusTerminal : public INode {
@@ -60,9 +60,9 @@ protected:
 TEST_F(CorpusTestFixture, AllCorpusRequestsBuild) {
     // ENC-807 (L17): a missing corpus must NOT silently green the suite.
     // ENC-1340: one resolver, one diagnostic — see tests/support/CorpusPath.hpp.
-    std::ifstream ifs = gma::testsupport::openCorpusRequests();
+    std::ifstream ifs = krn::testsupport::openCorpusRequests();
     if (!ifs.is_open()) {
-        FAIL() << gma::testsupport::corpusNotFoundDiagnostic();
+        FAIL() << krn::testsupport::corpusNotFoundDiagnostic();
         return;
     }
 
@@ -322,9 +322,9 @@ namespace corpus_values {
 // tuples recoverable at all. Every recovery below asserts each per-thread run
 // has even length — if that ever fails the pairing is unsound and the verdict
 // must be discarded, not believed.
-class RecordingTerminal final : public gma::INode {
+class RecordingTerminal final : public krn::INode {
 public:
-  void onValue(const gma::StreamValue& sv) override {
+  void onValue(const krn::StreamValue& sv) override {
     const double* d = std::get_if<double>(&sv.value);
     std::lock_guard<std::mutex> lk(mx_);
     // ENC-1292: the SYMBOL is recorded too. `ClientSession` serialises
@@ -370,7 +370,7 @@ rapidjson::Document& corpusDoc() {
     // tests/support/CorpusPath.hpp. A null Document still means "not found",
     // and callers print corpusNotFoundDiagnostic() rather than guessing.
     rapidjson::Document d;
-    std::ifstream ifs = gma::testsupport::openCorpusRequests();
+    std::ifstream ifs = krn::testsupport::openCorpusRequests();
     if (!ifs.is_open()) { d.SetNull(); return d; }
     rapidjson::IStreamWrapper isw(ifs);
     d.ParseStream(isw);
@@ -473,8 +473,8 @@ struct Drive {
 
 Drive driveCorpus(const rapidjson::Value& request,
                   unsigned threads,
-                  const std::function<void(gma::Dispatcher&)>& inject) {
-  using namespace gma;
+                  const std::function<void(krn::Dispatcher&)>& inject) {
+  using namespace krn;
 
   AtomicStore store;
   auto pool = std::make_shared<rt::ThreadPool>(threads);
@@ -508,14 +508,14 @@ Drive driveCorpus(const rapidjson::Value& request,
   return out;
 }
 
-void tick(gma::Dispatcher& d, const char* symbol,
+void tick(krn::Dispatcher& d, const char* symbol,
           std::initializer_list<std::pair<const char*, double>> fields) {
   auto payload = std::make_shared<rapidjson::Document>();
   payload->SetObject();
   auto& al = payload->GetAllocator();
   for (const auto& [name, value] : fields)
     payload->AddMember(rapidjson::StringRef(name), value, al);
-  gma::Event ev;
+  krn::Event ev;
   ev.symbol  = symbol;
   ev.payload = payload;          // ev.type defaults to "tick" — the production type
   d.onTick(ev);
@@ -673,7 +673,7 @@ TEST(CorpusValueAssertions, Corpus86_JoinMustNotCompleteFromOneInputAlone) {
 
   constexpr std::size_t kTicks = 8;
 
-  Drive d = driveCorpus(join, /*threads=*/1, [](gma::Dispatcher& disp) {
+  Drive d = driveCorpus(join, /*threads=*/1, [](krn::Dispatcher& disp) {
     for (std::size_t n = 0; n < kTicks; ++n)
       tick(disp, "AAPL", {{"ask", kBase + double(n) + kSpread}});  // no "bid"
   });
@@ -727,7 +727,7 @@ TEST(CorpusValueAssertions, Corpus86_SpreadIsExactlyTwoCents_SingleThreadControl
   ASSERT_NE(req, nullptr) << "corpus_id 86 not found in corpus_requests.json";
   rapidjson::Document join = nodeWithoutPipeline(*req);   // ENC-1290, see above
 
-  Drive d = driveCorpus(join, /*threads=*/1, [](gma::Dispatcher& disp) {
+  Drive d = driveCorpus(join, /*threads=*/1, [](krn::Dispatcher& disp) {
     for (std::size_t n = 0; n < kRaceTicks; ++n)
       tick(disp, "AAPL", {{"bid", kBase + double(n)},
                           {"ask", kBase + double(n) + kSpread}});
@@ -786,7 +786,7 @@ TEST(CorpusValueAssertions, Corpus86_SpreadIsExactlyTwoCents) {
 
   TupleReport r;
   for (std::size_t rep = 0; rep < kRaceReps; ++rep) {
-    Drive d = driveCorpus(join, kRaceThreads, [](gma::Dispatcher& disp) {
+    Drive d = driveCorpus(join, kRaceThreads, [](krn::Dispatcher& disp) {
       for (std::size_t n = 0; n < kRaceTicks; ++n)
         tick(disp, "AAPL", {{"bid", kBase + double(n)},
                             {"ask", kBase + double(n) + kSpread}});
@@ -880,7 +880,7 @@ TEST(CorpusValueAssertions, Corpus87_ObservationPointIsSound_Control) {
   constexpr double kAaplBase = 1000.0, kMsftBase = 5000.0;
   constexpr std::size_t kTicksPerSide = 6;
 
-  auto drive = [](gma::Dispatcher& disp) {
+  auto drive = [](krn::Dispatcher& disp) {
     for (std::size_t n = 0; n < kTicksPerSide; ++n) {
       tick(disp, "AAPL", {{"lastPrice", kAaplBase + double(n)}});
       tick(disp, "MSFT", {{"lastPrice", kMsftBase + double(n)}});
@@ -1012,7 +1012,7 @@ TEST(CorpusValueAssertions, Corpus87_CrossSymbolJoinNeverPairsOneSideWithItself)
   // individually below and this is only the closing statement.
   constexpr double kTruth = kAaplBase - kMsftBase;
 
-  Drive d = driveCorpus(join, /*threads=*/1, [](gma::Dispatcher& disp) {
+  Drive d = driveCorpus(join, /*threads=*/1, [](krn::Dispatcher& disp) {
     for (std::size_t n = 0; n < kTicksPerSide; ++n) {
       tick(disp, "AAPL", {{"lastPrice", kAaplBase + double(n)}});
       tick(disp, "MSFT", {{"lastPrice", kMsftBase + double(n)}});

@@ -6,7 +6,7 @@
 #include <utility>
 #include <variant>
 
-namespace gma {
+namespace krn {
 
 namespace {
 
@@ -31,7 +31,7 @@ double toDouble(const ArgType& v) {
 
 TumblingWindow::TumblingWindow(std::chrono::milliseconds period,
                                std::shared_ptr<INode> downstream,
-                               gma::rt::ThreadPool* pool)
+                               krn::rt::ThreadPool* pool)
   : state_(std::make_shared<State>(period, std::move(downstream), pool))
 {
 }
@@ -60,7 +60,7 @@ void TumblingWindow::onValue(const StreamValue& sv) {
   // MAX_SYMBOLS guard at Worker.cpp:20-25).
   if (state_->acc.find(sv.symbol) == state_->acc.end() &&
       state_->acc.size() >= MAX_SYMBOLS) {
-    gma::util::logger().log(gma::util::LogLevel::Warn,
+    krn::util::logger().log(krn::util::LogLevel::Warn,
       "TumblingWindow: max symbols reached, dropping",
       {{"symbol", sv.symbol}});
     return;
@@ -133,7 +133,7 @@ void TumblingWindow::timerLoop(const std::shared_ptr<State>& st) {
           ds->onValue(StreamValue{sym, ArgType{std::move(vec)}, bucketStartMs});
         }
       } catch (const std::exception& ex) {
-        gma::util::logger().log(gma::util::LogLevel::Error,
+        krn::util::logger().log(krn::util::LogLevel::Error,
           "TumblingWindow::timerLoop: onValue exception",
           {{"symbol", sym}, {"err", ex.what()}});
       }
@@ -163,4 +163,4 @@ void TumblingWindow::shutdown() noexcept {
   state_->acc.clear();
 }
 
-} // namespace gma
+} // namespace krn

@@ -5,7 +5,7 @@
 -- and docs/data-layer.md §8 (revision 3).
 --
 -- RELATIONSHIP TO THE C++ PODs, STATED EXACTLY, BECAUSE IT IS NOT ONE-FOR-ONE.
--- The engine-facing PODs in `namespace gma::data` (today
+-- The engine-facing PODs in `namespace krn::data` (today
 -- data/include/gma/data/Schema.hpp; moving to include/gma/data/Record.hpp with
 -- ENC-1481) are a SUBSET of these columns, not a mirror of them:
 --
@@ -73,7 +73,7 @@
 --   a backtest.
 --
 --   Prices are Int64 at a FIXED GLOBAL scale of 1e-9 (SPEC D8), which is
---   gma::data::kPriceScale == 1'000'000'000 (see the header note above for
+--   krn::data::kPriceScale == 1'000'000'000 (see the header note above for
 --   which file that constant lives in). The two must agree: the decode path is a reinterpret of the provider's own
 --   fixed point and there is no conversion to catch a mismatch. There is
 --   deliberately no per-row scale column and no per-symbol scale —
@@ -189,7 +189,7 @@ CREATE TABLE IF NOT EXISTS gma.trades
 
     price         Int64                 CODEC(Delta(8), ZSTD(3)),
     size          UInt64                CODEC(T64, ZSTD(1)),
-    -- gma::data::Aggressor: 0 Unknown, 1 Buy, 2 Sell
+    -- krn::data::Aggressor: 0 Unknown, 1 Buy, 2 Sell
     aggressor     UInt8                 CODEC(ZSTD(1)),
     -- Mirrors feed::ObTradeEvent::bookNeutral. TRUE means this print is a
     -- TA/print signal ONLY and must not consume resting liquidity — hidden /
@@ -228,7 +228,7 @@ SETTINGS index_granularity = 8192;
 -- One row per TOB CHANGE, not per inbound tick: a feed that repeats an
 -- unchanged quote must not grow this table.
 --
--- An absent side is gma::data::kNoPrice (INT64_MIN), not 0 and not NULL. 0 is a
+-- An absent side is krn::data::kNoPrice (INT64_MIN), not 0 and not NULL. 0 is a
 -- legal price and negative prices are legal too
 -- (OrderBookManager::setAllowNegativePrices exists for negative-yield bonds),
 -- so neither can carry "absent"; and a Nullable column would cost a mask on
@@ -263,8 +263,8 @@ SETTINGS index_granularity = 8192;
 -- ---------------------------------------------------------------------------
 -- book_events — MBO / L3 deltas (docs §8.4)
 --
--- `action` mirrors the gma::feed::FeedEvent variant set one-for-one
--- (gma::data::BookAction): 0 add, 1 update, 2 delete, 3 trade, 4 ticksize,
+-- `action` mirrors the krn::feed::FeedEvent variant set one-for-one
+-- (krn::data::BookAction): 0 add, 1 update, 2 delete, 3 trade, 4 ticksize,
 -- 5 clear. The repo already has a canonical book-event model; this does not
 -- invent a second one.
 --
@@ -297,7 +297,7 @@ CREATE TABLE IF NOT EXISTS gma.book_events
     venue         LowCardinality(String),
 
     action        UInt8                 CODEC(ZSTD(1)),
-    -- gma::data::Side: 0 Bid, 1 Ask
+    -- krn::data::Side: 0 Bid, 1 Ask
     side          UInt8                 CODEC(ZSTD(1)),
     price         Int64                 CODEC(Delta(8), ZSTD(3)),
     size          UInt64                CODEC(T64, ZSTD(1)),

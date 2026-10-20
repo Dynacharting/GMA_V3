@@ -3,7 +3,7 @@
 #include <fstream>
 #include <cstdio>
 
-using namespace gma::util;
+using namespace krn::util;
 
 TEST(ConfigTest, DefaultValues) {
     Config cfg;

@@ -5,7 +5,7 @@
 #include <optional>
 #include <mutex>
 
-namespace gma {
+namespace krn {
 
 // Minimal, thread-safe registry that lets AtomicAccessor resolve keys by namespace (prefix before first '.')
 class AtomicProviderRegistry {
@@ -71,4 +71,4 @@ private:
   }
 };
 
-} // namespace gma
+} // namespace krn

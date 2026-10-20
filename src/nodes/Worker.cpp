@@ -1,7 +1,7 @@
 #include "gma/nodes/Worker.hpp"
 #include "gma/util/Logger.hpp"
 
-namespace gma {
+namespace krn {
 
 Worker::Worker(Fn fn, std::shared_ptr<INode> downstream)
   : fn_(std::move(fn)), downstream_(std::move(downstream)) {}
@@ -18,7 +18,7 @@ void Worker::onValue(const StreamValue& sv) {
     // Cap distinct symbol count to prevent unbounded map growth from
     // pathological inputs (e.g. millions of unique symbol strings).
     if (acc_.find(sv.symbol) == acc_.end() && acc_.size() >= MAX_SYMBOLS) {
-      gma::util::logger().log(gma::util::LogLevel::Warn,
+      krn::util::logger().log(krn::util::LogLevel::Warn,
         "Worker: max symbols reached, dropping",
         {{"symbol", sv.symbol}});
       return;
@@ -34,7 +34,7 @@ void Worker::onValue(const StreamValue& sv) {
       // fn_ threw — pop the value we just pushed so the accumulator stays
       // consistent (the value was never processed).
       vec.pop_back();
-      gma::util::logger().log(gma::util::LogLevel::Error,
+      krn::util::logger().log(krn::util::LogLevel::Error,
                               "worker.fn_exception",
                               {{"symbol", sv.symbol}, {"err", ex.what()}});
       return;
@@ -56,4 +56,4 @@ void Worker::shutdown() noexcept {
   acc_.clear();
 }
 
-} // namespace gma
+} // namespace krn

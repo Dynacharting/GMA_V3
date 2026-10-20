@@ -12,11 +12,11 @@
 #include "gma/engine/IConnector.hpp"
 #include "gma/engine/IEventComputer.hpp"
 
-namespace gma {
+namespace krn {
 class Dispatcher;
 }
 
-namespace gma::synthetic {
+namespace krn::synthetic {
 
 // Demo connector that proves the engine/connector boundary: it lives entirely
 // under connectors/synthetic/ and touches zero files outside this directory.
@@ -62,4 +62,4 @@ public:
                engine::ComputeContext& ctx) override;
 };
 
-} // namespace gma::synthetic
+} // namespace krn::synthetic

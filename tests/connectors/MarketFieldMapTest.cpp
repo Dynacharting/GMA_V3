@@ -1,6 +1,6 @@
 // ENC-35: tests for MarketTickComputer behavior under different
 // MarketFieldMap configurations. Replaces the old tests/feed/
-// SourceProfileTest.cpp (which referenced gma::SourceProfile, now
+// SourceProfileTest.cpp (which referenced krn::SourceProfile, now
 // removed from the engine).
 //
 // Tests construct a MarketTickComputer directly with a custom field
@@ -28,7 +28,7 @@
 #include <string>
 #include <vector>
 
-using namespace gma;
+using namespace krn;
 
 namespace {
 

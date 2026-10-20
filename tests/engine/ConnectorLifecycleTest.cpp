@@ -23,14 +23,14 @@ namespace {
 // Mock that appends a tagged string to a shared trace whenever a lifecycle
 // method is called. start() can optionally throw on the second call to
 // exercise case 5.
-class MockConnector final : public gma::engine::IConnector {
+class MockConnector final : public krn::engine::IConnector {
 public:
   MockConnector(std::string tag, std::vector<std::string>* trace)
     : _tag(std::move(tag)), _trace(trace) {}
 
   std::string_view name() const override { return _tag; }
 
-  void registerWith(gma::engine::EngineRegistries&) override {
+  void registerWith(krn::engine::EngineRegistries&) override {
     ++_registerCalls;
     _trace->push_back(_tag + ":registerWith");
   }
@@ -64,7 +64,7 @@ private:
 TEST(ConnectorLifecycleTest, RegisterWithCalledExactlyOnce) {
   std::vector<std::string> trace;
   MockConnector m("A", &trace);
-  gma::engine::EngineRegistries regs{};
+  krn::engine::EngineRegistries regs{};
   m.registerWith(regs);
   EXPECT_EQ(m.registerCalls(), 1);
   ASSERT_EQ(trace.size(), 1u);
@@ -74,7 +74,7 @@ TEST(ConnectorLifecycleTest, RegisterWithCalledExactlyOnce) {
 TEST(ConnectorLifecycleTest, StartFollowsRegisterWith) {
   std::vector<std::string> trace;
   MockConnector m("A", &trace);
-  gma::engine::EngineRegistries regs{};
+  krn::engine::EngineRegistries regs{};
   m.registerWith(regs);
   m.start();
   ASSERT_EQ(trace.size(), 2u);
@@ -86,9 +86,9 @@ TEST(ConnectorLifecycleTest, StopOrderIsReverseOfRegistration) {
   std::vector<std::string> trace;
   MockConnector a("A", &trace);
   MockConnector b("B", &trace);
-  gma::engine::EngineRegistries regs{};
+  krn::engine::EngineRegistries regs{};
 
-  std::vector<gma::engine::IConnector*> connectors{&a, &b};
+  std::vector<krn::engine::IConnector*> connectors{&a, &b};
   for (auto* c : connectors) c->registerWith(regs);
   for (auto* c : connectors) c->start();
   // Reverse-order stop, mirroring main.cpp's "connectors-stop" step.
@@ -107,7 +107,7 @@ TEST(ConnectorLifecycleTest, StopOrderIsReverseOfRegistration) {
 TEST(ConnectorLifecycleTest, StopIsIdempotent) {
   std::vector<std::string> trace;
   MockConnector m("A", &trace);
-  gma::engine::EngineRegistries regs{};
+  krn::engine::EngineRegistries regs{};
   m.registerWith(regs);
   m.start();
   m.stop();
@@ -121,7 +121,7 @@ TEST(ConnectorLifecycleTest, StopIsIdempotent) {
 TEST(ConnectorLifecycleTest, DoubleStartThrowsLogicError) {
   std::vector<std::string> trace;
   MockConnector m("A", &trace);
-  gma::engine::EngineRegistries regs{};
+  krn::engine::EngineRegistries regs{};
   m.registerWith(regs);
   m.start();
   EXPECT_THROW(m.start(), std::logic_error);

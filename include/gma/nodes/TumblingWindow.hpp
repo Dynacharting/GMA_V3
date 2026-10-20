@@ -11,7 +11,7 @@
 #include "gma/nodes/INode.hpp"
 #include "gma/rt/ThreadPool.hpp"
 
-namespace gma {
+namespace krn {
 
 // Per-period accumulator: for each `(streamKey)` seen on `onValue`, push the
 // incoming scalar into a per-symbol vector buffer; on every wall-clock
@@ -57,7 +57,7 @@ class TumblingWindow final : public INode {
 public:
   TumblingWindow(std::chrono::milliseconds period,
                  std::shared_ptr<INode> downstream,
-                 gma::rt::ThreadPool* pool);
+                 krn::rt::ThreadPool* pool);
 
   ~TumblingWindow();
 
@@ -75,11 +75,11 @@ private:
   struct State {
     State(std::chrono::milliseconds p,
           std::shared_ptr<INode> ds,
-          gma::rt::ThreadPool* pl)
+          krn::rt::ThreadPool* pl)
       : period(p), pool(pl), downstream(std::move(ds)) {}  // member order
 
     const std::chrono::milliseconds period;
-    gma::rt::ThreadPool* const pool;
+    krn::rt::ThreadPool* const pool;
 
     std::atomic<bool> stopping{false};
 
@@ -105,4 +105,4 @@ private:
   std::thread timerThread_;
 };
 
-} // namespace gma
+} // namespace krn

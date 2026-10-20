@@ -67,7 +67,7 @@
 
 namespace arrow { class RecordBatch; }
 
-namespace gma::data {
+namespace krn::data {
 
 struct TimeRange;          // IProviderAdapter.hpp
 struct CanonicalBatch;     // IProviderAdapter.hpp
@@ -257,4 +257,4 @@ std::shared_ptr<IL1Store> makeL1Store(
     std::string_view kind,
     const std::unordered_map<std::string, std::string>& params);
 
-} // namespace gma::data
+} // namespace krn::data

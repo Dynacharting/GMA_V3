@@ -3,7 +3,7 @@
 #include "gma/Event.hpp"
 #include "gma/engine/JsonFieldSource.hpp"
 
-namespace gma::engine {
+namespace krn::engine {
 
 // The JSON DOM adapter. Lives in a .cpp so `IEventComputer.hpp` — which every
 // connector includes — stays free of rapidjson.
@@ -14,4 +14,4 @@ void IEventComputer::computeEvent(const Event& e, ComputeContext& ctx) {
   compute(e.symbol, fields, ctx);
 }
 
-} // namespace gma::engine
+} // namespace krn::engine

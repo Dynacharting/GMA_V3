@@ -1,9 +1,9 @@
 #include "gma/nodes/Responder.hpp"
 #include "gma/util/Logger.hpp"
 
-using namespace gma::nodes;
+using namespace krn::nodes;
 
-Responder::Responder(SendFn send, gma::server::RequestKey key)
+Responder::Responder(SendFn send, krn::server::RequestKey key)
   : send_(std::move(send))
   , key_(std::move(key))
 {}
@@ -24,7 +24,7 @@ void Responder::onValue(const StreamValue& sv) {
     try {
         fn(key_, sv);
     } catch (const std::exception& ex) {
-        gma::util::logger().log(gma::util::LogLevel::Error,
+        krn::util::logger().log(krn::util::LogLevel::Error,
                                 "Responder send failed",
                                 { {"err", ex.what()} });
     }

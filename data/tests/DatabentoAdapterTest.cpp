@@ -49,7 +49,7 @@
 #error "GMA_DATA_DBN_FIXTURE_DIR must be defined by the build (data/CMakeLists.txt)"
 #endif
 
-namespace gma::data {
+namespace krn::data {
 namespace {
 
 // ===========================================================================
@@ -910,7 +910,7 @@ TEST(DbnActionMappingTest, ClearBumpsTheEpochAndDropsTrackedOrders) {
   // be resolved against stale state. THE MECHANISM IS THE ERASE LOOP in the
   // Clear case, not an epoch in the adapter's key: this adapter's private
   // `OrderKey` is `{instrumentId, orderId}` and carries no epoch. (The epoch'd
-  // key is `gma::OrderKey`, which protects the BOOK downstream.) Removing the
+  // key is `krn::OrderKey`, which protects the BOOK downstream.) Removing the
   // erase loop is what this assertion catches.
   EXPECT_EQ(h.a->stats().unknownOrder, 1u);
   EXPECT_EQ(h.a->trackedOrders(), 1u) << "only the post-Clear order 12 survives";
@@ -1521,4 +1521,4 @@ TEST(DbnBatchTest, TakeDrainsAndTheBatchIsEmptyAfterwards) {
   EXPECT_EQ((*batch)->num_rows(), 0);
 }
 
-}  // namespace gma::data
+}  // namespace krn::data

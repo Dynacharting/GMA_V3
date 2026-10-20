@@ -26,7 +26,7 @@
 #include <variant>
 #include <vector>
 
-using namespace gma;
+using namespace krn;
 using namespace std::chrono_literals;
 
 namespace {

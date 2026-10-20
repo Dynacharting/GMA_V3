@@ -21,7 +21,7 @@
 #include <string_view>
 #include <unordered_map>
 
-namespace gma::data::csv {
+namespace krn::data::csv {
 namespace {
 
 // ---------------------------------------------------------------------------
@@ -685,4 +685,4 @@ arrow::Result<RetentionResult> retain(const std::string& path,
   return r;
 }
 
-}  // namespace gma::data::csv
+}  // namespace krn::data::csv

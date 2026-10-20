@@ -4,7 +4,7 @@ This guide covers everything needed to integrate a new data source into GMA thro
 
 > **Paths moved (ENC-31/ENC-35).** Feed code is **connector-owned** — it lives
 > under `connectors/market/{include,src}/gma/...`, not at engine level. Field
-> mapping is `gma::market::MarketFieldMap` (there is no engine `SourceProfile`),
+> mapping is `krn::market::MarketFieldMap` (there is no engine `SourceProfile`),
 > and adapters are wired through the **ingress factory + INI** model, not by
 > editing `main.cpp`. The code snippets below keep the historic `include/gma/...`
 > / `src/...` shapes for brevity, but real files go under `connectors/market/`.
@@ -46,7 +46,7 @@ Not every source will have all of these. A price-only feed (no order book) only 
 #include <unordered_map>
 #include <string>
 
-namespace gma::feed {
+namespace krn::feed {
 
 class BinanceAdapter : public IFeedAdapter {
 public:
@@ -61,7 +61,7 @@ private:
     //   - Partial message buffers
 };
 
-} // namespace gma::feed
+} // namespace krn::feed
 ```
 
 ### Implementation
@@ -72,7 +72,7 @@ private:
 
 #include <rapidjson/document.h>
 
-namespace gma::feed {
+namespace krn::feed {
 
 std::vector<FeedEvent> BinanceAdapter::translate(const std::string& rawMessage) {
     // 1. Parse
@@ -97,7 +97,7 @@ std::vector<FeedEvent> BinanceAdapter::translate(const std::string& rawMessage) 
     return out;
 }
 
-} // namespace gma::feed
+} // namespace krn::feed
 ```
 
 ### Rules for `translate()`
@@ -304,7 +304,7 @@ Create `tests/feed/BinanceAdapterTest.cpp`. The pattern is straightforward:
 #include "gma/feed/BinanceAdapter.hpp"
 #include <gtest/gtest.h>
 
-using namespace gma::feed;
+using namespace krn::feed;
 
 TEST(BinanceAdapterTest, TradeMessageEmitsTradeAndTick) {
     BinanceAdapter adapter;
@@ -367,7 +367,7 @@ Before shipping a new adapter:
 
 ```cpp
 // connectors/market/include/gma/feed/IFeedAdapter.hpp
-namespace gma::feed {
+namespace krn::feed {
 
 class IFeedAdapter {
 public:
@@ -385,7 +385,7 @@ public:
 
 ```cpp
 // connectors/market/include/gma/feed/FeedEvent.hpp
-namespace gma::feed {
+namespace krn::feed {
 
 struct TickEvent        { string symbol; shared_ptr<rapidjson::Document> payload; uint64_t timestampNs=0; };
 struct ObAddEvent       { string symbol; uint64_t orderId; Side side; double price; uint64_t size; uint64_t priority=0; };

@@ -1,7 +1,7 @@
 #pragma once
 //
 // RecordFieldSource — the Arrow-free, DOM-free adapter from a
-// `gma::data::TickRecord` to the engine's field view (ENC-1486).
+// `krn::data::TickRecord` to the engine's field view (ENC-1486).
 //
 // Design: specs/2026-10-14-gma-data-layer/SPEC.md D1, D3, D9;
 //         docs/data-layer.md §C2, §C6, §6, §8.3.
@@ -76,7 +76,7 @@
 #include "gma/data/Record.hpp"
 #include "gma/engine/FieldSource.hpp"
 
-namespace gma::engine {
+namespace krn::engine {
 
 // The engine-visible names of a TickRecord's fields. `inline const` (not
 // function-local statics) so there is no thread-safe-init guard on the hot
@@ -184,4 +184,4 @@ private:
   std::size_t                   n_ = 0;
 };
 
-} // namespace gma::engine
+} // namespace krn::engine

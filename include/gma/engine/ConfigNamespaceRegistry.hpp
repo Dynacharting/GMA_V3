@@ -6,7 +6,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace gma::engine {
+namespace krn::engine {
 
 // Connector-supplied reader for keys under a registered prefix.
 // The reader receives the key tail (portion after the first '.') and the raw value.
@@ -79,4 +79,4 @@ private:
   }
 };
 
-} // namespace gma::engine
+} // namespace krn::engine

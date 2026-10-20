@@ -3,7 +3,7 @@
 #include <atomic>
 
 static void BM_ThreadPoolPost(benchmark::State& state) {
-    gma::rt::ThreadPool pool(static_cast<unsigned>(state.range(0)));
+    krn::rt::ThreadPool pool(static_cast<unsigned>(state.range(0)));
     std::atomic<int> counter{0};
 
     for (auto _ : state) {
@@ -18,7 +18,7 @@ static void BM_ThreadPoolPost(benchmark::State& state) {
 BENCHMARK(BM_ThreadPoolPost)->Arg(1)->Arg(2)->Arg(4)->Unit(benchmark::kNanosecond);
 
 static void BM_ThreadPoolPostAndDrain(benchmark::State& state) {
-    gma::rt::ThreadPool pool(static_cast<unsigned>(state.range(0)));
+    krn::rt::ThreadPool pool(static_cast<unsigned>(state.range(0)));
     std::atomic<int> counter{0};
 
     for (auto _ : state) {

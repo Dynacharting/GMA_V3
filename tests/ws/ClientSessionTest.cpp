@@ -37,19 +37,19 @@ namespace {
 struct ServerHarness {
   asio::io_context                    ioc;
   std::unique_ptr<asio::executor_work_guard<asio::io_context::executor_type>> work;
-  std::unique_ptr<gma::rt::ThreadPool> pool;
-  std::unique_ptr<gma::AtomicStore>    store;
-  std::unique_ptr<gma::Dispatcher>     dispatcher;
-  std::unique_ptr<gma::ExecutionContext> exec;
-  std::unique_ptr<gma::WebSocketServer>  server;
+  std::unique_ptr<krn::rt::ThreadPool> pool;
+  std::unique_ptr<krn::AtomicStore>    store;
+  std::unique_ptr<krn::Dispatcher>     dispatcher;
+  std::unique_ptr<krn::ExecutionContext> exec;
+  std::unique_ptr<krn::WebSocketServer>  server;
   std::thread                            ioThread;
 
   ServerHarness() {
-    pool       = std::make_unique<gma::rt::ThreadPool>(1);
-    store      = std::make_unique<gma::AtomicStore>();
-    dispatcher = std::make_unique<gma::Dispatcher>(pool.get(), store.get());
-    exec       = std::make_unique<gma::ExecutionContext>(store.get(), pool.get());
-    server     = std::make_unique<gma::WebSocketServer>(ioc, exec.get(), dispatcher.get(), 0);
+    pool       = std::make_unique<krn::rt::ThreadPool>(1);
+    store      = std::make_unique<krn::AtomicStore>();
+    dispatcher = std::make_unique<krn::Dispatcher>(pool.get(), store.get());
+    exec       = std::make_unique<krn::ExecutionContext>(store.get(), pool.get());
+    server     = std::make_unique<krn::WebSocketServer>(ioc, exec.get(), dispatcher.get(), 0);
     server->run();
     work     = std::make_unique<asio::executor_work_guard<asio::io_context::executor_type>>(
                  ioc.get_executor());
@@ -321,7 +321,7 @@ TEST(ClientSessionTest, SubscribeRejectsRecordValuedTerminal) {
   asio::io_context clientIoc;
   auto stream = connect(clientIoc, srv.port());
 
-  // Pack -> Responder: the terminal receives a gma::Record, which GMA
+  // Pack -> Responder: the terminal receives a krn::Record, which GMA
   // serializes as a JSON object and embassy's scalar-only asFloat32 drops with
   // no log, no metric and no error.
   std::string req =
@@ -408,8 +408,8 @@ TEST(ClientSessionTest, CancelNonIntegerKeysError) {
 TEST(ClientSessionTest, RateLimitEnforcedOnBurstSubscribes) {
   // RATE_LIMIT_BURST is 20 subscribe-batch invocations; the 21st should
   // produce a "rate limit exceeded" error frame.
-  gma::registerBuiltinFunctions();
-  gma::registerBuiltinNodeTypes();
+  krn::registerBuiltinFunctions();
+  krn::registerBuiltinNodeTypes();
 
   ServerHarness srv;
   asio::io_context clientIoc;
@@ -452,8 +452,8 @@ TEST(ClientSessionTest, RateLimitEnforcedOnBurstSubscribes) {
 // {id:"<string>"} input. The ack must carry "requestId" (not "key"); the
 // value frame must too. No "key" field in either path.
 TEST(ClientSessionTest, SubscribeWithStringIdEchoesRequestId) {
-  gma::registerBuiltinFunctions();
-  gma::registerBuiltinNodeTypes();
+  krn::registerBuiltinFunctions();
+  krn::registerBuiltinNodeTypes();
 
   ServerHarness srv;
   asio::io_context clientIoc;
@@ -471,7 +471,7 @@ TEST(ClientSessionTest, SubscribeWithStringIdEchoesRequestId) {
   auto ev = std::make_shared<rapidjson::Document>();
   ev->SetObject();
   ev->AddMember("px", 7.5, ev->GetAllocator());
-  gma::Event tick;
+  krn::Event tick;
   tick.type = "tick";
   tick.symbol = "STRID";
   tick.payload = std::move(ev);
@@ -499,8 +499,8 @@ TEST(ClientSessionTest, SubscribeWithStringIdEchoesRequestId) {
 // Mixed int + string subscriptions on the same session. Each value frame
 // must carry the field-shape that matches its subscription's input form.
 TEST(ClientSessionTest, MixedIntAndStringSubsCoexist) {
-  gma::registerBuiltinFunctions();
-  gma::registerBuiltinNodeTypes();
+  krn::registerBuiltinFunctions();
+  krn::registerBuiltinNodeTypes();
 
   ServerHarness srv;
   asio::io_context clientIoc;
@@ -524,7 +524,7 @@ TEST(ClientSessionTest, MixedIntAndStringSubsCoexist) {
   payload->SetObject();
   payload->AddMember("px", 11.0, payload->GetAllocator());
   payload->AddMember("qty", 22.0, payload->GetAllocator());
-  gma::Event tick;
+  krn::Event tick;
   tick.type = "tick";
   tick.symbol = "MIX";
   tick.payload = std::move(payload);
@@ -560,8 +560,8 @@ TEST(ClientSessionTest, MixedIntAndStringSubsCoexist) {
 // Cancel-by-ids removes the string-keyed subscription. After cancel, no
 // further update frames should fire for that id.
 TEST(ClientSessionTest, CancelByIdsRemovesStringKeyedSub) {
-  gma::registerBuiltinFunctions();
-  gma::registerBuiltinNodeTypes();
+  krn::registerBuiltinFunctions();
+  krn::registerBuiltinNodeTypes();
 
   ServerHarness srv;
   asio::io_context clientIoc;
@@ -578,7 +578,7 @@ TEST(ClientSessionTest, CancelByIdsRemovesStringKeyedSub) {
   auto ev1 = std::make_shared<rapidjson::Document>();
   ev1->SetObject();
   ev1->AddMember("px", 1.0, ev1->GetAllocator());
-  gma::Event t1;
+  krn::Event t1;
   t1.type = "tick"; t1.symbol = "CANCEL"; t1.payload = std::move(ev1);
   srv.dispatcher->onTick(t1);
 
@@ -606,7 +606,7 @@ TEST(ClientSessionTest, CancelByIdsRemovesStringKeyedSub) {
   auto ev2 = std::make_shared<rapidjson::Document>();
   ev2->SetObject();
   ev2->AddMember("px", 2.0, ev2->GetAllocator());
-  gma::Event t2;
+  krn::Event t2;
   t2.type = "tick"; t2.symbol = "CANCEL"; t2.payload = std::move(ev2);
   srv.dispatcher->onTick(t2);
 
@@ -661,8 +661,8 @@ std::int64_t nowEpochMs() {
 // VectorReducer hop is deliberate: it constructs a new StreamValue, so this
 // also proves the stamp survives a value-transforming node on the real path.
 TEST(ClientSessionTest, BucketedPipelineStampsBucketStartMsOnTheWire) {
-  gma::registerBuiltinFunctions();
-  gma::registerBuiltinNodeTypes();
+  krn::registerBuiltinFunctions();
+  krn::registerBuiltinNodeTypes();
 
   constexpr std::int64_t kPeriodMs = 100;
 
@@ -684,7 +684,7 @@ TEST(ClientSessionTest, BucketedPipelineStampsBucketStartMsOnTheWire) {
   auto ev = std::make_shared<rapidjson::Document>();
   ev->SetObject();
   ev->AddMember("px", 7.5, ev->GetAllocator());
-  gma::Event tick;
+  krn::Event tick;
   tick.type   = "tick";
   tick.symbol = "TWLIVE";
   tick.payload = std::move(ev);
@@ -728,8 +728,8 @@ TEST(ClientSessionTest, BucketedPipelineStampsBucketStartMsOnTheWire) {
 // read as a 1970 epoch. Un-bucketed update frames keep the exact four-key
 // shape they had before ENC-1280.
 TEST(ClientSessionTest, UnbucketedSubscriptionEmitsNoBucketStartMs) {
-  gma::registerBuiltinFunctions();
-  gma::registerBuiltinNodeTypes();
+  krn::registerBuiltinFunctions();
+  krn::registerBuiltinNodeTypes();
 
   ServerHarness srv;
   asio::io_context clientIoc;
@@ -744,7 +744,7 @@ TEST(ClientSessionTest, UnbucketedSubscriptionEmitsNoBucketStartMs) {
   auto ev = std::make_shared<rapidjson::Document>();
   ev->SetObject();
   ev->AddMember("px", 3.25, ev->GetAllocator());
-  gma::Event tick;
+  krn::Event tick;
   tick.type   = "tick";
   tick.symbol = "RAWLIVE";
   tick.payload = std::move(ev);

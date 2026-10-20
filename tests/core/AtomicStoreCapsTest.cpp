@@ -7,7 +7,7 @@
 #include <gtest/gtest.h>
 #include <string>
 
-using namespace gma;
+using namespace krn;
 
 TEST(AtomicStoreCapsTest, NewStreamKeyDroppedWhenAtCap) {
   AtomicStore store;

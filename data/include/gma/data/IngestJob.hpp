@@ -50,7 +50,7 @@
 #include <string>
 #include <vector>
 
-namespace gma::data::ingest {
+namespace krn::data::ingest {
 
 // ---------------------------------------------------------------------------
 // Options
@@ -194,8 +194,8 @@ arrow::Result<csv::RetentionResult> retainOnlyIfDecodable(
 // ---------------------------------------------------------------------------
 //
 // EXIT-CODE CLASSIFICATION: a non-OK status from here is tagged by
-// `gma::data::asFinding` when it is a FINDING about the data (exit 1) and left
-// untagged when the job COULD NOT RUN (exit 2). `gma::data::exitCodeFor` is the
+// `krn::data::asFinding` when it is a FINDING about the data (exit 1) and left
+// untagged when the job COULD NOT RUN (exit 2). `krn::data::exitCodeFor` is the
 // only thing `main` needs. See Verdict.hpp for why the classification is
 // explicit at the refusal site rather than inferred from a status code.
 arrow::Result<Report> run(const Options& opts);
@@ -206,7 +206,7 @@ arrow::Result<Report> run(const Options& opts);
 //
 // Selects every `gma.ingest_windows` row for one `(symbol, kind)` — projection
 // and a `WHERE` on the key prefix, no aggregate, no `FINAL`, no `argMax` — and
-// hands them to `gma::data::isComplete`. The coverage test is in C++ because
+// hands them to `krn::data::isComplete`. The coverage test is in C++ because
 // the DDL says so: it keeps this a plain selection on this side of the D2
 // boundary.
 arrow::Result<Completeness> queryCompleteness(const ch::Client& client,
@@ -227,4 +227,4 @@ arrow::Result<std::int64_t> rowCount(const ch::Client& client,
 std::string formatWindow(std::int64_t fromNs, std::int64_t toNs);
 std::string formatNs(std::int64_t ns);
 
-}  // namespace gma::data::ingest
+}  // namespace krn::data::ingest

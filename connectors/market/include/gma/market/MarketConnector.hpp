@@ -7,12 +7,12 @@
 #include "gma/engine/IConnector.hpp"
 #include "gma/market/MarketFieldMap.hpp"
 
-namespace gma {
+namespace krn {
 class OrderBookManager;
 namespace ob       { class Provider; class FunctionalSnapshotSource; }
-} // namespace gma
+} // namespace krn
 
-namespace gma::market {
+namespace krn::market {
 
 // The market connector owns everything market-specific: order book engine,
 // TA tick computer (registered with EventComputerRegistry), "ob.*" atomic
@@ -56,4 +56,4 @@ private:
   std::shared_ptr<MarketFieldMap>                    _fieldMap;
 };
 
-} // namespace gma::market
+} // namespace krn::market

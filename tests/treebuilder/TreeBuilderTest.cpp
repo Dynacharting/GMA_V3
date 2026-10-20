@@ -10,7 +10,7 @@
 #include <rapidjson/document.h>
 #include <memory>
 
-using namespace gma;
+using namespace krn;
 
 // Stub terminal node to capture output
 class TerminalStub : public INode {

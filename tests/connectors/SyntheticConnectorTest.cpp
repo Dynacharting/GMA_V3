@@ -22,7 +22,7 @@
 #include <memory>
 #include <variant>
 
-using namespace gma;
+using namespace krn;
 
 namespace {
 

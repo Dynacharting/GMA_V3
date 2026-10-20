@@ -5,7 +5,7 @@
 #include <vector>
 #include <cstdint>
 
-namespace gma {
+namespace krn {
 namespace util {
 
 class Config {
@@ -142,7 +142,7 @@ public:
 
   // forum-driven ingress (feed-sim-connector phase 2).
   // When forumUrl is non-empty the composition root replaces the static
-  // `ingress[]` with the result of `gma::forum::ConnectorsClient::
+  // `ingress[]` with the result of `krn::forum::ConnectorsClient::
   // fetchIngresses(forumUrl, forumTenantId, forumAuthToken)` after the
   // INI is loaded but before connectors start. Empty values disable
   // the pull (legacy INI ingress remains authoritative).
@@ -159,4 +159,4 @@ private:
 };
 
 } // namespace util
-} // namespace gma
+} // namespace krn

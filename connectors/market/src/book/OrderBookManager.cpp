@@ -7,7 +7,7 @@
 
 using std::string;
 
-namespace gma {
+namespace krn {
 
 // ---------- Tick-size ----------
 void OrderBookManager::setTickSize(const std::string& symbol, double tickSize) {
@@ -508,4 +508,4 @@ std::string OrderBookManager::dumpLadder(const std::string& symbol, size_t maxLe
     return oss.str();
 }
 
-} // namespace gma
+} // namespace krn

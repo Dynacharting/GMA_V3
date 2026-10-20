@@ -2,10 +2,10 @@
 #include <atomic>
 #include <memory>
 #include <mutex>
-#include "gma/FunctionMap.hpp"   // for gma::Func = double(const vector<double>&)
+#include "gma/FunctionMap.hpp"   // for krn::Func = double(const vector<double>&)
 #include "gma/nodes/INode.hpp"
 
-namespace gma {
+namespace krn {
 
 // Receives one `StreamValue{symbol, vector<double>}` per upstream emit,
 // applies `fn_` to the held vector, and forwards one
@@ -13,7 +13,7 @@ namespace gma {
 // `TumblingWindow` (which emits the vector); together they express
 // "reduce a stream over a wall-clock period."
 //
-// `fn_` is a `gma::Func = std::function<double(const std::vector<double>&)>`
+// `fn_` is a `krn::Func = std::function<double(const std::vector<double>&)>`
 // resolved at build time from the shared `FunctionMap` registry — the same
 // registry `Worker` uses (Worker just adapts the variant signature in its
 // builder; `VectorReducer` consumes the native shape directly).
@@ -37,4 +37,4 @@ private:
   mutable std::mutex mx_;
 };
 
-} // namespace gma
+} // namespace krn

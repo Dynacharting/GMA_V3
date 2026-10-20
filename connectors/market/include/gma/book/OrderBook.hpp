@@ -9,7 +9,7 @@
 #include <vector>
 #include <functional>
 
-namespace gma {
+namespace krn {
 
 // --------- Sides / Trade aggressor ---------
 enum class Side : uint8_t { Bid = 0, Ask = 1 };
@@ -198,4 +198,4 @@ private:
     std::unordered_map<uint64_t, uint64_t> synthCounters_;
 };
 
-} // namespace gma
+} // namespace krn

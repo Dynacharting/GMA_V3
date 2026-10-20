@@ -7,7 +7,7 @@
 
 #include <boost/asio/ip/tcp.hpp>
 
-namespace gma {
+namespace krn {
 
 class Dispatcher;   // fwd-declare to keep header light
 class OrderBookManager;   // fwd-declare for OB routing
@@ -55,4 +55,4 @@ private:
   std::unordered_set<std::shared_ptr<FeedSession>> sessions_;
 };
 
-} // namespace gma
+} // namespace krn

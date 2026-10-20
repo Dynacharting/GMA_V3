@@ -12,9 +12,9 @@
 // ENC-1338. Named only as the friend of `Strand::Attribution` below — `rt` does
 // not include, call or otherwise depend on anything in `server`. See the
 // Attribution comment for why the coupling is deliberate and one-directional.
-namespace gma { namespace server { class SubscriptionStrandMint; } }
+namespace krn { namespace server { class SubscriptionStrandMint; } }
 
-namespace gma::rt {
+namespace krn::rt {
 
 // ENC-1005 / SPEC specs/2026-09-20-gma-join-correctness D3, D4.
 //
@@ -26,7 +26,7 @@ namespace gma::rt {
 // gives, expressed over the executor GMA actually has.
 //
 // WHY NOT `asio::strand`, which D3 names. GMA's node graph does not run on an
-// `asio::io_context`: it runs on `gma::rt::ThreadPool` (`src/rt/ThreadPool.cpp`),
+// `asio::io_context`: it runs on `krn::rt::ThreadPool` (`src/rt/ThreadPool.cpp`),
 // a hand-rolled mutex+condvar queue with no asio executor behind it. The only
 // `io_context` in the process belongs to `WebSocketServer`/`ClientSession` and
 // drives sockets. Minting a real `asio::strand` would therefore have meant
@@ -88,7 +88,7 @@ public:
   // site. That is a convention, not a gate.
   //
   // `Attribution` fixes it by construction: its constructor is private and its
-  // only friend is `gma::server::SubscriptionStrandMint`. No other code in the
+  // only friend is `krn::server::SubscriptionStrandMint`. No other code in the
   // engine can produce one, so an attributed `Strand` cannot be built anywhere
   // but inside the guarded mint — a forged tag is a COMPILE ERROR rather than a
   // green test. `origin()` is therefore a statement about where the strand came
@@ -101,7 +101,7 @@ public:
   private:
     explicit Attribution(const char* name) noexcept : name_(name) {}
     const char* name_;
-    friend class gma::server::SubscriptionStrandMint;
+    friend class krn::server::SubscriptionStrandMint;
     friend class Strand;
   };
 
@@ -149,7 +149,7 @@ public:
   // ENC-1338. The mint site that created this strand; see `kUnattributedOrigin`
   // above. Never null — the constructor substitutes the default for a null
   // argument. Compare with `==`/`strcmp` against the site's own accessor
-  // (e.g. `gma::server::subscriptionStrandOrigin()`), never against a literal
+  // (e.g. `krn::server::subscriptionStrandOrigin()`), never against a literal
   // spelled out a second time.
   const char* origin() const noexcept { return origin_; }
 
@@ -181,4 +181,4 @@ private:
   bool running_{false};
 };
 
-} // namespace gma::rt
+} // namespace krn::rt

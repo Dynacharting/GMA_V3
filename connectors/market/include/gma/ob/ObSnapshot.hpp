@@ -6,7 +6,7 @@
 #include <cstdint>
 #include "gma/ob/ObKey.hpp"
 
-namespace gma::ob {
+namespace krn::ob {
 
 // One price level
 struct Level {
@@ -45,4 +45,4 @@ struct SnapshotSource {
   virtual double tickSize(const std::string& symbol) const = 0;
 };
 
-} // namespace gma::ob
+} // namespace krn::ob

@@ -15,9 +15,9 @@
 #include <string>
 #include <unordered_map>
 
-using gma::server::RequestKey;
-using gma::server::requestKeyInt;
-using gma::server::requestKeyStr;
+using krn::server::RequestKey;
+using krn::server::requestKeyInt;
+using krn::server::requestKeyStr;
 
 TEST(RequestKeyHashTest, IntAndStringWithSameTextHashDifferently) {
   RequestKey i = requestKeyInt(5);

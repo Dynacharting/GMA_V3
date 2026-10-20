@@ -28,7 +28,7 @@
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
 
-namespace gma {
+namespace krn {
 namespace server {
 
 using RequestKey = std::variant<int, std::string>;
@@ -102,7 +102,7 @@ inline std::string keyDebugString(const RequestKey& k) {
 }
 
 }  // namespace server
-}  // namespace gma
+}  // namespace krn
 
 // std::hash specialization so unordered_map<RequestKey, ...> works.
 // Salts on the variant index so int(5) and string("5") hash to
@@ -114,8 +114,8 @@ inline std::string keyDebugString(const RequestKey& k) {
 // and salt both alternatives.
 namespace std {
 template <>
-struct hash<gma::server::RequestKey> {
-  std::size_t operator()(const gma::server::RequestKey& k) const noexcept {
+struct hash<krn::server::RequestKey> {
+  std::size_t operator()(const krn::server::RequestKey& k) const noexcept {
     if (k.index() == 0) {
       return std::hash<int>{}(std::get<int>(k)) ^
              static_cast<std::size_t>(0x9e3779b97f4a7c15ULL);

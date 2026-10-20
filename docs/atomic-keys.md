@@ -290,7 +290,7 @@ request is a protocol error, as is mixing `keys:[int,...]` and
 Internal routing — Dispatcher, AtomicStore, TreeBuilder, Listener —
 stays key-type-agnostic: subscribers route on `(streamKey, field)`,
 not on the request id. The variant lives at the wire boundary
-(`gma::server::RequestKey` in `include/gma/server/RequestKey.hpp`).
+(`krn::server::RequestKey` in `include/gma/server/RequestKey.hpp`).
 
 ```jsonc
 // int-keyed subscribe (smoke.js, int-native consumers)

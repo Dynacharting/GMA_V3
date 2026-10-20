@@ -43,7 +43,7 @@
 #include <memory>
 #include <string>
 
-namespace gma::data {
+namespace krn::data {
 
 // Attached to a status that means "the gate is RED", as distinct from "the gate
 // could not run".
@@ -54,7 +54,7 @@ class FindingDetail : public arrow::StatusDetail {
     return "a finding about the data or about L1's state (exit 1), not an "
            "inability to run (exit 2)";
   }
-  static constexpr const char* kTypeId = "gma::data::FindingDetail";
+  static constexpr const char* kTypeId = "krn::data::FindingDetail";
 };
 
 // Tag `s` as a finding. Returns `s` unchanged when it is OK, so it can wrap a
@@ -67,4 +67,4 @@ bool isFinding(const arrow::Status& s);
 // The exit code `s` means: 0 OK, 1 tagged finding, 2 anything else.
 int exitCodeFor(const arrow::Status& s);
 
-}  // namespace gma::data
+}  // namespace krn::data

@@ -5,7 +5,7 @@
 #include <thread>
 #include <atomic>
 
-using namespace gma;
+using namespace krn;
 
 // ===================== OrderBook unit tests =====================
 

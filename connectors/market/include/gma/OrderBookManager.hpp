@@ -9,7 +9,7 @@
 #include <cstdint>
 #include <rapidjson/document.h>
 
-namespace gma {
+namespace krn {
 
 struct Order {
     uint64_t id;
@@ -51,4 +51,4 @@ private:
     std::shared_mutex                          managerMutex_;
 };
 
-} // namespace gma
+} // namespace krn

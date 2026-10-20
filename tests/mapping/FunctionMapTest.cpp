@@ -6,7 +6,7 @@
 #include <atomic>
 #include <string>
 
-using namespace gma;
+using namespace krn;
 
 TEST(FunctionMapTest, RegisterAndRetrieve) {
     auto& fm = FunctionMap::instance();

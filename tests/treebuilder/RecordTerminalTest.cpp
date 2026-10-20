@@ -4,7 +4,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // THE DEFECT THIS CLOSES IS SILENT, AND IT SPANS TWO REPOS.
 //
-// `Pack` emits a `gma::Record`. `util::writeArgTypeJson`
+// `Pack` emits a `krn::Record`. `util::writeArgTypeJson`
 // (include/gma/util/JsonUtil.hpp) serializes a Record as a JSON **object** onto
 // the live update frame written by `src/server/ClientSession.cpp`'s `sendFn`
 // — which is the production outbound path (`src/ws/WSResponder.cpp` is dead
@@ -69,7 +69,7 @@
 
 namespace {
 
-using namespace gma;
+using namespace krn;
 
 // ─── Recording terminal ──────────────────────────────────────────────────────
 // Records the *shape* as well as the value, so "it emitted something" can never
@@ -359,10 +359,10 @@ TEST_F(RecordTerminal, OrdinaryScalarRequestIsUnaffected) {
 // belongs on ENC-1293 and in the SPEC.
 TEST_F(RecordTerminal, NoCheckedInCorpusRequestIsRefused) {
   // ENC-1340: one resolver, one diagnostic — tests/support/CorpusPath.hpp.
-  std::ifstream ifs = gma::testsupport::openCorpusRequests();
+  std::ifstream ifs = krn::testsupport::openCorpusRequests();
   ASSERT_TRUE(ifs.is_open())
       << "a missing corpus must not silently green this gate (ENC-807 L17).\n"
-      << gma::testsupport::corpusNotFoundDiagnostic();
+      << krn::testsupport::corpusNotFoundDiagnostic();
 
   rapidjson::IStreamWrapper isw(ifs);
   rapidjson::Document doc;

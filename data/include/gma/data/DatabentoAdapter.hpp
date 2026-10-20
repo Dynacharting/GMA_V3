@@ -92,7 +92,7 @@
 //     MESSAGE, here, is the erase loop in the `Clear` case: it drops every
 //     tracked order for that instrument, so a later Cancel for a pre-reset
 //     `order_id` finds nothing and resolves as an unknown-order Delete rather
-//     than against a stale resting size. (`gma::OrderKey` in
+//     than against a stale resting size. (`krn::OrderKey` in
 //     `connectors/market/include/gma/book/OrderBook.hpp` carries an epoch and
 //     is what protects the BOOK downstream; this adapter's own private
 //     `OrderKey` is `{instrumentId, orderId}` and carries no epoch — it does
@@ -145,7 +145,7 @@
 
 namespace arrow { class MemoryPool; class RecordBatch; }
 
-namespace gma::data {
+namespace krn::data {
 
 // ===========================================================================
 // dbn — the wire vocabulary.
@@ -260,7 +260,7 @@ enum class Action : char {
 };
 
 // "The side of the market for resting orders, or the side of the aggressor for
-// trades." THREE-VALUED: `gma::data::Side` has only Bid and Ask, so `None` has
+// trades." THREE-VALUED: `krn::data::Side` has only Bid and Ask, so `None` has
 // no representation there — see `kGmaFlagSideUnspecified`.
 enum class Side : char {
   Ask  = 'A',  // "A sell order or sell aggressor in a trade."
@@ -621,4 +621,4 @@ class DatabentoAdapter {
   Stats                   stats_;
 };
 
-}  // namespace gma::data
+}  // namespace krn::data

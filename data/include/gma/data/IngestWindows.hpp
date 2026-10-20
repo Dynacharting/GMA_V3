@@ -55,7 +55,7 @@
 #include <string>
 #include <vector>
 
-namespace gma::data {
+namespace krn::data {
 
 // One row of `gma.ingest_windows`, as selected. Only the five fields the rule
 // reads are here; `session_id`, `rows_inserted`, `completed_at`, `source` and
@@ -110,4 +110,4 @@ Completeness isComplete(const std::vector<IngestWindowRow>& rows,
 // complete" is a claim worth testing directly.
 std::vector<Interval> mergeIntervals(std::vector<Interval> in);
 
-}  // namespace gma::data
+}  // namespace krn::data

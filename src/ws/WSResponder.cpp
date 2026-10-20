@@ -8,7 +8,7 @@
 #include <variant>
 #include <vector>
 
-namespace gma::ws {
+namespace krn::ws {
 
 void WSResponder::onValue(const StreamValue& sv) {
   if (stopped_.load(std::memory_order_acquire)) return;
@@ -30,13 +30,13 @@ void WSResponder::onValue(const StreamValue& sv) {
     w.Key("id");     w.String(reqId_.c_str());
     w.Key("streamKey"); w.String(sv.symbol.c_str());
     w.Key("value");
-    gma::util::writeArgTypeJson(w, sv.value);
+    krn::util::writeArgTypeJson(w, sv.value);
 
     w.EndObject();
 
     fn(sb.GetString());
   } catch (const std::exception& ex) {
-    gma::util::logger().log(gma::util::LogLevel::Error,
+    krn::util::logger().log(krn::util::LogLevel::Error,
                             "WSResponder::onValue failed",
                             {{"err", ex.what()}, {"reqId", reqId_}});
   }
@@ -48,4 +48,4 @@ void WSResponder::shutdown() noexcept {
   send_ = nullptr;
 }
 
-} // namespace gma::ws
+} // namespace krn::ws

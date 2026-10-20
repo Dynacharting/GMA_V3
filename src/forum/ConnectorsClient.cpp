@@ -28,7 +28,7 @@ namespace http = boost::beast::http;
 namespace asio = boost::asio;
 using tcp = boost::asio::ip::tcp;
 
-namespace gma {
+namespace krn {
 namespace forum {
 
 namespace {
@@ -173,8 +173,8 @@ std::string fetchWithRetry(F&& fetch) {
       return fetch();
     } catch (const std::exception& ex) {
       lastErr = ex.what();
-      gma::util::logger().log(
-          gma::util::LogLevel::Warn,
+      krn::util::logger().log(
+          krn::util::LogLevel::Warn,
           "forum.connectors.fetch_retry",
           {{"attempt", std::to_string(attempt + 1)}, {"err", lastErr}});
       std::this_thread::sleep_for(std::chrono::seconds(1 << (attempt + 1)));
@@ -185,7 +185,7 @@ std::string fetchWithRetry(F&& fetch) {
 
 } // namespace
 
-std::vector<gma::util::Config::Ingress>
+std::vector<krn::util::Config::Ingress>
 ConnectorsClient::parseConnectorsJson(const std::string& body) {
   rapidjson::Document doc;
   if (doc.Parse(body.c_str()).HasParseError()) {
@@ -197,7 +197,7 @@ ConnectorsClient::parseConnectorsJson(const std::string& body) {
     throw std::runtime_error("ConnectorsClient: expected JSON array at top level");
   }
 
-  std::vector<gma::util::Config::Ingress> out;
+  std::vector<krn::util::Config::Ingress> out;
   out.reserve(doc.Size());
 
   for (rapidjson::SizeType i = 0; i < doc.Size(); ++i) {
@@ -212,16 +212,16 @@ ConnectorsClient::parseConnectorsJson(const std::string& body) {
                                      ? row["endpointUrl"].GetString() : std::string{};
 
     if (protocol.empty() || endpoint.empty()) {
-      gma::util::logger().log(
-          gma::util::LogLevel::Warn,
+      krn::util::logger().log(
+          krn::util::LogLevel::Warn,
           "forum.connectors.skipped",
           {{"name", name}, {"reason", "missing protocol or endpoint_url"}});
       continue;
     }
 
     if (protocol != "itch") {
-      gma::util::logger().log(
-          gma::util::LogLevel::Warn,
+      krn::util::logger().log(
+          krn::util::LogLevel::Warn,
           "forum.connectors.unknown_protocol",
           {{"name", name}, {"protocol", protocol}});
       continue;
@@ -243,15 +243,15 @@ ConnectorsClient::parseConnectorsJson(const std::string& body) {
       symbolsCsv = "*";  // wildcard — same default as Config::FeedConfig
     }
 
-    gma::util::Config::Ingress ing;
+    krn::util::Config::Ingress ing;
     ing.kind = "market.wsclient";
     ing.params["url"] = endpoint;
     ing.params["adapter"] = protocol;  // "itch"
     ing.params["symbols"] = symbolsCsv;
     out.push_back(std::move(ing));
 
-    gma::util::logger().log(
-        gma::util::LogLevel::Info,
+    krn::util::logger().log(
+        krn::util::LogLevel::Info,
         "forum.connectors.mapped",
         {{"name", name}, {"endpoint", endpoint}, {"symbols", symbolsCsv}});
   }
@@ -259,7 +259,7 @@ ConnectorsClient::parseConnectorsJson(const std::string& body) {
   return out;
 }
 
-std::vector<gma::util::Config::Ingress>
+std::vector<krn::util::Config::Ingress>
 ConnectorsClient::fetchIngresses(const std::string& forumUrl,
                                  const std::string& tenantId,
                                  const std::string& bearer) {
@@ -283,12 +283,12 @@ ConnectorsClient::fetchIngresses(const std::string& forumUrl,
   });
 
   auto ingresses = parseConnectorsJson(body);
-  gma::util::logger().log(
-      gma::util::LogLevel::Info,
+  krn::util::logger().log(
+      krn::util::LogLevel::Info,
       "forum.connectors.fetched",
       {{"count", std::to_string(ingresses.size())}, {"url", forumUrl}});
   return ingresses;
 }
 
 } // namespace forum
-} // namespace gma
+} // namespace krn

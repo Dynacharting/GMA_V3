@@ -9,7 +9,7 @@
 #include <utility>
 #include <vector>
 
-using namespace gma;
+using namespace krn;
 
 void Dispatcher::addComputer(std::unique_ptr<engine::IEventComputer> c) {
   if (!c) return;
@@ -409,7 +409,7 @@ void Dispatcher::computeAndStoreAtomics(const std::string& symbol,
     try {
       result = fn(history);
     } catch (const std::exception& ex) {
-      gma::util::logger().log(gma::util::LogLevel::Warn,
+      krn::util::logger().log(krn::util::LogLevel::Warn,
                               "Dispatcher: atomic function error",
                               { {"symbol", symbol}, {"fn", fnName},
                                 {"err", ex.what()} });

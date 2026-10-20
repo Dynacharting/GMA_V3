@@ -17,7 +17,7 @@
 #include "gma/market/MarketFieldMap.hpp"
 #include "gma/util/Config.hpp"
 
-namespace gma {
+namespace krn {
 
 /**
  * Compute a suite of atomic values (statistics/indicators) for the given symbol
@@ -72,4 +72,4 @@ private:
   std::size_t                                        _maxSymbols;
 };
 
-} // namespace gma
+} // namespace krn

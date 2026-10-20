@@ -5,7 +5,7 @@
 #include <variant>
 #include <vector>
 
-namespace gma {
+namespace krn {
 
 VectorReducer::VectorReducer(Func fn, std::shared_ptr<INode> downstream)
   : fn_(std::move(fn)), downstream_(std::move(downstream)) {}
@@ -19,7 +19,7 @@ void VectorReducer::onValue(const StreamValue& sv) {
   // vector that would mask the upstream miswire.
   const auto* vec = std::get_if<std::vector<double>>(&sv.value);
   if (!vec) {
-    gma::util::logger().log(gma::util::LogLevel::Warn,
+    krn::util::logger().log(krn::util::LogLevel::Warn,
       "VectorReducer: non-vector input dropped",
       {{"symbol", sv.symbol}});
     return;
@@ -30,7 +30,7 @@ void VectorReducer::onValue(const StreamValue& sv) {
   try {
     out = fn_(*vec);
   } catch (const std::exception& ex) {
-    gma::util::logger().log(gma::util::LogLevel::Error,
+    krn::util::logger().log(krn::util::LogLevel::Error,
       "vector_reducer.fn_exception",
       {{"symbol", sv.symbol}, {"err", ex.what()}});
     return;
@@ -53,4 +53,4 @@ void VectorReducer::shutdown() noexcept {
   downstream_.reset();
 }
 
-} // namespace gma
+} // namespace krn

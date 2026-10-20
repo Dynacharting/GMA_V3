@@ -100,10 +100,10 @@ inline bool blank(const std::string& s) {
   return true;
 }
 
-inline gma::JoinBy joinByFor(const rapidjson::Value& v,
+inline krn::JoinBy joinByFor(const rapidjson::Value& v,
                              const char*             nodeType,
                              const std::string&      outStreamKey) {
-  if (!v.HasMember("by")) return gma::JoinBy::StreamKey;   // D1's locked default
+  if (!v.HasMember("by")) return krn::JoinBy::StreamKey;   // D1's locked default
 
   // A REPEATED `by` IS REFUSED, NOT RESOLVED BY POSITION (ENC-1292, found by
   // adversarial review). RapidJSON keeps every member of a duplicated key and
@@ -128,9 +128,9 @@ inline gma::JoinBy joinByFor(const rapidjson::Value& v,
       "(default, correlate per symbol) or \"none\" (correlate by port alone, "
       "the cross-symbol join)");
 
-  const gma::JoinBy by = gma::parseJoinBy(v["by"].GetString(), nodeType);
+  const krn::JoinBy by = krn::parseJoinBy(v["by"].GetString(), nodeType);
 
-  if (by == gma::JoinBy::None && blank(outStreamKey))
+  if (by == krn::JoinBy::None && blank(outStreamKey))
     throw std::runtime_error(
       std::string(nodeType) + ": by:\"none\" ignores the symbol, so the joined "
       "stream has no identity of its own and must inherit the request's "
@@ -154,7 +154,7 @@ inline gma::JoinBy joinByFor(const rapidjson::Value& v,
 // `tests/treebuilder/RecordTerminalTest.cpp` once embassy consumes a
 // Record-valued update instead of dropping it.
 //
-// WHY IT EXISTS. `Pack` emits a `gma::Record`; `util::writeArgTypeJson`
+// WHY IT EXISTS. `Pack` emits a `krn::Record`; `util::writeArgTypeJson`
 // (include/gma/util/JsonUtil.hpp) serializes a Record as a JSON **object** onto
 // the live update frame (`src/server/ClientSession.cpp`'s `sendFn`). embassy's
 // inbound path is scalar-only: `asFloat32` (embassy/internal/gma/types.go)
@@ -191,7 +191,7 @@ inline gma::JoinBy joinByFor(const rapidjson::Value& v,
 namespace {
 
 // What a node emits into its `downstream`.
-//   Record — statically certain to be a `gma::Record`.
+//   Record — statically certain to be a `krn::Record`.
 //   Opaque — everything else (scalar, vector, or not knowable here).
 enum class ValueShape { Opaque, Record };
 
@@ -843,10 +843,10 @@ std::string fanInPipelineStageMessage(const FanInPlacement& f,
 //
 namespace {
 
-class CompositeRoot final : public gma::INode {
+class CompositeRoot final : public krn::INode {
 public:
-  CompositeRoot(std::vector<std::shared_ptr<gma::INode>> roots,
-                std::vector<std::weak_ptr<gma::INode>>   clockTargets)
+  CompositeRoot(std::vector<std::shared_ptr<krn::INode>> roots,
+                std::vector<std::weak_ptr<krn::INode>>   clockTargets)
     : roots_(std::move(roots)), clockTargets_(std::move(clockTargets)) {
     // ENC-1335. Decided once, at construction, while every target is still
     // held alive by `roots_` — the hot path must not walk weak_ptrs to answer
@@ -859,7 +859,7 @@ public:
     }
   }
 
-  void onValue(const gma::StreamValue& sv) override {
+  void onValue(const krn::StreamValue& sv) override {
     // The clock tick. Empty for every fan-in whose inputs are all Listeners
     // (45 of the 52 `node`+`pipeline` corpus entries), which is exactly the
     // pre-ENC-1290 no-op.
@@ -895,7 +895,7 @@ public:
     return anyTargetSamplesAtClock_;
   }
 
-  std::function<void()> bindAtClock(const gma::StreamValue& sv) override {
+  std::function<void()> bindAtClock(const krn::StreamValue& sv) override {
     if (stopping_.load(std::memory_order_acquire)) return {};
     std::vector<std::function<void()>> steps;
     steps.reserve(clockTargets_.size());
@@ -927,8 +927,8 @@ public:
   }
 
 private:
-  std::vector<std::shared_ptr<gma::INode>>       roots_;         // lifecycle only
-  const std::vector<std::weak_ptr<gma::INode>>   clockTargets_;  // the clock's fan-out
+  std::vector<std::shared_ptr<krn::INode>>       roots_;         // lifecycle only
+  const std::vector<std::weak_ptr<krn::INode>>   clockTargets_;  // the clock's fan-out
   bool                                           anyTargetSamplesAtClock_{false};
   std::atomic<bool>                              stopping_{false};
 };
@@ -1016,10 +1016,10 @@ bool declaredInputIsSelfClocked(const rapidjson::Value& spec, int depth = 0) {
 // Used by all three fan-in builders, because the shape and the hole are the
 // same in each. Gated by `NestedFanInThrowLeavesNothingSubscribed`.
 struct SubBuildUnwind {
-  std::vector<std::shared_ptr<gma::INode>> built;
+  std::vector<std::shared_ptr<krn::INode>> built;
   bool                                     armed{true};
 
-  void keep(const std::shared_ptr<gma::INode>& n) { if (n) built.push_back(n); }
+  void keep(const std::shared_ptr<krn::INode>& n) { if (n) built.push_back(n); }
   void disarm() noexcept { armed = false; }
 
   ~SubBuildUnwind() {
@@ -1035,9 +1035,9 @@ struct SubBuildUnwind {
 // Tee) — so this stub never receives values. It exists only to satisfy the
 // builder contract (every buildOne returns an INode) and is kept alive by
 // whatever consumes the Ref position (e.g. an Aggregate's roots).
-class RefStub final : public gma::INode {
+class RefStub final : public krn::INode {
 public:
-  void onValue(const gma::StreamValue&) override {}
+  void onValue(const krn::StreamValue&) override {}
   void shutdown() noexcept override {}
 };
 
@@ -1048,10 +1048,10 @@ public:
 //
 namespace {
 
-using Span_t = gma::Span<const gma::ArgType>;
+using Span_t = krn::Span<const krn::ArgType>;
 
 // Convert ArgType to double for numeric ops
-double toDouble(const gma::ArgType& v) {
+double toDouble(const krn::ArgType& v) {
   return std::visit(
     [](auto&& x) -> double {
       using T = std::decay_t<decltype(x)>;
@@ -1064,12 +1064,12 @@ double toDouble(const gma::ArgType& v) {
   );
 }
 
-gma::Worker::Fn fnFromName(const rapidjson::Value& spec) {
+krn::Worker::Fn fnFromName(const rapidjson::Value& spec) {
   if (!spec.HasMember("fn") || !spec["fn"].IsString())
     throw std::runtime_error("Worker: missing 'fn'");
 
   const std::string fn = spec["fn"].GetString();
-  auto& fmap = gma::FunctionMap::instance();
+  auto& fmap = krn::FunctionMap::instance();
 
   // Parametric reducer? Extract every numeric spec member as a named
   // parameter (filtering out structural/well-known keys), bind into the
@@ -1084,11 +1084,11 @@ gma::Worker::Fn fnFromName(const rapidjson::Value& spec) {
       if (it->value.IsNumber()) params[key] = it->value.GetDouble();
     }
     auto pfn = fmap.getParamFunction(fn);
-    return [pfn, params = std::move(params)](Span_t xs) -> gma::ArgType {
+    return [pfn, params = std::move(params)](Span_t xs) -> krn::ArgType {
       std::vector<double> dv;
       dv.reserve(xs.size());
       for (const auto& v : xs) dv.push_back(toDouble(v));
-      return gma::ArgType{pfn(dv, params)};
+      return krn::ArgType{pfn(dv, params)};
     };
   }
 
@@ -1096,11 +1096,11 @@ gma::Worker::Fn fnFromName(const rapidjson::Value& spec) {
   // double(vector<double>) to Worker's ArgType(Span<const ArgType>).
   try {
     auto mapFn = fmap.getFunction(fn);
-    return [mapFn](Span_t xs) -> gma::ArgType {
+    return [mapFn](Span_t xs) -> krn::ArgType {
       std::vector<double> dv;
       dv.reserve(xs.size());
       for (const auto& v : xs) dv.push_back(toDouble(v));
-      return gma::ArgType{mapFn(dv)};
+      return krn::ArgType{mapFn(dv)};
     };
   } catch (...) {
     throw std::runtime_error("Worker: unknown fn '" + fn + "'");
@@ -1112,17 +1112,17 @@ gma::Worker::Fn fnFromName(const rapidjson::Value& spec) {
 //
 // ---------- Builder implementation ----------
 //
-namespace gma::tree {
+namespace krn::tree {
 
-std::shared_ptr<gma::INode> buildOne(const rapidjson::Value& spec,
+std::shared_ptr<krn::INode> buildOne(const rapidjson::Value& spec,
                                      const std::string&      defaultStreamKey,
                                      const Deps&             deps,
-                                     std::shared_ptr<gma::INode> downstream);
+                                     std::shared_ptr<krn::INode> downstream);
 
-std::shared_ptr<gma::INode> buildOne(const rapidjson::Value&      spec,
+std::shared_ptr<krn::INode> buildOne(const rapidjson::Value&      spec,
                                      const std::string&           defaultStreamKey,
                                      const Deps&                 deps,
-                                     std::shared_ptr<gma::INode> downstream) {
+                                     std::shared_ptr<krn::INode> downstream) {
   const auto& v    = expectObj(spec, "node");
   const std::string type = expectType(v);
 
@@ -1152,7 +1152,7 @@ std::shared_ptr<gma::INode> buildOne(const rapidjson::Value&      spec,
       "asking for a cross-symbol one, with no diagnostic (SPEC "
       "specs/2026-09-20-gma-join-correctness section 5 Q3).");
 
-  if (const auto* builder = gma::engine::NodeTypeRegistry::find(type)) {
+  if (const auto* builder = krn::engine::NodeTypeRegistry::find(type)) {
     return (*builder)(v, defaultStreamKey, deps, downstream);
   }
   throw std::runtime_error("TreeBuilder: unknown node type '" + type + "'");
@@ -1162,38 +1162,38 @@ std::shared_ptr<gma::INode> buildOne(const rapidjson::Value&      spec,
 // -------- Public API: buildNode / buildSimple / buildForRequest --------
 //
 
-std::shared_ptr<gma::INode> buildTree(const rapidjson::Value& rootSpec,
+std::shared_ptr<krn::INode> buildTree(const rapidjson::Value& rootSpec,
                                       const Deps&             deps) {
   return buildOne(rootSpec, /*defaultStreamKey=*/"", deps, /*downstream=*/nullptr);
 }
 
-std::shared_ptr<gma::INode> buildNode(const rapidjson::Value&      spec,
+std::shared_ptr<krn::INode> buildNode(const rapidjson::Value&      spec,
                                       const std::string&           defaultStreamKey,
                                       const Deps&                  deps,
-                                      std::shared_ptr<gma::INode>  terminal) {
+                                      std::shared_ptr<krn::INode>  terminal) {
   return buildOne(spec, defaultStreamKey, deps, std::move(terminal));
 }
 
-std::shared_ptr<gma::INode> buildSimple(const std::string&      streamKey,
+std::shared_ptr<krn::INode> buildSimple(const std::string&      streamKey,
                                         const std::string&      field,
                                         int                     pollMs,
                                         const Deps&             deps,
-                                        std::shared_ptr<gma::INode> terminal) {
+                                        std::shared_ptr<krn::INode> terminal) {
   if (field.empty())
     throw std::runtime_error("buildSimple: field is empty");
   if (!deps.store)
     throw std::runtime_error("buildSimple: missing store");
 
   auto accessor =
-    std::make_shared<gma::AtomicAccessor>(streamKey, field, deps.store, terminal);
+    std::make_shared<krn::AtomicAccessor>(streamKey, field, deps.store, terminal);
 
   if (pollMs > 0) {
-    gma::rt::ThreadPool* pool = deps.pool;
-    if (!pool && gma::gThreadPool)
-      pool = gma::gThreadPool.get();
+    krn::rt::ThreadPool* pool = deps.pool;
+    if (!pool && krn::gThreadPool)
+      pool = krn::gThreadPool.get();
     if (!pool)
       throw std::runtime_error("buildSimple: no thread pool available");
-    auto interval = std::make_shared<gma::Interval>(
+    auto interval = std::make_shared<krn::Interval>(
         std::chrono::milliseconds(pollMs), accessor, pool);
     interval->start();
     return interval;
@@ -1205,7 +1205,7 @@ std::shared_ptr<gma::INode> buildSimple(const std::string&      streamKey,
 // High-level entry: request JSON -> Listener head wired into optional pipeline -> terminal
 BuiltChain buildForRequest(const rapidjson::Value&      requestJson,
                            const Deps&                  depsIn,
-                           std::shared_ptr<gma::INode>  terminal) {
+                           std::shared_ptr<krn::INode>  terminal) {
   const auto& rq = expectObj(requestJson, "request");
 
   if (!rq.HasMember("streamKey") || !rq["streamKey"].IsString())
@@ -1240,7 +1240,7 @@ BuiltChain buildForRequest(const rapidjson::Value&      requestJson,
   // serialise, delivery is already inline and already in order.
   Deps depsWithStrand = depsIn;
   if (!depsWithStrand.strand && depsWithStrand.pool)
-    depsWithStrand.strand = std::make_shared<gma::rt::Strand>(depsWithStrand.pool);
+    depsWithStrand.strand = std::make_shared<krn::rt::Strand>(depsWithStrand.pool);
   const Deps& deps = depsWithStrand;   // everything below builds against this
 
   // ENC-1336 / SPEC §5 Q7, D5 as amended — A FAN-IN IS NOT A PIPELINE STAGE
@@ -1365,7 +1365,7 @@ BuiltChain buildForRequest(const rapidjson::Value&      requestJson,
   }
 
   // Collect every node so callers can keep them alive (all use weak_ptr downstream).
-  std::vector<std::shared_ptr<gma::INode>> keepAlive;
+  std::vector<std::shared_ptr<krn::INode>> keepAlive;
   keepAlive.push_back(terminal);
 
   // ENC-1290 / SPEC D5 — `node` and `pipeline` COMPOSE INTO ONE CHAIN:
@@ -1406,7 +1406,7 @@ BuiltChain buildForRequest(const rapidjson::Value&      requestJson,
   // So everything constructed below is torn down on the way out unless the
   // build reaches the end. This fixes BOTH orders, not just the new one.
   struct Unwind {
-    std::vector<std::shared_ptr<gma::INode>>* built;
+    std::vector<std::shared_ptr<krn::INode>>* built;
     bool                                      armed{true};
     ~Unwind() {
       if (!armed || !built) return;
@@ -1419,10 +1419,10 @@ BuiltChain buildForRequest(const rapidjson::Value&      requestJson,
   // — that is never ours to shut down. `Listener::Create` is the last thing
   // that can fail, and it reports failure instead of throwing, so the head
   // never needs unwinding: on its error path it was never constructed.
-  std::vector<std::shared_ptr<gma::INode>> ours;
+  std::vector<std::shared_ptr<krn::INode>> ours;
   Unwind unwind{&ours};
 
-  std::shared_ptr<gma::INode> midHead = terminal;
+  std::shared_ptr<krn::INode> midHead = terminal;
 
   // The pipeline, built tail-first. `midHead` stays `terminal` when absent.
   const char* pipeKeys[] = {"pipeline", "stages"};
@@ -1453,7 +1453,7 @@ BuiltChain buildForRequest(const rapidjson::Value&      requestJson,
   if (!deps.dispatcher || !deps.pool)
     throw std::runtime_error("buildForRequest: missing dispatcher/pool");
 
-  using gma::nodes::Listener;
+  using krn::nodes::Listener;
   auto headRes = Listener::Create(streamKey,
                                   field,
                                   midHead,
@@ -1481,7 +1481,7 @@ BuiltChain buildForRequest(const rapidjson::Value&      requestJson,
   return out;
 }
 
-} // namespace gma::tree
+} // namespace krn::tree
 
 // ---------- Builtin node-type registrations ----------
 //
@@ -1489,11 +1489,11 @@ BuiltChain buildForRequest(const rapidjson::Value&      requestJson,
 // lambda and publishes it to NodeTypeRegistry. Registration is idempotent on
 // duplicates (registerNodeType returns false) so this function is safe to
 // call repeatedly.
-namespace gma {
+namespace krn {
 
 void registerBuiltinNodeTypes() {
-  using gma::engine::NodeTypeRegistry;
-  using gma::engine::NodeBuilderFn;
+  using krn::engine::NodeTypeRegistry;
+  using krn::engine::NodeBuilderFn;
 
   NodeTypeRegistry::registerNodeType("Listener",
     [](const rapidjson::Value& v, const std::string& defaultStreamKey,
@@ -1509,7 +1509,7 @@ void registerBuiltinNodeTypes() {
       if (field.empty())
         throw std::runtime_error("Listener: missing 'field'");
 
-      using gma::nodes::Listener;
+      using krn::nodes::Listener;
       // ENC-1005 / SPEC D3: the same strand as every other Listener in this
       // request. This is the site that matters for a join — corpus 86's `ask`
       // and `bid` inputs are both built here, and sharing one strand is what
@@ -1618,9 +1618,9 @@ void registerBuiltinNodeTypes() {
       if (!v.HasMember("fn") || !v["fn"].IsString())
         throw std::runtime_error("VectorReducer: missing 'fn'");
       const std::string fn = v["fn"].GetString();
-      gma::Func reducer;
+      krn::Func reducer;
       try {
-        reducer = gma::FunctionMap::instance().getFunction(fn);
+        reducer = krn::FunctionMap::instance().getFunction(fn);
       } catch (...) {
         throw std::runtime_error("VectorReducer: unknown fn '" + fn + "'");
       }
@@ -1711,7 +1711,7 @@ void registerBuiltinNodeTypes() {
       // everything else, BEFORE anything is constructed (see the note at the
       // top of this builder): a refused `by` must not leave a subscribed
       // Listener behind.
-      const gma::JoinBy by = joinByFor(v, "Aggregate", defaultStreamKey);
+      const krn::JoinBy by = joinByFor(v, "Aggregate", defaultStreamKey);
 
       // `defaultStreamKey` is the request's own top-level `streamKey` (or the
       // group's symbol inside a GroupSplit, which is the same question asked
@@ -1854,7 +1854,7 @@ void registerBuiltinNodeTypes() {
 
       // ENC-1292 / SPEC D1 — same declared join key as Aggregate's, same
       // closed vocabulary, same output identity rule under `by:"none"`.
-      const gma::JoinBy by = joinByFor(v, "Pack", defaultStreamKey);
+      const krn::JoinBy by = joinByFor(v, "Pack", defaultStreamKey);
 
       auto pack = std::make_shared<Pack>(names, downstream, by,
                                          defaultStreamKey);
@@ -1904,7 +1904,7 @@ void registerBuiltinNodeTypes() {
         -> std::shared_ptr<INode> {
       if (!v.HasMember("expr"))
         throw std::runtime_error("Expr: missing 'expr'");
-      auto fn = gma::expr::compile(v["expr"]);
+      auto fn = krn::expr::compile(v["expr"]);
       return std::make_shared<ExprNode>(std::move(fn), downstream);
     });
 
@@ -1917,7 +1917,7 @@ void registerBuiltinNodeTypes() {
         -> std::shared_ptr<INode> {
       if (!v.HasMember("when"))
         throw std::runtime_error("Filter: missing 'when'");
-      auto pred = gma::expr::compile(v["when"]);
+      auto pred = krn::expr::compile(v["when"]);
       return std::make_shared<Filter>(std::move(pred), downstream);
     });
 
@@ -1938,7 +1938,7 @@ void registerBuiltinNodeTypes() {
       if (arr.Size() == 0)
         throw std::runtime_error("Switch: 'cases' must not be empty");
 
-      auto sel = gma::expr::compile(v["select"]);
+      auto sel = krn::expr::compile(v["select"]);
 
       std::vector<std::shared_ptr<INode>> cases;
       cases.reserve(arr.Size());
@@ -2041,4 +2041,4 @@ void registerBuiltinNodeTypes() {
     });
 }
 
-} // namespace gma
+} // namespace krn

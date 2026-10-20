@@ -50,7 +50,7 @@
 #include "gma/rt/Strand.hpp"
 #include "gma/rt/ThreadPool.hpp"
 
-using namespace gma;
+using namespace krn;
 
 namespace {
 

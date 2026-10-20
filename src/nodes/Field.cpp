@@ -1,7 +1,7 @@
 #include "gma/nodes/Field.hpp"
 #include <variant>
 
-namespace gma {
+namespace krn {
 
 Field::Field(std::string name, std::shared_ptr<INode> downstream)
   : name_(std::move(name)), downstream_(std::move(downstream)) {}
@@ -32,4 +32,4 @@ void Field::shutdown() noexcept {
   downstream_.reset();
 }
 
-} // namespace gma
+} // namespace krn

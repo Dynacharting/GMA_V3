@@ -6,7 +6,7 @@
 #include <unordered_map>
 #include "gma/nodes/INode.hpp"
 
-namespace gma {
+namespace krn {
 
 // Fans an incoming StreamValue out to a per-key child node, constructed on first use.
 class GroupSplit final : public INode {
@@ -25,4 +25,4 @@ private:
   std::unordered_map<std::string, std::shared_ptr<INode>> children_;
 };
 
-} // namespace gma
+} // namespace krn

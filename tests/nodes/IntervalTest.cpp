@@ -7,7 +7,7 @@
 #include <chrono>
 #include <thread>
 
-using namespace gma;
+using namespace krn;
 using namespace std::chrono_literals;
 
 class IStubNode : public INode {

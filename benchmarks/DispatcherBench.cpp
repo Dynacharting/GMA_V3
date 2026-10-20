@@ -9,26 +9,26 @@
 
 namespace {
 
-class NullNode final : public gma::INode {
+class NullNode final : public krn::INode {
 public:
-    void onValue(const gma::StreamValue&) override {}
+    void onValue(const krn::StreamValue&) override {}
     void shutdown() noexcept override {}
 };
 
-static gma::Event makeTick(const std::string& symbol, double price) {
+static krn::Event makeTick(const std::string& symbol, double price) {
     auto doc = std::make_shared<rapidjson::Document>();
     doc->SetObject();
     auto& alloc = doc->GetAllocator();
     doc->AddMember("price", rapidjson::Value(price), alloc);
-    return gma::Event{symbol, std::move(doc)};
+    return krn::Event{symbol, std::move(doc)};
 }
 
 } // namespace
 
 static void BM_DispatcherOnTick(benchmark::State& state) {
-    gma::rt::ThreadPool pool(2);
-    gma::AtomicStore store;
-    gma::Dispatcher md(&pool, &store);
+    krn::rt::ThreadPool pool(2);
+    krn::AtomicStore store;
+    krn::Dispatcher md(&pool, &store);
 
     auto listener = std::make_shared<NullNode>();
     md.registerListener("BENCH", "price", listener);
