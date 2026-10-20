@@ -5,7 +5,7 @@
 #include <string>
 #include "gma/ob/ObSnapshot.hpp"
 
-namespace gma::ob {
+namespace krn::ob {
 
 // Normalize “get me a snapshot” to simple lambdas so we don’t depend on your OB types.
 class FunctionalSnapshotSource : public SnapshotSource {
@@ -33,4 +33,4 @@ private:
   TickFn tick_;
 };
 
-} // namespace gma::ob
+} // namespace krn::ob

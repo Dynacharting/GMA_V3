@@ -24,7 +24,7 @@
 #include "gma/rt/ThreadPool.hpp"
 #include "gma/util/Config.hpp"
 
-namespace gma {
+namespace krn {
 
 // ENC-1486. The record ingress path's parameter types. Forward-declared
 // rather than included: they are PODs in `gma_engine` (include/gma/data/),
@@ -47,7 +47,7 @@ class  SymbolTable;
  */
 class Dispatcher {
 public:
-  Dispatcher(gma::rt::ThreadPool* threadPool, AtomicStore* store,
+  Dispatcher(krn::rt::ThreadPool* threadPool, AtomicStore* store,
                    const util::Config& cfg = util::Config{});
 
   // Append an event computer after construction. Primarily used by tests and
@@ -363,7 +363,7 @@ private:
 
   mutable std::shared_mutex _histMutex;
   mutable std::shared_mutex _listenerMutex;
-  gma::rt::ThreadPool* _threadPool;
+  krn::rt::ThreadPool* _threadPool;
   AtomicStore*         _store;
   util::Config         _cfg;
   std::size_t          _maxHistory;
@@ -371,4 +371,4 @@ private:
   std::size_t          _maxFieldsPerSymbol;
 };
 
-} // namespace gma
+} // namespace krn

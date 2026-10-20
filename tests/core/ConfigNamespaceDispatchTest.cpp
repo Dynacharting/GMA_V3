@@ -38,7 +38,7 @@ TEST(ConfigNamespaceDispatchTest, UnknownKeyRoutesToRegisteredNamespace) {
   std::string sawValue;
   std::atomic<int> calls{0};
 
-  gma::engine::ConfigNamespaceRegistry::registerNamespace(prefix,
+  krn::engine::ConfigNamespaceRegistry::registerNamespace(prefix,
     [&](std::string_view tail, std::string_view value) {
       sawTail.assign(tail);
       sawValue.assign(value);
@@ -48,7 +48,7 @@ TEST(ConfigNamespaceDispatchTest, UnknownKeyRoutesToRegisteredNamespace) {
 
   auto path = writeTempIni(prefix + ".apiKey = supersecret\n");
 
-  gma::util::Config cfg;
+  krn::util::Config cfg;
   ASSERT_TRUE(cfg.loadFromFile(path));
   std::remove(path.c_str());
 
@@ -68,11 +68,11 @@ TEST(ConfigNamespaceDispatchTest, FlatKeysWithoutDotAreNotDispatched) {
   // flush — and never reaches a reader.
   const std::string prefix = "enc30test2";
   std::atomic<int> calls{0};
-  gma::engine::ConfigNamespaceRegistry::registerNamespace(prefix,
+  krn::engine::ConfigNamespaceRegistry::registerNamespace(prefix,
     [&](std::string_view, std::string_view) { calls.fetch_add(1); return true; });
 
   auto path = writeTempIni("flatThing = whatever\n");
-  gma::util::Config cfg;
+  krn::util::Config cfg;
   ASSERT_TRUE(cfg.loadFromFile(path));
   std::remove(path.c_str());
 
@@ -87,11 +87,11 @@ TEST(ConfigNamespaceDispatchTest, EngineKnownKeysDoNotPark) {
   // registered. This guards against accidental double-handling.
   const std::string prefix = "wsPort";  // intentionally clashing
   std::atomic<int> calls{0};
-  gma::engine::ConfigNamespaceRegistry::registerNamespace(prefix,
+  krn::engine::ConfigNamespaceRegistry::registerNamespace(prefix,
     [&](std::string_view, std::string_view) { calls.fetch_add(1); return true; });
 
   auto path = writeTempIni("wsPort = 9876\n");
-  gma::util::Config cfg;
+  krn::util::Config cfg;
   ASSERT_TRUE(cfg.loadFromFile(path));
   std::remove(path.c_str());
 
@@ -106,11 +106,11 @@ TEST(ConfigNamespaceDispatchTest, FlushIsIdempotent) {
   // an empty parking list.
   const std::string prefix = "enc30test4";
   std::atomic<int> calls{0};
-  gma::engine::ConfigNamespaceRegistry::registerNamespace(prefix,
+  krn::engine::ConfigNamespaceRegistry::registerNamespace(prefix,
     [&](std::string_view, std::string_view) { calls.fetch_add(1); return true; });
 
   auto path = writeTempIni(prefix + ".x = 1\n" + prefix + ".y = 2\n");
-  gma::util::Config cfg;
+  krn::util::Config cfg;
   ASSERT_TRUE(cfg.loadFromFile(path));
   std::remove(path.c_str());
 

@@ -5,7 +5,7 @@
 #include <cmath>
 #include <exception>
 
-namespace gma {
+namespace krn {
 
 Switch::Switch(expr::Compiled selector,
                std::vector<std::shared_ptr<INode>> cases,
@@ -21,7 +21,7 @@ void Switch::onValue(const StreamValue& sv) {
   try {
     s = sel_(nodes::envFromValue(sv));
   } catch (const std::exception& ex) {
-    gma::util::logger().log(gma::util::LogLevel::Error,
+    krn::util::logger().log(krn::util::LogLevel::Error,
                             "switch.selector_exception",
                             {{"symbol", sv.symbol}, {"err", ex.what()}});
     return;  // selector threw -> drop
@@ -61,4 +61,4 @@ std::size_t Switch::caseCount() const noexcept {
   return cases_.size();
 }
 
-} // namespace gma
+} // namespace krn

@@ -1,4 +1,4 @@
-// Tests for gma::BucketTime — wall-clock-aligned periodic tick source.
+// Tests for krn::BucketTime — wall-clock-aligned periodic tick source.
 //
 // The alignment guarantee is the load-bearing property: every consumer
 // of a BucketTime(60000) ticks at the same wall-clock minute boundary,
@@ -16,7 +16,7 @@
 #include <thread>
 #include <vector>
 
-using namespace gma;
+using namespace krn;
 using namespace std::chrono;
 using namespace std::chrono_literals;
 

@@ -5,7 +5,7 @@
 #include <cctype>
 #include <cstdlib>
 
-namespace gma::ob {
+namespace krn::ob {
 namespace {
 
 std::vector<std::string> split(const std::string& s, char sep='.') {
@@ -269,4 +269,4 @@ std::string formatObKey(const ObKey& k){
   return oss.str();
 }
 
-} // namespace gma::ob
+} // namespace krn::ob

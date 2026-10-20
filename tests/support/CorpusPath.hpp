@@ -43,7 +43,7 @@
 #  include <filesystem>
 #endif
 
-namespace gma::testsupport {
+namespace krn::testsupport {
 
 // Every path the corpus is looked for, in order. The first three are the
 // historical cwd-relative ones (kept so a hand-run from the build dir or the
@@ -119,4 +119,4 @@ inline std::string corpusNotFoundDiagnostic() {
   return s;
 }
 
-} // namespace gma::testsupport
+} // namespace krn::testsupport

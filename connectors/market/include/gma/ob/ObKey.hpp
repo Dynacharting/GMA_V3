@@ -3,7 +3,7 @@
 #include <optional>
 #include <cstdint>
 
-namespace gma::ob {
+namespace krn::ob {
 
 // Views
 enum class Mode { Per, Agg };              // per-order vs aggregated
@@ -48,4 +48,4 @@ std::string          formatObKey(const ObKey& k);
 inline const char* toString(Mode m){ return m==Mode::Per?"per":"agg"; }
 inline const char* toString(Side s){ return s==Side::Bid?"bid":"ask"; }
 
-} // namespace gma::ob
+} // namespace krn::ob

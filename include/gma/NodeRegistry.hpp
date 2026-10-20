@@ -1,6 +1,6 @@
 #pragma once
 
-namespace gma {
+namespace krn {
 
 // Register engine-provided node builders (Listener, Worker, Aggregate, Interval,
 // BucketTime, AtomicAccessor, GroupSplit, Chain) with NodeTypeRegistry. The
@@ -9,4 +9,4 @@ namespace gma {
 // times.
 void registerBuiltinNodeTypes();
 
-} // namespace gma
+} // namespace krn

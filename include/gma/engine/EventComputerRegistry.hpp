@@ -10,7 +10,7 @@
 #include "gma/engine/IEventComputer.hpp"
 #include "gma/util/Config.hpp"
 
-namespace gma::engine {
+namespace krn::engine {
 
 // Registry of **factories** that produce per-dispatcher IEventComputer instances.
 // Dispatchers call createAll() on first event of each type to get their own
@@ -91,4 +91,4 @@ private:
   }
 };
 
-} // namespace gma::engine
+} // namespace krn::engine

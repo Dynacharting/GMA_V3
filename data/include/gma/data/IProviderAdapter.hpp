@@ -7,7 +7,7 @@
 // nothing about storage; the NORMALIZER knows the canonical schema, owns
 // durability, and knows nothing about any vendor.
 //
-// Relationship to the EXISTING gma::feed::IFeedAdapter
+// Relationship to the EXISTING krn::feed::IFeedAdapter
 // (connectors/market/include/gma/feed/IFeedAdapter.hpp): that interface is
 // `std::vector<FeedEvent> translate(const std::string& rawMessage)` — one
 // std::string in, a heap vector of variants out, per message. It is the right
@@ -30,7 +30,7 @@
 
 namespace arrow { class RecordBatch; }
 
-namespace gma::data {
+namespace krn::data {
 
 // ---------------------------------------------------------------------------
 // Provider adapter
@@ -181,4 +181,4 @@ public:
   virtual Stats stats() const = 0;
 };
 
-} // namespace gma::data
+} // namespace krn::data

@@ -8,13 +8,13 @@
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
 
-namespace gma::ws {
+namespace krn::ws {
 
 void WsBridge::onOpen(const std::string& connId, SendFn send) {
   std::lock_guard<std::mutex> lk(mx_);
   connections_[connId] = std::move(send);
 
-  gma::util::logger().log(gma::util::LogLevel::Info,
+  krn::util::logger().log(krn::util::LogLevel::Info,
                           "WsBridge.onOpen",
                           {{"connId", connId}});
 }
@@ -123,7 +123,7 @@ void WsBridge::handleSubscribe(const std::string& connId, const rapidjson::Docum
       } catch (...) {}
     };
 
-    auto terminal = std::make_shared<gma::ws::WSResponder>(reqId, sendCb);
+    auto terminal = std::make_shared<krn::ws::WSResponder>(reqId, sendCb);
 
     // Build request JSON for TreeBuilder
     rapidjson::Document rq;
@@ -153,16 +153,16 @@ void WsBridge::handleSubscribe(const std::string& connId, const rapidjson::Docum
     try {
       if (r.HasMember("pipeline") && r["pipeline"].IsArray()) {
         for (const auto& elem : r["pipeline"].GetArray()) {
-          if (elem.IsObject()) gma::JsonValidator::validateTree(elem);
+          if (elem.IsObject()) krn::JsonValidator::validateTree(elem);
         }
       }
       if (r.HasMember("stages") && r["stages"].IsArray()) {
         for (const auto& elem : r["stages"].GetArray()) {
-          if (elem.IsObject()) gma::JsonValidator::validateTree(elem);
+          if (elem.IsObject()) krn::JsonValidator::validateTree(elem);
         }
       }
       if (r.HasMember("node") && r["node"].IsObject()) {
-        gma::JsonValidator::validateTree(r["node"]);
+        krn::JsonValidator::validateTree(r["node"]);
       }
     } catch (const std::exception& ex) {
       rapidjson::StringBuffer sb;
@@ -175,13 +175,13 @@ void WsBridge::handleSubscribe(const std::string& connId, const rapidjson::Docum
       continue;
     }
 
-    gma::tree::Deps deps;
+    krn::tree::Deps deps;
     deps.store      = store_.get();
-    deps.pool       = pool_ ? pool_ : (gma::gThreadPool ? gma::gThreadPool.get() : nullptr);
+    deps.pool       = pool_ ? pool_ : (krn::gThreadPool ? krn::gThreadPool.get() : nullptr);
     deps.dispatcher = dispatcher_.get();
 
     try {
-      auto built = gma::tree::buildForRequest(rq, deps, terminal);
+      auto built = krn::tree::buildForRequest(rq, deps, terminal);
 
       {
         std::lock_guard<std::mutex> lk(mx_);
@@ -237,8 +237,8 @@ void WsBridge::handleCancel(const std::string& connId, const rapidjson::Document
     else if (v.IsInt()) reqId = std::to_string(v.GetInt());
     else continue;
 
-    std::shared_ptr<gma::INode> head;
-    std::vector<std::shared_ptr<gma::INode>> chainVec;
+    std::shared_ptr<krn::INode> head;
+    std::vector<std::shared_ptr<krn::INode>> chainVec;
     {
       std::lock_guard<std::mutex> lk(mx_);
       auto cit = active_.find(connId);
@@ -281,8 +281,8 @@ void WsBridge::handleCancel(const std::string& connId, const rapidjson::Document
 }
 
 void WsBridge::onClose(const std::string& connId) {
-  std::unordered_map<std::string, std::shared_ptr<gma::INode>> subs;
-  std::unordered_map<std::string, std::vector<std::shared_ptr<gma::INode>>> chainNodes;
+  std::unordered_map<std::string, std::shared_ptr<krn::INode>> subs;
+  std::unordered_map<std::string, std::vector<std::shared_ptr<krn::INode>>> chainNodes;
   {
     std::lock_guard<std::mutex> lk(mx_);
     connections_.erase(connId);
@@ -314,7 +314,7 @@ void WsBridge::onClose(const std::string& connId) {
     }
   }
 
-  gma::util::logger().log(gma::util::LogLevel::Info,
+  krn::util::logger().log(krn::util::LogLevel::Info,
                           "WsBridge.onClose",
                           {{"connId", connId}});
 }
@@ -326,11 +326,11 @@ void WsBridge::sendTo(const std::string& connId, const std::string& msg) {
     try {
       it->second(msg);
     } catch (const std::exception& ex) {
-      gma::util::logger().log(gma::util::LogLevel::Error,
+      krn::util::logger().log(krn::util::LogLevel::Error,
                               "WsBridge.sendTo failed",
                               {{"connId", connId}, {"err", ex.what()}});
     }
   }
 }
 
-} // namespace gma::ws
+} // namespace krn::ws

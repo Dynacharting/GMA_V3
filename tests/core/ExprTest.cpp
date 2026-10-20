@@ -6,7 +6,7 @@
 #include <set>
 #include <string>
 
-using namespace gma;
+using namespace krn;
 
 namespace {
 

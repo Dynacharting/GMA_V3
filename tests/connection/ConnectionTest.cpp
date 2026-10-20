@@ -5,7 +5,7 @@
 #include <gtest/gtest.h>
 #include <memory>
 
-using namespace gma;
+using namespace krn;
 
 // Test RequestRegistry as a stand-in for connection-level request management,
 // since ClientConnection requires a running io_context and TCP connection.
@@ -57,7 +57,7 @@ TEST(ConnectionTest, RequestRegistryShutdownAllTwiceIsSafe) {
 TEST(ConnectionTest, ClientConnectionTypeExists) {
     // Verify the ws::ClientConnection type compiles.
     // Full connection tests require a running io_context + TCP server.
-    using CC = gma::ws::ClientConnection;
+    using CC = krn::ws::ClientConnection;
     using OnMsg = CC::OnMessage;
     static_assert(std::is_class_v<CC>, "ClientConnection should be a class");
     static_assert(std::is_invocable_v<OnMsg, const std::string&>,

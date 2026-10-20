@@ -4,7 +4,7 @@
 #include "gma/AtomicStore.hpp"
 #include "gma/rt/ThreadPool.hpp"   // <-- IMPORTANT: rt::ThreadPool
 
-namespace gma {
+namespace krn {
 
 class ExecutionContext {
 public:
@@ -19,4 +19,4 @@ private:
   rt::ThreadPool* _pool  = nullptr;
 };
 
-} // namespace gma
+} // namespace krn

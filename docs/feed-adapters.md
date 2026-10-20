@@ -50,7 +50,7 @@ Defined in `connectors/market/include/gma/feed/FeedEvent.hpp`.
 
 ## Field mapping (`MarketFieldMap`)
 
-`gma::market::MarketFieldMap` (in
+`krn::market::MarketFieldMap` (in
 `connectors/market/include/gma/market/MarketFieldMap.hpp`) configures how the
 `MarketTickComputer` extracts price/volume/bid/ask/timestamp from tick payloads.
 Each field list is tried in order; the first match wins.
@@ -67,7 +67,7 @@ struct MarketFieldMap {
 };
 ```
 
-> **ENC-35:** this replaced the old engine-level `gma::SourceProfile` /
+> **ENC-35:** this replaced the old engine-level `krn::SourceProfile` /
 > `Config::sourceProfile` member. The engine no longer knows about
 > market-flavored fields — the market connector owns the struct and populates it
 > from the `market.source.*` config namespace through `ConfigNamespaceRegistry`.
@@ -95,7 +95,7 @@ Implement `IFeedAdapter::translate()`:
 #pragma once
 #include "gma/feed/IFeedAdapter.hpp"
 
-namespace gma::feed {
+namespace krn::feed {
 
 class CoinbaseAdapter : public IFeedAdapter {
 public:
@@ -104,7 +104,7 @@ private:
     // Any stateful protocol tracking goes here
 };
 
-} // namespace gma::feed
+} // namespace krn::feed
 ```
 
 ```cpp
@@ -112,7 +112,7 @@ private:
 #include "gma/feed/CoinbaseAdapter.hpp"
 #include <rapidjson/document.h>
 
-namespace gma::feed {
+namespace krn::feed {
 
 std::vector<FeedEvent> CoinbaseAdapter::translate(const std::string& rawMessage) {
     rapidjson::Document doc;
@@ -143,7 +143,7 @@ std::vector<FeedEvent> CoinbaseAdapter::translate(const std::string& rawMessage)
     return out;
 }
 
-} // namespace gma::feed
+} // namespace krn::feed
 ```
 
 Wire it up **via the ingress factory + INI** (ENC-31) — *not* by editing

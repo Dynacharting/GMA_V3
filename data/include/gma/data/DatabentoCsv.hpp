@@ -55,7 +55,7 @@
 #include <string>
 #include <vector>
 
-namespace gma::data::csv {
+namespace krn::data::csv {
 
 // ---------------------------------------------------------------------------
 // The vendor's batch-job metadata, read from `metadata.json`.
@@ -215,4 +215,4 @@ std::uint32_t yyyymmddUtc(std::uint64_t tsNs);
 // half-open `valid_from`/`valid_to`.
 std::uint64_t midnightUtcNs(std::uint32_t yyyymmdd);
 
-}  // namespace gma::data::csv
+}  // namespace krn::data::csv

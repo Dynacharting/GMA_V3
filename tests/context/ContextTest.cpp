@@ -4,7 +4,7 @@
 #include <gtest/gtest.h>
 #include <memory>
 
-using namespace gma;
+using namespace krn;
 
 TEST(ExecutionContextTest, StoresPointers) {
     AtomicStore store;

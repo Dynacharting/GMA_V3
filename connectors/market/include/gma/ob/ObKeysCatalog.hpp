@@ -2,7 +2,7 @@
 #include <vector>
 #include <string>
 
-namespace gma::ob {
+namespace krn::ob {
 
 inline std::vector<std::string> defaultProfile(){
   return {
@@ -18,4 +18,4 @@ inline std::vector<std::string> defaultProfile(){
   };
 }
 
-} // namespace gma::ob
+} // namespace krn::ob

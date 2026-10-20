@@ -6,7 +6,7 @@
 #include <cmath>
 #include <vector>
 
-namespace gma {
+namespace krn {
 
 // Minimum threshold for denominators to avoid division by near-zero values.
 static constexpr double EPSILON = 1e-6;
@@ -365,4 +365,4 @@ void registerBuiltinFunctions() {
     });
 }
 
-} // namespace gma
+} // namespace krn

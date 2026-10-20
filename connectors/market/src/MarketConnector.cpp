@@ -34,7 +34,7 @@
 #include "gma/util/Logger.hpp"
 #include "gma/ws/WsFeedClient.hpp"
 
-namespace gma::market {
+namespace krn::market {
 
 namespace {
 
@@ -254,4 +254,4 @@ void MarketConnector::stop() noexcept {
   try { AtomicProviderRegistry::clear(); } catch (...) {}
 }
 
-} // namespace gma::market
+} // namespace krn::market

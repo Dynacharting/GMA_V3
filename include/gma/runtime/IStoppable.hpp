@@ -1,7 +1,7 @@
 #pragma once
-namespace gma::rt {
+namespace krn::rt {
 struct IStoppable {
   virtual ~IStoppable() = default;
   virtual void stop() = 0; // idempotent
 };
-} // namespace gma::rt
+} // namespace krn::rt

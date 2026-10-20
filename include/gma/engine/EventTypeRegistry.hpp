@@ -5,7 +5,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace gma::engine {
+namespace krn::engine {
 
 struct EventSchema {
   std::string              name;
@@ -65,4 +65,4 @@ private:
   }
 };
 
-} // namespace gma::engine
+} // namespace krn::engine

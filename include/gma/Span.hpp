@@ -2,7 +2,7 @@
 #include <cstddef>
 #include <type_traits>
 
-namespace gma_detail {
+namespace krn_detail {
 
 // Minimal, header-only span for C++17 (read-only)
 template <class T>
@@ -29,20 +29,20 @@ private:
   size_type n_;
 };
 
-} // namespace gma_detail
+} // namespace krn_detail
 
-namespace gma {
+namespace krn {
 // Forward declare ArgType so this header can be included almost anywhere.
 struct ArgType_fwd_tag;
-} // namespace gma
+} // namespace krn
 
-namespace gma {
+namespace krn {
 
 // Authoritative Span alias template
 template <class T>
-using Span = gma_detail::basic_span<T>;
+using Span = krn_detail::basic_span<T>;
 
 // After ArgType is known, other headers may do:
 //   using ArgSpan = Span<const ArgType>;
 //   using Span_t  = ArgSpan;
-} // namespace gma
+} // namespace krn

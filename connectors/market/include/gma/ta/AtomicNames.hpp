@@ -2,7 +2,7 @@
 #include <string>
 #include <sstream>
 
-namespace gma::ta {
+namespace krn::ta {
 
 inline std::string key_px_last() { return "px.last"; }
 inline std::string key_px_sma(int n){
@@ -30,4 +30,4 @@ inline std::string key_px_rsi(int n){
   std::ostringstream oss; oss << "px.rsi." << n; return oss.str();
 }
 
-} // namespace gma::ta
+} // namespace krn::ta

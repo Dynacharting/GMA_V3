@@ -1,4 +1,4 @@
-// Tests for gma::TumblingWindow — per-symbol scalar accumulator with
+// Tests for krn::TumblingWindow — per-symbol scalar accumulator with
 // wall-clock-aligned tumbling-window emit semantics. See
 // include/gma/nodes/TumblingWindow.hpp.
 //
@@ -24,7 +24,7 @@
 #include <variant>
 #include <vector>
 
-using namespace gma;
+using namespace krn;
 using namespace std::chrono_literals;
 
 namespace {

@@ -12,13 +12,13 @@
 #include "gma/nodes/InputPort.hpp"
 #include "gma/nodes/JoinBy.hpp"
 
-namespace gma {
+namespace krn {
 
 class Pack;
 
 // ENC-1291 (SPEC D2): `PackPort` was the adapter that made Pack the one fan-in
 // in the engine that joined by INPUT rather than by value count. It has been
-// generalized into `gma::InputPort` + `gma::IFanIn` (include/gma/nodes/
+// generalized into `krn::InputPort` + `krn::IFanIn` (include/gma/nodes/
 // InputPort.hpp) and is now shared with `Aggregate`. The ownership direction is
 // unchanged and still load-bearing: Pack owns its ports, each port holds only a
 // weak_ptr back. No alias is left behind on purpose: a port whose index means
@@ -87,4 +87,4 @@ private:
   std::unordered_map<std::string, SymState> state_;
 };
 
-} // namespace gma
+} // namespace krn

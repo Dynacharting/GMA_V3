@@ -6,7 +6,7 @@
 #include "gma/nodes/INode.hpp"
 #include "gma/Expr.hpp"
 
-namespace gma {
+namespace krn {
 
 // Evaluates a compiled expression over each incoming value and forwards the
 // scalar result (ENC-645). The input exposes named refs to the expression:
@@ -31,4 +31,4 @@ private:
   mutable std::mutex mx_;
 };
 
-} // namespace gma
+} // namespace krn

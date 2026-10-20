@@ -10,7 +10,7 @@
 #include "gma/TreeBuilder.hpp"
 #include "gma/nodes/INode.hpp"
 
-namespace gma::engine {
+namespace krn::engine {
 
 // Factory signature for pipeline nodes discovered in JSON specs.
 // Connectors may register custom node types; engine registers its built-ins.
@@ -69,4 +69,4 @@ private:
   }
 };
 
-} // namespace gma::engine
+} // namespace krn::engine

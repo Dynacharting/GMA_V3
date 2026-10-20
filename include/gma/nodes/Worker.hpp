@@ -8,7 +8,7 @@
 #include "gma/nodes/INode.hpp"
 #include "gma/Span.hpp"
 
-namespace gma {
+namespace krn {
 
 // Applies fn to accumulated per-symbol values and forwards the result.
 // Computes on every incoming value.
@@ -57,4 +57,4 @@ private:
   std::unordered_map<std::string, std::vector<ArgType>> acc_;
 };
 
-} // namespace gma
+} // namespace krn

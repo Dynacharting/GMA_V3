@@ -4,7 +4,7 @@
 #include <memory>               // for shared_ptr
 #include <rapidjson/document.h>
 
-namespace gma {
+namespace krn {
 // Canonical ingress event — connector-agnostic.
 //   symbol    : stream key (e.g. "AAPL"). The engine stores this verbatim and
 //               never interprets it; connectors choose the key convention.
@@ -18,4 +18,4 @@ struct Event {
   std::shared_ptr<rapidjson::Document> payload;
   std::string                          type { "tick" };
 };
-} // namespace gma
+} // namespace krn

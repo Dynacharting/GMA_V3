@@ -2,7 +2,7 @@
 #include <gtest/gtest.h>
 #include <string>
 
-using namespace gma::ob;
+using namespace krn::ob;
 
 // ---------------------------------------------------------------
 // isObKey

@@ -40,19 +40,19 @@ namespace {
 struct ServerHarness {
   asio::io_context                  ioc;
   std::unique_ptr<asio::executor_work_guard<asio::io_context::executor_type>> work;
-  std::unique_ptr<gma::rt::ThreadPool> pool;
-  std::unique_ptr<gma::AtomicStore>    store;
-  std::unique_ptr<gma::Dispatcher>     dispatcher;
-  std::unique_ptr<gma::ExecutionContext> exec;
-  std::unique_ptr<gma::WebSocketServer>  server;
+  std::unique_ptr<krn::rt::ThreadPool> pool;
+  std::unique_ptr<krn::AtomicStore>    store;
+  std::unique_ptr<krn::Dispatcher>     dispatcher;
+  std::unique_ptr<krn::ExecutionContext> exec;
+  std::unique_ptr<krn::WebSocketServer>  server;
   std::thread                            ioThread;
 
   ServerHarness() {
-    pool       = std::make_unique<gma::rt::ThreadPool>(1);
-    store      = std::make_unique<gma::AtomicStore>();
-    dispatcher = std::make_unique<gma::Dispatcher>(pool.get(), store.get());
-    exec       = std::make_unique<gma::ExecutionContext>(store.get(), pool.get());
-    server     = std::make_unique<gma::WebSocketServer>(ioc, exec.get(), dispatcher.get(), 0);
+    pool       = std::make_unique<krn::rt::ThreadPool>(1);
+    store      = std::make_unique<krn::AtomicStore>();
+    dispatcher = std::make_unique<krn::Dispatcher>(pool.get(), store.get());
+    exec       = std::make_unique<krn::ExecutionContext>(store.get(), pool.get());
+    server     = std::make_unique<krn::WebSocketServer>(ioc, exec.get(), dispatcher.get(), 0);
     server->run();
     work      = std::make_unique<asio::executor_work_guard<asio::io_context::executor_type>>(
                   ioc.get_executor());
@@ -106,8 +106,8 @@ TEST(WebSocketE2ETest, SubscribeAndReceiveUpdate) {
   // Engine builtins must be registered for the Listener / Responder
   // builders to resolve. Test bootstrap may have already done this; both
   // paths are idempotent for our purposes.
-  gma::registerBuiltinFunctions();
-  gma::registerBuiltinNodeTypes();
+  krn::registerBuiltinFunctions();
+  krn::registerBuiltinNodeTypes();
 
   ServerHarness srv;
   ASSERT_GT(srv.port(), 0);
@@ -129,7 +129,7 @@ TEST(WebSocketE2ETest, SubscribeAndReceiveUpdate) {
   auto doc = std::make_shared<rapidjson::Document>();
   doc->SetObject();
   doc->AddMember("px", 123.5, doc->GetAllocator());
-  gma::Event ev;
+  krn::Event ev;
   ev.type = "tick";
   ev.symbol = "E2E";
   ev.payload = std::move(doc);

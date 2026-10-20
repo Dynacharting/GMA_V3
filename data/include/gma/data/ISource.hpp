@@ -7,7 +7,7 @@
 // contains a branch on "am I live" — that is the whole deliverable. A DAG built
 // by TreeBuilder cannot tell which of the three sources is driving it.
 //
-// Relationship to the EXISTING engine seam: gma::engine::IIngressSource
+// Relationship to the EXISTING engine seam: krn::engine::IIngressSource
 // (include/gma/engine/IngressRegistry.hpp) is start()/stop() and is exactly
 // right for an endless live feed. It is wrong for a replay, which FINISHES, and
 // it carries no clock. So ISource is a gma_data interface with the two extra
@@ -29,12 +29,12 @@
 #include "gma/data/Schema.hpp"
 #include "gma/engine/IngressRegistry.hpp"
 
-namespace gma {
+namespace krn {
 class Dispatcher;
 class OrderBookManager;
 }
 
-namespace gma::data {
+namespace krn::data {
 
 // ---------------------------------------------------------------------------
 // Source mode and state
@@ -368,4 +368,4 @@ private:
 // way market.feedserver / market.wsclient are registered today.
 void registerIngressKinds(engine::EngineRegistries& regs);
 
-} // namespace gma::data
+} // namespace krn::data

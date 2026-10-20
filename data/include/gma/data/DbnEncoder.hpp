@@ -62,7 +62,7 @@
 #include <string>
 #include <vector>
 
-namespace gma::data::dbn::enc {
+namespace krn::data::dbn::enc {
 
 // ===========================================================================
 // Byte helpers — explicit little-endian stores.
@@ -165,4 +165,4 @@ struct DbnWriter {
   std::vector<std::byte> build(std::size_t* fixedBlockLenOut = nullptr) const;
 };
 
-}  // namespace gma::data::dbn::enc
+}  // namespace krn::data::dbn::enc

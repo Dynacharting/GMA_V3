@@ -9,14 +9,14 @@
 
 #include "gma/util/Logger.hpp"
 
-namespace gma::rt {
+namespace krn::rt {
 
 class ShutdownCoordinator {
 public:
   // Lower order runs earlier; higher order runs later.
   void registerStep(std::string name, int order, std::function<void()> fn) {
     if (stopping_.load(std::memory_order_acquire)) {
-      gma::util::logger().log(gma::util::LogLevel::Warn,
+      krn::util::logger().log(krn::util::LogLevel::Warn,
         "ShutdownCoordinator: registerStep after stop(), step ignored",
         {{"step", name}});
       return;
@@ -47,11 +47,11 @@ public:
       try {
         s.fn();
       } catch (const std::exception& ex) {
-        gma::util::logger().log(gma::util::LogLevel::Error,
+        krn::util::logger().log(krn::util::LogLevel::Error,
           "Shutdown step failed: " + s.name,
           {{"error", ex.what()}});
       } catch (...) {
-        gma::util::logger().log(gma::util::LogLevel::Error,
+        krn::util::logger().log(krn::util::LogLevel::Error,
           "Shutdown step failed with unknown exception: " + s.name);
       }
     }
@@ -65,4 +65,4 @@ private:
   bool sorted_{false};  // protected by mx_, not atomic — always accessed under lock
 };
 
-} // namespace gma::rt
+} // namespace krn::rt

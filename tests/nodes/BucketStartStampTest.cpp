@@ -42,7 +42,7 @@
 #include <thread>
 #include <vector>
 
-using namespace gma;
+using namespace krn;
 using namespace std::chrono;
 using namespace std::chrono_literals;
 
@@ -235,7 +235,7 @@ TEST(BucketStartStampTest, BucketTimePulseCarriesConsecutiveAlignedBuckets) {
 // wire. This is the regression guard for that.
 TEST(BucketStartStampTest, StampSurvivesVectorReducer) {
   const std::int64_t periodMs = 100;
-  gma::registerBuiltinFunctions();
+  krn::registerBuiltinFunctions();
 
   rt::ThreadPool pool(1);
   auto rec     = std::make_shared<StampRecorder>();

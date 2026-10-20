@@ -9,7 +9,7 @@
 #include <string>
 #include <string_view>
 
-namespace gma { namespace ws {
+namespace krn { namespace ws {
 
 class ClientConnection : public std::enable_shared_from_this<ClientConnection> {
 public:
@@ -125,4 +125,4 @@ private:
   OnError onError_;
 };
 
-}} // namespace gma::ws
+}} // namespace krn::ws

@@ -10,7 +10,7 @@
 
 #include "gma/book/OrderBook.hpp"   // Side, Aggressor
 
-namespace gma::feed {
+namespace krn::feed {
 
 // ---- Canonical events that any feed adapter can produce ----
 
@@ -88,4 +88,4 @@ using FeedEvent = std::variant<
     ObResetEvent
 >;
 
-} // namespace gma::feed
+} // namespace krn::feed

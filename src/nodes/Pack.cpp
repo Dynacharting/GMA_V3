@@ -2,7 +2,7 @@
 #include "gma/util/Logger.hpp"
 #include <stdexcept>
 
-namespace gma {
+namespace krn {
 
 Pack::Pack(std::vector<std::string> names,
            std::shared_ptr<INode> downstream,
@@ -48,7 +48,7 @@ void Pack::onPortValue(std::size_t idx, const StreamValue& sv) {
     if (inserted) {
       if (state_.size() > MAX_SYMBOLS) {
         state_.erase(it);
-        gma::util::logger().log(gma::util::LogLevel::Warn,
+        krn::util::logger().log(krn::util::LogLevel::Warn,
           "Pack: max symbols reached, dropping", {{"symbol", sv.symbol}});
         return;
       }
@@ -89,4 +89,4 @@ void Pack::shutdown() noexcept {
     if (p) p->shutdown();
 }
 
-} // namespace gma
+} // namespace krn

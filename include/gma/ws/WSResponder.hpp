@@ -5,7 +5,7 @@
 #include <string>
 #include "gma/nodes/INode.hpp"
 
-namespace gma::ws {
+namespace krn::ws {
 
 // Sends JSON {type:"update", id, symbol, value, ts} via provided sendText()
 class WSResponder : public INode {
@@ -25,4 +25,4 @@ private:
   SendFn send_;
 };
 
-} // namespace gma::ws
+} // namespace krn::ws

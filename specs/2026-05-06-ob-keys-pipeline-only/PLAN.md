@@ -33,7 +33,7 @@ names the canonical pattern.
 
 1. **`include/gma/nodes/Listener.hpp`** — add a static factory
    `Listener::Create(symbol, field, downstream, pool, dispatcher)
-   -> gma::Result<std::shared_ptr<Listener>>`. Inside the factory,
+   -> krn::Result<std::shared_ptr<Listener>>`. Inside the factory,
    reject any `field` matching `ob.*` (literal prefix check; first
    3 chars `'o','b','.'`). Error message:
    `"listener: field '<field>' is pipeline-only — see

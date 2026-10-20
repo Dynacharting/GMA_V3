@@ -5,7 +5,7 @@
 
 #include "gma/feed/FeedEvent.hpp"
 
-namespace gma::feed {
+namespace krn::feed {
 
 /// Interface for translating raw (vendor-specific) messages into canonical
 /// FeedEvents.  Implement one adapter per data-source protocol (ITCH, Coinbase,
@@ -25,4 +25,4 @@ public:
     virtual std::string subscribeMessage(const std::vector<std::string>& symbols);
 };
 
-} // namespace gma::feed
+} // namespace krn::feed

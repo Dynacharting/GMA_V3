@@ -6,7 +6,7 @@
 #include <tuple>
 #include <vector>
 
-namespace gma {
+namespace krn {
 namespace {
 
 // ── ENC-1340: writer starvation under a continuous reader population ────────
@@ -227,4 +227,4 @@ AtomicStore::snapshot() const {
   return out;
 }
 
-} // namespace gma
+} // namespace krn

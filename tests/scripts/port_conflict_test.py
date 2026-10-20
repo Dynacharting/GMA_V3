@@ -7,7 +7,7 @@ uncaught boost::system::system_error, so the process died with
 a core dump) instead of a diagnosable error exit.
 
 Two cases are covered, because the server binds two independent sockets:
-  * wsPort   -> gma::WebSocketServer's acceptor (opened in its constructor)
+  * wsPort   -> krn::WebSocketServer's acceptor (opened in its constructor)
   * feedPort -> the market.feedserver ingress (opened in FeedServer::run)
 
 For each: occupy the port from this process, launch gma_server, and assert it

@@ -8,7 +8,7 @@
 #include <string_view>
 #include <utility>
 
-namespace gma::data {
+namespace krn::data {
 namespace {
 
 // ---------------------------------------------------------------------------
@@ -966,4 +966,4 @@ arrow::Status DatabentoAdapter::onTrade(const dbn::TradeMsg& m) {
   return arrow::Status::OK();
 }
 
-}  // namespace gma::data
+}  // namespace krn::data

@@ -1,6 +1,6 @@
 #pragma once
 
-namespace gma {
+namespace krn {
 
 /**
  * Register all builtin functions into FunctionMap.
@@ -20,4 +20,4 @@ namespace gma {
  */
 void registerBuiltinFunctions();
 
-} // namespace gma
+} // namespace krn

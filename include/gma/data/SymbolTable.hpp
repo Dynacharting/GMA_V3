@@ -39,7 +39,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace gma::data {
+namespace krn::data {
 
 using SymbolId = std::uint32_t;
 
@@ -100,4 +100,4 @@ class SymbolTable {
   std::unordered_map<std::string, SymbolId> ids_;
 };
 
-} // namespace gma::data
+} // namespace krn::data

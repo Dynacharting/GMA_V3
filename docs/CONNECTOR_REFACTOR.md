@@ -128,7 +128,7 @@ factory registration in some connector's `registerWith` plus an
 **Forum-driven ingress (feed-sim-connector phase 2).** Ingress entries
 no longer have to come from the INI: when `cfg.forumUrl` (or the
 `FORUM_URL` env var) is non-empty, the composition root calls
-`gma::forum::ConnectorsClient::fetchIngresses(forumUrl, tenantId,
+`krn::forum::ConnectorsClient::fetchIngresses(forumUrl, tenantId,
 authToken)` after `synthesizeIngressFromLegacy()` and *replaces*
 `cfg.ingress` with the result. Each connector row from forum's
 `/api/connectors` becomes a `market.wsclient` ingress (one per
@@ -140,13 +140,13 @@ in forum-less dev runs.
 ```cpp
 int main(int argc, char* argv[]) {
   // ... engine bootstrap (config, threadpool, store, dispatcher, ioc) ...
-  gma::engine::EngineRegistries regs{ /* 14 fields, see EngineRegistries.hpp */ };
+  krn::engine::EngineRegistries regs{ /* 14 fields, see EngineRegistries.hpp */ };
 
-  std::vector<gma::engine::IConnector*> connectors;
-  gma::market::MarketConnector marketConnector;
+  std::vector<krn::engine::IConnector*> connectors;
+  krn::market::MarketConnector marketConnector;
   marketConnector.registerWith(regs);
   connectors.push_back(&marketConnector);
-  // (future) gma::crypto::CoinbaseConnector{}.registerWith(regs);
+  // (future) krn::crypto::CoinbaseConnector{}.registerWith(regs);
 
   for (auto* c : connectors) c->start();
   shutdown.registerStep("connectors-stop", 30, [&connectors] {
@@ -164,7 +164,7 @@ int main(int argc, char* argv[]) {
 ### Connector contract
 
 ```cpp
-namespace gma::engine {
+namespace krn::engine {
 
 struct EngineRegistries {
   EventTypeRegistry&       events;
@@ -190,7 +190,7 @@ public:
   virtual void stop() noexcept = 0;
 };
 
-} // namespace gma::engine
+} // namespace krn::engine
 ```
 
 Lifecycle:
@@ -347,7 +347,7 @@ Each step independently buildable + testable. `ctest --output-on-failure` must s
 - **Tests:** add `tests/integration/ConnectorBootTest.cpp`.
 
 ### Step 9 — generalize `FeedEvent`
-- Move `FeedEvent` variant fully into connector as `gma::market::MarketFeedEvent`.
+- Move `FeedEvent` variant fully into connector as `krn::market::MarketFeedEvent`.
 - Engine's `Event` becomes `{ string type; string streamKey; shared_ptr<rapidjson::Document> payload; }`.
 - `IFeedAdapter` moves to connector namespace; engine defines only `IIngressSource`.
 - **Tests:** `tests/feed/FeedEventDispatchTest.cpp` moves to `connectors/market/tests/`.
@@ -372,7 +372,7 @@ Each step independently buildable + testable. `ctest --output-on-failure` must s
 
 ### Proving "zero core changes to add a connector"
 - `SyntheticConnector` (Step 10) is the proof.
-- CI check: grep-fail if `connectors/synthetic/` references `gma::market` or `gma::ob`.
+- CI check: grep-fail if `connectors/synthetic/` references `krn::market` or `krn::ob`.
 - CI check: when a commit adds only `connectors/<new>/` contents, `git diff --stat` against `src/` + `include/` must show **only** `src/main.cpp` with a ≤3-line delta.
 
 ### Dispatcher + TA correctness regression

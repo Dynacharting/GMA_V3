@@ -5,7 +5,7 @@
 
 #include "gma/util/Config.hpp"
 
-namespace gma {
+namespace krn {
 namespace forum {
 
 /// Synchronous one-shot HTTP(S) GET against forum's /api/connectors,
@@ -34,7 +34,7 @@ public:
   ///
   /// Throws `std::runtime_error` on transport / parse / auth failure.
   /// Caller (main.cpp) is expected to log + exit.
-  static std::vector<gma::util::Config::Ingress>
+  static std::vector<krn::util::Config::Ingress>
   fetchIngresses(const std::string& forumUrl,
                  const std::string& tenantId,
                  const std::string& bearer);
@@ -44,9 +44,9 @@ public:
   /// the corresponding ingress entries. Used by both `fetchIngresses`
   /// (after the network round-trip) and by `ConnectorsClientTest` so
   /// the JSON-to-ingress mapping is exercised without a network.
-  static std::vector<gma::util::Config::Ingress>
+  static std::vector<krn::util::Config::Ingress>
   parseConnectorsJson(const std::string& body);
 };
 
 } // namespace forum
-} // namespace gma
+} // namespace krn

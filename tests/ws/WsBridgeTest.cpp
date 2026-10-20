@@ -4,7 +4,7 @@
 #include <vector>
 #include <mutex>
 
-using namespace gma::ws;
+using namespace krn::ws;
 
 // Capture all messages sent to a connection
 struct Capture {

@@ -1,5 +1,5 @@
 // Tests the JSON-to-ingress translation done by
-// gma::forum::ConnectorsClient::parseConnectorsJson. Decoupled from
+// krn::forum::ConnectorsClient::parseConnectorsJson. Decoupled from
 // the network — fed directly with the wire shape forum's
 // /api/connectors returns (cf.
 // forum/internal/http/routes/connectors.go ListConnectors), so any
@@ -12,8 +12,8 @@
 #include <stdexcept>
 #include <string>
 
-using gma::forum::ConnectorsClient;
-using Ingress = gma::util::Config::Ingress;
+using krn::forum::ConnectorsClient;
+using Ingress = krn::util::Config::Ingress;
 
 namespace {
 

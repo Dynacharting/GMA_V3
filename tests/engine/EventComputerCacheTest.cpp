@@ -22,7 +22,7 @@
 #include <string>
 #include <rapidjson/document.h>
 
-using namespace gma;
+using namespace krn;
 
 namespace {
 

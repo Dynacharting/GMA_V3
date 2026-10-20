@@ -110,7 +110,7 @@ wss:// ──▶ WsFeedClient ──▶ IFeedAdapter│         │
   `OrderBookManager`'s per-order API, with `tests/ob` and `tests/book` behind it. **The
   Databento MBO adapter is therefore a re-encoding of an existing tested mapping (binary
   DBN for ITCH JSON), not new book semantics.**
-- **`gma::feed::FeedEvent`** already carries `orderId`, `timestampNs` and
+- **`krn::feed::FeedEvent`** already carries `orderId`, `timestampNs` and
   `optional<uint64_t> seq` on the OB variants. The §8 schema derives from it.
 - **`OrderBookManager`** has the L3 machinery: `onSeq` gap gating, per-symbol
   `FeedState{lastSeq, epoch, stale}`, `onReset(symbol, epoch)` with an epoch'd `OrderKey`,
@@ -120,7 +120,7 @@ wss:// ──▶ WsFeedClient ──▶ IFeedAdapter│         │
 - **`ObTradeEvent::bookNeutral`** exists because an execution both mutates the book *and*
   prints — "consuming the book would double-count". That precedent is directly relevant to
   §3/C13.
-- **`gma::Event`** is a JSON DOM. `Dispatcher::onTick` iterates
+- **`krn::Event`** is a JSON DOM. `Dispatcher::onTick` iterates
   `payload->MemberBegin()..MemberEnd()` per tick (`src/core/Dispatcher.cpp:138`);
   `MarketTickComputer::compute` does `HasMember` probes (`MarketTA.cpp:342-367`).
 
@@ -419,7 +419,7 @@ One column-wise function producing `TickRecord` / `BookRecord`. Two details:
 the type, so a POD reachable only from `gma_data` would make C2 unimplementable without
 breaking §4 rule 6. The PODs are Arrow-free and dependency-free; the `arrow::Schema`s and
 this decode stay in `data/include/gma/data/Schema.hpp`, which is where Arrow stops. Same
-namespace (`gma::data`), one definition per type — the library boundary is a *dependency*
+namespace (`krn::data`), one definition per type — the library boundary is a *dependency*
 boundary, not a naming one. `SymbolTable` sits beside the PODs for the same reason:
 interning happens in decode, but resolving an id back to a ticker happens at an output
 boundary, and every output boundary is engine code (`StreamValue` carries a `std::string`).

@@ -38,7 +38,7 @@
 #include <thread>
 #include <vector>
 
-using namespace gma;
+using namespace krn;
 
 namespace {
 
@@ -274,7 +274,7 @@ TEST(AggregateTest, ShutdownPreventsFurtherCallbacks) {
 // deterministically, and ENC-1291 verified that specifically rather than only
 // checking TSan was clean on the fixed code: the same deletion, built
 // `-DGMA_SANITIZE=thread`, produced **11 `WARNING: ThreadSanitizer: data race`
-// reports naming `gma::Aggregate::onPortValue` in the first frame**, and the
+// reports naming `krn::Aggregate::onPortValue` in the first frame**, and the
 // binary exited 66. So the invariant IS gated — by `mage`-equivalent
 // `cmake -DGMA_SANITIZE=thread` + this suite, not by the assertions below. This test is a smoke test plus a structural
 // check that what escapes is always a WHOLE tuple, in port order — it is kept

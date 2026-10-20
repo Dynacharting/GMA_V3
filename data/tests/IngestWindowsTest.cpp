@@ -26,7 +26,7 @@
 #include <string>
 #include <vector>
 
-namespace gma::data {
+namespace krn::data {
 namespace {
 
 constexpr std::int64_t kH = 3600000000000LL;  // one hour in ns
@@ -301,4 +301,4 @@ TEST(IngestWindowsAntiVacuity, EveryCaseInThisFileIsRegistered) {
 }
 
 }  // namespace
-}  // namespace gma::data
+}  // namespace krn::data

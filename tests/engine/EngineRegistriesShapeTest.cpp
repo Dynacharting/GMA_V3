@@ -16,7 +16,7 @@
 #include <boost/asio/io_context.hpp>
 #include <gtest/gtest.h>
 
-using namespace gma;
+using namespace krn;
 
 TEST(EngineRegistriesShapeTest, AllFieldsPopulatable) {
   util::Config cfg;

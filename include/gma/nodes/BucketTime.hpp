@@ -9,11 +9,11 @@
 #include "gma/nodes/INode.hpp"
 #include "gma/rt/ThreadPool.hpp"
 
-namespace gma {
+namespace krn {
 
 // Wall-clock-aligned periodic tick source.
 //
-// Differs from gma::Interval in one critical way: BucketTime emits each
+// Differs from krn::Interval in one critical way: BucketTime emits each
 // tick on the wall-clock period boundary rather than `period` after the
 // previous tick. With period=60000 (one minute), ticks fire at
 // 00:00:00, 00:01:00, 00:02:00, ... regardless of when the node was
@@ -47,7 +47,7 @@ class BucketTime final : public INode {
 public:
   BucketTime(std::chrono::milliseconds period,
              std::shared_ptr<INode> child,
-             gma::rt::ThreadPool* pool);
+             krn::rt::ThreadPool* pool);
 
   ~BucketTime();
 
@@ -92,12 +92,12 @@ private:
   struct State {
     State(std::chrono::milliseconds p,
           std::shared_ptr<INode> c,
-          gma::rt::ThreadPool* pl)
+          krn::rt::ThreadPool* pl)
       : period(p), child(std::move(c)), pool(pl) {}
 
     const std::chrono::milliseconds period;
     const std::shared_ptr<INode> child;
-    gma::rt::ThreadPool* const pool;
+    krn::rt::ThreadPool* const pool;
 
     std::atomic<bool> stopping{false};
     std::mutex mx;
@@ -111,4 +111,4 @@ private:
   std::thread timerThread_;
 };
 
-} // namespace gma
+} // namespace krn

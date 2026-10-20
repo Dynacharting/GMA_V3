@@ -8,7 +8,7 @@
 #include <atomic>
 #include <mutex>
 
-using namespace gma;
+using namespace krn;
 
 namespace {
 

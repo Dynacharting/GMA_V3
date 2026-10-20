@@ -13,7 +13,7 @@
 #include <gtest/gtest.h>
 #include <string>
 
-using namespace gma;
+using namespace krn;
 
 namespace {
 Order mkOrder(uint64_t id, Side side, int64_t ticks, uint64_t size) {

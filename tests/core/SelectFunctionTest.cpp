@@ -4,7 +4,7 @@
 #include <gtest/gtest.h>
 #include <rapidjson/document.h>
 
-using namespace gma;
+using namespace krn;
 
 // FunctionMap builtins are installed by the global test bootstrap.
 

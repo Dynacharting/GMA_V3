@@ -1,7 +1,7 @@
 #include "gma/nodes/GroupSplit.hpp"
 #include "gma/util/Logger.hpp"
 
-namespace gma {
+namespace krn {
 
 GroupSplit::GroupSplit(Factory makeChild)
   : makeChild_(std::move(makeChild)) {}
@@ -27,7 +27,7 @@ void GroupSplit::onValue(const StreamValue& sv) {
     if (inserted) {
       if (children_.size() > MAX_CHILDREN) {
         children_.erase(it);
-        gma::util::logger().log(gma::util::LogLevel::Warn,
+        krn::util::logger().log(krn::util::LogLevel::Warn,
           "GroupSplit: max children reached",
           {{"symbol", sv.symbol}});
         return;
@@ -59,4 +59,4 @@ void GroupSplit::shutdown() noexcept {
   children_.clear();
 }
 
-} // namespace gma
+} // namespace krn

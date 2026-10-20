@@ -5,14 +5,14 @@
 #include <utility>   // std::move
 #include <string>
 
-namespace gma {
+namespace krn {
 
 void RequestRegistry::registerRequest(const std::string& id, std::shared_ptr<INode> root) {
   std::unique_lock lock(_mutex);
   _requests[id] = std::move(root);
 
-  gma::util::logger().log(
-    gma::util::LogLevel::Info,
+  krn::util::logger().log(
+    krn::util::LogLevel::Info,
     "Registered request",
     { {"id", id} }
   );
@@ -32,8 +32,8 @@ void RequestRegistry::unregisterRequest(const std::string& id) {
   }
 
   if (root) {
-    gma::util::logger().log(
-      gma::util::LogLevel::Info,
+    krn::util::logger().log(
+      krn::util::LogLevel::Info,
       "Shutting down request",
       { {"id", id} }
     );
@@ -56,8 +56,8 @@ void RequestRegistry::shutdownAll() noexcept {
     auto& node = kv.second;
 
     if (node) {
-      gma::util::logger().log(
-        gma::util::LogLevel::Info,
+      krn::util::logger().log(
+        krn::util::LogLevel::Info,
         "Shutdown request (shutdownAll)",
         { {"id", id} }
       );
@@ -66,4 +66,4 @@ void RequestRegistry::shutdownAll() noexcept {
   }
 }
 
-} // namespace gma
+} // namespace krn

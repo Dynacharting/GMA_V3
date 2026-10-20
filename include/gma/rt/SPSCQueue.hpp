@@ -5,7 +5,7 @@
 #include <vector>
 #include <optional>
 
-namespace gma::rt {
+namespace krn::rt {
 
 // Single-Producer Single-Consumer ring buffer (bounded, wait-free).
 template <typename T>
@@ -68,4 +68,4 @@ private:
   std::atomic<size_t> tail_{0};
 };
 
-} // namespace gma::rt
+} // namespace krn::rt

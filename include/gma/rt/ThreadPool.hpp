@@ -10,7 +10,7 @@
 #include <thread>
 #include <vector>
 
-namespace gma::rt {
+namespace krn::rt {
 
 class ThreadPool {
 public:
@@ -50,9 +50,9 @@ private:
   std::atomic<int>                  inFlight_{0};
 };
 
-} // namespace gma::rt
+} // namespace krn::rt
 
 // Global pool (decl only). Define it in exactly ONE .cpp.
-namespace gma {
-  extern std::shared_ptr<gma::rt::ThreadPool> gThreadPool;
+namespace krn {
+  extern std::shared_ptr<krn::rt::ThreadPool> gThreadPool;
 }

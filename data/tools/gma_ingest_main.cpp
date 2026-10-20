@@ -145,7 +145,7 @@ bool parseArgs(int argc, char** argv, Args& a) {
           num("--session-id", 1u, std::numeric_limits<std::uint32_t>::max()));
     } else if (f == "--dbn-version") {
       a.dbnVersion = static_cast<std::uint8_t>(
-          num("--dbn-version", gma::data::dbn::kMinVersion, gma::data::dbn::kMaxVersion));
+          num("--dbn-version", krn::data::dbn::kMinVersion, krn::data::dbn::kMaxVersion));
     } else if (f == "--no-insert") {
       a.noInsert = true;
     } else if (f == "--force-reencode") {
@@ -161,7 +161,7 @@ bool parseArgs(int argc, char** argv, Args& a) {
   return true;
 }
 
-using namespace gma::data;
+using namespace krn::data;
 
 // Guarded integer parse for server text (finding #8). `std::stoll` throws, and
 // nothing on this path is prepared for an exception.
@@ -176,7 +176,7 @@ bool parseLL(const std::string& text, long long& out) {
 // for finding #14 so the probes compare two implementations instead of pinning
 // a constant.
 //
-// Deliberately a DIFFERENT ALGORITHM from `gma::data::isComplete`'s cursor
+// Deliberately a DIFFERENT ALGORITHM from `krn::data::isComplete`'s cursor
 // walk: it subtracts each held interval from the request and asks whether
 // anything is left. Same answer by a different route, which is the only version
 // of this that is worth running — a copy of the cursor walk would agree with a
@@ -335,7 +335,7 @@ int cmdIngest(const Args& a, bool fromDbnOnly) {
 // ---------------------------------------------------------------------------
 // verify — the D11 demonstration.
 //
-// Every verdict goes through gma::data::isComplete over rows selected from
+// Every verdict goes through krn::data::isComplete over rows selected from
 // gma.ingest_windows, i.e. through the DDL's own read rule: newest row by
 // updated_at per recorded window, require state = 1, then test COVERAGE of the
 // request. Row counts are printed and NEVER consulted — a quiet window and a
@@ -586,7 +586,7 @@ int main(int argc, char** argv) {
   if (a.command == "reload") return cmdIngest(a, /*fromDbnOnly=*/true);
   if (a.command == "verify") return cmdVerify(a);
   if (a.command == "resolve-target") {
-    auto t = gma::data::ch::resolveTarget(a.url);
+    auto t = krn::data::ch::resolveTarget(a.url);
     if (!t.ok()) {
       std::cerr << "gma_ingest: " << t.status().ToString() << "\n";
       return kCouldNotRun;

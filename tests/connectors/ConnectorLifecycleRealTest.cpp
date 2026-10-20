@@ -25,7 +25,7 @@
 #include <chrono>
 #include <limits>
 
-using namespace gma;
+using namespace krn;
 
 namespace {
 

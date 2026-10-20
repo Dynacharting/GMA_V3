@@ -51,7 +51,7 @@ deployment or it is not, and `gma_engine` must build in both cases.
 because ENC-1486 adds `Dispatcher::onRecord(const data::TickRecord&)` and `Dispatcher` *is*
 engine code — the engine has to be able to name a record. They are Arrow-free and
 dependency-free; the `arrow::Schema`s and the codec, which are not, stay here. One
-namespace (`gma::data`), one definition of each type, two libraries. `SymbolTable` sits
+namespace (`krn::data`), one definition of each type, two libraries. `SymbolTable` sits
 beside the PODs for the same reason: interning happens here in decode, but resolving an id
 back to a ticker happens at an output boundary, and every output boundary is engine code.
 
@@ -78,7 +78,7 @@ fresh `git worktree`, and CMake's `find_path` resolves RapidJSON to
 `third_party/rapidjson` in the first and `/usr/include` in the second — **the same commit
 failed the gate from one checkout and passed from the other**, with nothing in either run's
 output to explain the difference. A vendored third-party include tree is not Arrow, and
-rapidjson is a long-standing engine dependency (`gma::Event` holds a
+rapidjson is a long-standing engine dependency (`krn::Event` holds a
 `shared_ptr<rapidjson::Document>`), so both resolutions are legal. The exemption is bounded
 — only under `third_party/`, decided on `realpath`, and never for a path naming arrow /
 parquet / gandiva / clickhouse / duckdb / `gma_data` — and the resolved rapidjson path is

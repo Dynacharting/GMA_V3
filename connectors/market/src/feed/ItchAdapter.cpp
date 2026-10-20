@@ -11,7 +11,7 @@
 #include <type_traits>
 #include <variant>
 
-namespace gma::feed {
+namespace krn::feed {
 
 // ---------------------------------------------------------------------------
 // translate — entry point: parse JSON, route by ITCH message type
@@ -105,7 +105,7 @@ void ItchAdapter::routeStockDirectory(const rapidjson::Value& doc,
 
     GMA_METRIC_HIT("feed_ws.stock_directory");
 
-    gma::util::logger().log(gma::util::LogLevel::Info,
+    krn::util::logger().log(krn::util::LogLevel::Info,
         "ItchAdapter.stockDirectory",
         {{"locate", std::to_string(locate)}, {"stock", stock}});
 }
@@ -331,9 +331,9 @@ void ItchAdapter::routeSystemEvent(const rapidjson::Value& doc) {
     if (doc.HasMember("eventCode") && doc["eventCode"].IsString())
         code = doc["eventCode"].GetString();
 
-    gma::util::logger().log(gma::util::LogLevel::Info,
+    krn::util::logger().log(krn::util::LogLevel::Info,
         "ItchAdapter.systemEvent",
         {{"eventCode", code}});
 }
 
-} // namespace gma::feed
+} // namespace krn::feed

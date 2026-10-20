@@ -1,4 +1,4 @@
-// Tests for gma::VectorReducer — vector<double> → scalar double via
+// Tests for krn::VectorReducer — vector<double> → scalar double via
 // FunctionMap. See include/gma/nodes/VectorReducer.hpp.
 //
 // VectorReducer is synchronous (no timer / no thread pool dispatch), so
@@ -21,7 +21,7 @@
 #include <variant>
 #include <vector>
 
-using namespace gma;
+using namespace krn;
 
 namespace {
 

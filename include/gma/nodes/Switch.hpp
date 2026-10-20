@@ -8,7 +8,7 @@
 #include "gma/nodes/INode.hpp"
 #include "gma/Expr.hpp"
 
-namespace gma {
+namespace krn {
 
 // Value-conditioned router (ENC-650): evaluates a compiled selector expression
 // over each incoming value to pick an integer index, then forwards the value
@@ -39,4 +39,4 @@ private:
   mutable std::mutex mx_;
 };
 
-} // namespace gma
+} // namespace krn

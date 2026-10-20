@@ -3,11 +3,11 @@
 
 #include <cstdint>
 
-namespace gma {
+namespace krn {
 
 BucketTime::BucketTime(std::chrono::milliseconds period,
                        std::shared_ptr<INode> child,
-                       gma::rt::ThreadPool* pool)
+                       krn::rt::ThreadPool* pool)
   : state_(std::make_shared<State>(period, std::move(child), pool))
 {
 }
@@ -96,7 +96,7 @@ void BucketTime::timerLoop(const std::shared_ptr<State>& st) {
         st->child->onValue(StreamValue{"", 0.0, bucketStartMs});
       }
     } catch (const std::exception& ex) {
-      gma::util::logger().log(gma::util::LogLevel::Error,
+      krn::util::logger().log(krn::util::LogLevel::Error,
         "BucketTime::timerLoop: onValue exception",
         {{"err", ex.what()}});
     }
@@ -123,4 +123,4 @@ void BucketTime::shutdown() noexcept {
   }
 }
 
-} // namespace gma
+} // namespace krn

@@ -34,13 +34,13 @@ namespace {
 // for the entire test-binary lifetime.
 struct TestFixtureGlobals {
   bool                          built = false;
-  gma::util::Config             cfg;
-  std::unique_ptr<gma::rt::ThreadPool>   pool;
-  std::unique_ptr<gma::AtomicStore>      store;
-  std::unique_ptr<gma::Dispatcher>       dispatcher;
-  std::unique_ptr<gma::rt::ShutdownCoordinator> shutdown;
+  krn::util::Config             cfg;
+  std::unique_ptr<krn::rt::ThreadPool>   pool;
+  std::unique_ptr<krn::AtomicStore>      store;
+  std::unique_ptr<krn::Dispatcher>       dispatcher;
+  std::unique_ptr<krn::rt::ShutdownCoordinator> shutdown;
   std::unique_ptr<boost::asio::io_context> ioc;
-  std::unique_ptr<gma::market::MarketConnector> market;
+  std::unique_ptr<krn::market::MarketConnector> market;
 };
 
 TestFixtureGlobals& globals() {
@@ -73,7 +73,7 @@ public:
     // stderr instead of an inference from a dozen reds. Deliberately NOT a
     // fatal gtest failure: a run filtered to tests that never touch the corpus
     // is legitimate, and those tests still deserve to run.
-    if (!gma::testsupport::corpusRequestsFound()) {
+    if (!krn::testsupport::corpusRequestsFound()) {
       std::fputs("\n"
                  "========================================================\n"
                  "GMA_V3 TEST BOOTSTRAP — corpus_requests.json NOT FOUND\n"
@@ -81,7 +81,7 @@ public:
                  "and for no other. Do not debug them individually.\n"
                  "========================================================\n",
                  stderr);
-      std::fputs(gma::testsupport::corpusNotFoundDiagnostic().c_str(), stderr);
+      std::fputs(krn::testsupport::corpusNotFoundDiagnostic().c_str(), stderr);
       std::fputs("========================================================\n\n",
                  stderr);
     }
@@ -93,12 +93,12 @@ public:
     // over them; rebuilding them would tear down a live ThreadPool/Dispatcher
     // mid-binary for no gain.
     if (!g.built) {
-      g.pool       = std::make_unique<gma::rt::ThreadPool>(1);
-      g.store      = std::make_unique<gma::AtomicStore>();
-      g.dispatcher = std::make_unique<gma::Dispatcher>(g.pool.get(), g.store.get(), g.cfg);
-      g.shutdown   = std::make_unique<gma::rt::ShutdownCoordinator>();
+      g.pool       = std::make_unique<krn::rt::ThreadPool>(1);
+      g.store      = std::make_unique<krn::AtomicStore>();
+      g.dispatcher = std::make_unique<krn::Dispatcher>(g.pool.get(), g.store.get(), g.cfg);
+      g.shutdown   = std::make_unique<krn::rt::ShutdownCoordinator>();
       g.ioc        = std::make_unique<boost::asio::io_context>();
-      g.market     = std::make_unique<gma::market::MarketConnector>();
+      g.market     = std::make_unique<krn::market::MarketConnector>();
       g.built      = true;
     }
 
@@ -120,22 +120,22 @@ public:
     //   NodeTypeRegistry::registerNodeType, EventTypeRegistry::registerEvent,
     //   IngressRegistry::registerIngress
     //       -> first-wins; the duplicate returns false and changes nothing
-    gma::engine::EventComputerRegistry::clear();
+    krn::engine::EventComputerRegistry::clear();
 
-    gma::registerBuiltinFunctions();
-    gma::registerBuiltinNodeTypes();
+    krn::registerBuiltinFunctions();
+    krn::registerBuiltinNodeTypes();
 
-    gma::engine::EngineRegistries regs{
+    krn::engine::EngineRegistries regs{
       &g.cfg, g.pool.get(), g.store.get(), g.dispatcher.get(),
       g.shutdown.get(), g.ioc.get(),
-      &gma::engine::EventTypeRegistry::singleton(),
-      &gma::engine::EventComputerRegistry::singleton(),
-      &gma::engine::NodeTypeRegistry::singleton(),
-      &gma::engine::IngressRegistry::singleton(),
-      &gma::engine::ConfigNamespaceRegistry::singleton(),
-      &gma::AtomicProviderRegistry::singleton(),
-      &gma::FunctionMap::instance(),
-      &gma::util::logger(),
+      &krn::engine::EventTypeRegistry::singleton(),
+      &krn::engine::EventComputerRegistry::singleton(),
+      &krn::engine::NodeTypeRegistry::singleton(),
+      &krn::engine::IngressRegistry::singleton(),
+      &krn::engine::ConfigNamespaceRegistry::singleton(),
+      &krn::AtomicProviderRegistry::singleton(),
+      &krn::FunctionMap::instance(),
+      &krn::util::logger(),
     };
 
     g.market->registerWith(regs);   // NOTE: no start() — tests do not run sockets.

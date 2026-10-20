@@ -2,7 +2,7 @@
 #include <stdexcept>
 #include <mutex>
 
-using namespace gma;
+using namespace krn;
 
 FunctionMap& FunctionMap::instance() {
     static FunctionMap inst;

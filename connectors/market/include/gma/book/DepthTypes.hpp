@@ -4,7 +4,7 @@
 #include <string>
 #include "gma/book/OrderBook.hpp"  // for Price, Side
 
-namespace gma {
+namespace krn {
 
 // One level’s new total after a mutation
 struct LevelDelta {
@@ -31,4 +31,4 @@ struct DepthSnapshot {
     std::vector<std::pair<Price,uint64_t>> asks; // ordered best->worse
 };
 
-} // namespace gma
+} // namespace krn

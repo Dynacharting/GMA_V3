@@ -7,7 +7,7 @@
 #include <rapidjson/document.h>
 #include <vector>
 
-using namespace gma;
+using namespace krn;
 
 namespace {
 

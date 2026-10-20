@@ -3,7 +3,7 @@
 #include <string>
 #include <variant>
 
-namespace gma {
+namespace krn {
 
 struct Error {
   std::string message;
@@ -37,4 +37,4 @@ private:
   std::variant<T, Error> _value;
 };
 
-} // namespace gma
+} // namespace krn

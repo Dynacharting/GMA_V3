@@ -10,8 +10,8 @@
 #include <atomic>
 #include <mutex>
 
-using namespace gma;
-using namespace gma::nodes;
+using namespace krn;
+using namespace krn::nodes;
 
 namespace {
 

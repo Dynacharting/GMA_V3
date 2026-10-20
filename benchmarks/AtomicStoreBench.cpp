@@ -5,7 +5,7 @@
 #include <vector>
 
 static void BM_AtomicStoreSet_SingleThread(benchmark::State& state) {
-    gma::AtomicStore store;
+    krn::AtomicStore store;
     int i = 0;
     for (auto _ : state) {
         store.set("SYM", "field", static_cast<double>(i++));
@@ -16,7 +16,7 @@ static void BM_AtomicStoreSet_SingleThread(benchmark::State& state) {
 BENCHMARK(BM_AtomicStoreSet_SingleThread);
 
 static void BM_AtomicStoreGet_SingleThread(benchmark::State& state) {
-    gma::AtomicStore store;
+    krn::AtomicStore store;
     store.set("SYM", "field", 42.0);
     for (auto _ : state) {
         benchmark::DoNotOptimize(store.get("SYM", "field"));
@@ -27,8 +27,8 @@ static void BM_AtomicStoreGet_SingleThread(benchmark::State& state) {
 BENCHMARK(BM_AtomicStoreGet_SingleThread);
 
 static void BM_AtomicStoreBatchSet(benchmark::State& state) {
-    gma::AtomicStore store;
-    std::vector<std::pair<std::string, gma::ArgType>> batch;
+    krn::AtomicStore store;
+    std::vector<std::pair<std::string, krn::ArgType>> batch;
     for (int i = 0; i < 20; ++i) {
         batch.emplace_back("field_" + std::to_string(i), static_cast<double>(i));
     }
@@ -41,7 +41,7 @@ static void BM_AtomicStoreBatchSet(benchmark::State& state) {
 BENCHMARK(BM_AtomicStoreBatchSet);
 
 static void BM_AtomicStoreSet_Contended(benchmark::State& state) {
-    static gma::AtomicStore store;
+    static krn::AtomicStore store;
     const int tid = static_cast<int>(state.thread_index());
     const std::string sym = "SYM_" + std::to_string(tid);
     int i = 0;

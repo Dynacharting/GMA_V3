@@ -35,7 +35,7 @@
 #include <string>
 #include <vector>
 
-namespace gma::data::csv {
+namespace krn::data::csv {
 namespace {
 
 // A per-test temp directory. NOT a fixed name under /tmp: parallel agents share
@@ -1079,4 +1079,4 @@ TEST(DatabentoCsvAntiVacuity, EveryCaseInThisFileIsRegistered) {
 }
 
 }  // namespace
-}  // namespace gma::data::csv
+}  // namespace krn::data::csv

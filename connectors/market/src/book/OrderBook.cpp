@@ -4,7 +4,7 @@
 #include <cassert>
 #include <sstream>
 
-namespace gma {
+namespace krn {
 
 // --------- Synthetic ID generator (D4) ---------
 uint64_t OrderBook::nextSyntheticId(FeedScope s) {
@@ -337,7 +337,7 @@ bool OrderBook::updateImpl(const OrderKey& key,
     if (tgtSize == 0) {
         if (lvl->totalSize >= oldSize) lvl->totalSize -= oldSize;
         else {
-            gma::util::logger().log(gma::util::LogLevel::Error,
+            krn::util::logger().log(krn::util::LogLevel::Error,
                 "OrderBook: totalSize underflow detected",
                 {{"oldSize", std::to_string(oldSize)},
                  {"totalSize", std::to_string(lvl->totalSize)}});
@@ -365,7 +365,7 @@ bool OrderBook::updateImpl(const OrderKey& key,
 
     if (lvl->totalSize >= oldSize) lvl->totalSize -= oldSize;
     else {
-        gma::util::logger().log(gma::util::LogLevel::Error,
+        krn::util::logger().log(krn::util::LogLevel::Error,
             "OrderBook: totalSize underflow detected",
             {{"oldSize", std::to_string(oldSize)},
              {"totalSize", std::to_string(lvl->totalSize)}});
@@ -454,4 +454,4 @@ bool OrderBook::locate(const OrderKey& key, Side& outSide, Price& outPrice) cons
     return true;
 }
 
-} // namespace gma
+} // namespace krn

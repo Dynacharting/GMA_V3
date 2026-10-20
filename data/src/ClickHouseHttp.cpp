@@ -16,7 +16,7 @@
 #include <cstring>
 #include <sstream>
 
-namespace gma::data::ch {
+namespace krn::data::ch {
 namespace {
 
 namespace beast = boost::beast;
@@ -233,4 +233,4 @@ std::string tsvEscape(std::string_view s) {
   return out;
 }
 
-}  // namespace gma::data::ch
+}  // namespace krn::data::ch

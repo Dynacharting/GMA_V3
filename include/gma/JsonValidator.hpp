@@ -3,7 +3,7 @@
 #include <string>
 #include <stdexcept>
 
-namespace gma {
+namespace krn {
 
 class JsonValidator {
 public:
@@ -44,4 +44,4 @@ private:
     static constexpr size_t MAX_STRING_LEN  = 4096;
 };
 
-} // namespace gma
+} // namespace krn

@@ -5,11 +5,11 @@
 #include <stdexcept>
 #include <variant>
 
-using namespace gma;
-using namespace gma::nodes;
-using gma::server::RequestKey;
-using gma::server::requestKeyInt;
-using gma::server::requestKeyStr;
+using namespace krn;
+using namespace krn::nodes;
+using krn::server::RequestKey;
+using krn::server::requestKeyInt;
+using krn::server::requestKeyStr;
 
 TEST(ResponderTest, CallsCallbackWithCorrectKeyAndValue) {
     RequestKey capturedKey;

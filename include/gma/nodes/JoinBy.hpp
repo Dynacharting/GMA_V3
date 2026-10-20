@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include <string>
 
-namespace gma {
+namespace krn {
 
 // ---------------------------------------------------------------------------
 // THE DECLARED CORRELATION KEY FOR A FAN-IN JOIN
@@ -177,4 +177,4 @@ inline JoinBy parseJoinBy(const std::string& raw, const char* nodeType) {
     "(SPEC specs/2026-09-20-gma-join-correctness section 5 Q3).");
 }
 
-} // namespace gma
+} // namespace krn

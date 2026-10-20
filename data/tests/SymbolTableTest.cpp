@@ -20,9 +20,9 @@
 #include <unordered_set>
 #include <vector>
 
-using gma::data::kInvalidSymbolId;
-using gma::data::SymbolId;
-using gma::data::SymbolTable;
+using krn::data::kInvalidSymbolId;
+using krn::data::SymbolId;
+using krn::data::SymbolTable;
 
 TEST(SymbolTableTest, EmptyTableKnowsNothing) {
   SymbolTable t;
@@ -42,7 +42,7 @@ TEST(SymbolTableTest, ZeroIsReservedAndNeverIssued) {
   EXPECT_NE(first, kInvalidSymbolId);
   EXPECT_EQ(first, 1u);
 
-  gma::data::RecordHeader fresh;
+  krn::data::RecordHeader fresh;
   EXPECT_EQ(fresh.symbolId, kInvalidSymbolId);
   EXPECT_EQ(fresh.venueId, kInvalidSymbolId);
   EXPECT_FALSE(t.contains(fresh.symbolId));
@@ -144,12 +144,12 @@ TEST(SymbolTableTest, ConcurrentInternIssuesOneIdPerString) {
 
 // SPEC D8: the fixed global 1e-9 scale.
 TEST(FixedPointTest, ScaleIsGlobalAndExact) {
-  EXPECT_EQ(gma::data::kPriceScale, 1'000'000'000LL);
-  EXPECT_EQ(gma::data::kNoPrice, INT64_MIN);
-  EXPECT_EQ(gma::data::toFixed(1.0), 1'000'000'000LL);
-  EXPECT_EQ(gma::data::toFixed(-1.5), -1'500'000'000LL);
-  EXPECT_EQ(gma::data::toFixed(0.0), 0LL);
-  EXPECT_DOUBLE_EQ(gma::data::toDouble(1'234'567'890LL), 1.23456789);
+  EXPECT_EQ(krn::data::kPriceScale, 1'000'000'000LL);
+  EXPECT_EQ(krn::data::kNoPrice, INT64_MIN);
+  EXPECT_EQ(krn::data::toFixed(1.0), 1'000'000'000LL);
+  EXPECT_EQ(krn::data::toFixed(-1.5), -1'500'000'000LL);
+  EXPECT_EQ(krn::data::toFixed(0.0), 0LL);
+  EXPECT_DOUBLE_EQ(krn::data::toDouble(1'234'567'890LL), 1.23456789);
 }
 
 // WHY SPEC D8 insists on "an exact integer path from DBN with no double round
@@ -160,8 +160,8 @@ TEST(FixedPointTest, ScaleIsGlobalAndExact) {
 // perfectly, so the bug is invisible until it is not.
 TEST(FixedPointTest, DoubleRoundTripIsLossyPastTwoToThe53) {
   const std::int64_t beyondDouble = 9'007'199'254'740'993LL;  // 2^53 + 1
-  EXPECT_NE(gma::data::toFixed(gma::data::toDouble(beyondDouble)), beyondDouble);
+  EXPECT_NE(krn::data::toFixed(krn::data::toDouble(beyondDouble)), beyondDouble);
 
   const std::int64_t aapl = 190'125'000'000LL;  // $190.125 at 1e-9
-  EXPECT_EQ(gma::data::toFixed(gma::data::toDouble(aapl)), aapl);
+  EXPECT_EQ(krn::data::toFixed(krn::data::toDouble(aapl)), aapl);
 }

@@ -62,21 +62,21 @@ namespace {
 struct BurstHarness {
   asio::io_context ioc;
   std::unique_ptr<asio::executor_work_guard<asio::io_context::executor_type>> work;
-  std::unique_ptr<gma::rt::ThreadPool>   pool;
-  std::unique_ptr<gma::AtomicStore>      store;
-  std::unique_ptr<gma::Dispatcher>       dispatcher;
-  std::unique_ptr<gma::ExecutionContext> exec;
-  std::unique_ptr<gma::WebSocketServer>  server;
+  std::unique_ptr<krn::rt::ThreadPool>   pool;
+  std::unique_ptr<krn::AtomicStore>      store;
+  std::unique_ptr<krn::Dispatcher>       dispatcher;
+  std::unique_ptr<krn::ExecutionContext> exec;
+  std::unique_ptr<krn::WebSocketServer>  server;
   std::thread                            ioThread;
 
   BurstHarness() {
-    gma::registerBuiltinFunctions();
-    gma::registerBuiltinNodeTypes();
-    pool       = std::make_unique<gma::rt::ThreadPool>(1);
-    store      = std::make_unique<gma::AtomicStore>();
-    dispatcher = std::make_unique<gma::Dispatcher>(pool.get(), store.get());
-    exec       = std::make_unique<gma::ExecutionContext>(store.get(), pool.get());
-    server     = std::make_unique<gma::WebSocketServer>(ioc, exec.get(), dispatcher.get(), 0);
+    krn::registerBuiltinFunctions();
+    krn::registerBuiltinNodeTypes();
+    pool       = std::make_unique<krn::rt::ThreadPool>(1);
+    store      = std::make_unique<krn::AtomicStore>();
+    dispatcher = std::make_unique<krn::Dispatcher>(pool.get(), store.get());
+    exec       = std::make_unique<krn::ExecutionContext>(store.get(), pool.get());
+    server     = std::make_unique<krn::WebSocketServer>(ioc, exec.get(), dispatcher.get(), 0);
     server->run();
     work = std::make_unique<asio::executor_work_guard<asio::io_context::executor_type>>(
              ioc.get_executor());
@@ -361,12 +361,12 @@ TEST(ClientSessionBackpressureTest, BurstAboveOutboxBoundaryDoesNotDisconnect) {
   auto stream = connectSlowReader(clientIoc, srv.port());
   subscribeAndAwaitAck(stream, "OVER");
 
-  const auto before = gma::util::MetricRegistry::instance().snapshotCounters();
+  const auto before = krn::util::MetricRegistry::instance().snapshotCounters();
   burst(srv, "OVER", kTicks);
   speedUpReader(stream);
 
   auto r = drainUntilValue(stream, kTicks - 1, drainBudget());
-  const auto after = gma::util::MetricRegistry::instance().snapshotCounters();
+  const auto after = krn::util::MetricRegistry::instance().snapshotCounters();
 
   EXPECT_FALSE(r.closed)
       << "a burst past MAX_OUTBOX_SIZE must degrade, not disconnect: "
@@ -459,12 +459,12 @@ TEST(ClientSessionBackpressureTest, BurstBelowWatermarkIsLossless) {
   auto stream = connectSlowReader(clientIoc, srv.port());
   subscribeAndAwaitAck(stream, "SMALL");
 
-  const auto before = gma::util::MetricRegistry::instance().snapshotCounters();
+  const auto before = krn::util::MetricRegistry::instance().snapshotCounters();
   burst(srv, "SMALL", kTicks);
   speedUpReader(stream);
 
   auto r = drainUntilValue(stream, kTicks - 1, drainBudget());
-  const auto after = gma::util::MetricRegistry::instance().snapshotCounters();
+  const auto after = krn::util::MetricRegistry::instance().snapshotCounters();
 
   EXPECT_FALSE(r.closed) << r.closeDetail;
   EXPECT_TRUE(r.sawTarget) << "last=" << r.lastValue << " — " << drainDiagnosis(r);
@@ -543,7 +543,7 @@ void notifyValue(BurstHarness& srv, const std::string& streamKey, double v) {
 }
 
 double counterNow(const char* name) {
-  return counter(gma::util::MetricRegistry::instance().snapshotCounters(), name);
+  return counter(krn::util::MetricRegistry::instance().snapshotCounters(), name);
 }
 
 // Poll a counter rather than sleeping a fixed amount: these counters are hit on
@@ -565,11 +565,11 @@ bool waitForCounter(const char* name, double atLeast,
 // own runtime (7s of gtest becomes 70s of ctest). Quieten the logger for the
 // duration and put it back, whatever the test does.
 struct QuietLogger {
-  gma::util::LogLevel saved;
-  QuietLogger() : saved(gma::util::logger().level()) {
-    gma::util::logger().setLevel(gma::util::LogLevel::Warn);
+  krn::util::LogLevel saved;
+  QuietLogger() : saved(krn::util::logger().level()) {
+    krn::util::logger().setLevel(krn::util::LogLevel::Warn);
   }
-  ~QuietLogger() { gma::util::logger().setLevel(saved); }
+  ~QuietLogger() { krn::util::logger().setLevel(saved); }
 };
 
 std::string cancelMessage(int firstKey, int count) {
@@ -699,7 +699,7 @@ TEST(ClientSessionBackpressureTest, NewestValueSurvivesTheHardMemoryBound) {
         << "only " << i << " of " << (kPadStreams + 1) << " subscriptions were acked";
   }
 
-  const auto before = gma::util::MetricRegistry::instance().snapshotCounters();
+  const auto before = krn::util::MetricRegistry::instance().snapshotCounters();
 
   // ---- 2. Seed one pending value frame per padding stream. From here the
   // client reads nothing, so the outbox is effectively frozen and everything

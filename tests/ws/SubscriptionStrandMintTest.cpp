@@ -27,7 +27,7 @@
 // So the observable had to be built. `rt::Strand` now carries the mint site that
 // created it (`origin()`), stamped through `rt::Strand::Attribution` — a token
 // whose constructor is private and whose only friend is
-// `gma::server::SubscriptionStrandMint`. An attributed strand therefore cannot
+// `krn::server::SubscriptionStrandMint`. An attributed strand therefore cannot
 // be constructed anywhere else in the engine, so reading that tag off the
 // `Listener` of a subscription driven through a REAL WebSocket session answers
 // the exact question M7 asks: is the strand this DAG was given the one the
@@ -113,20 +113,20 @@ namespace {
 struct SessionHarness {
   asio::io_context ioc;
   std::unique_ptr<asio::executor_work_guard<asio::io_context::executor_type>> work;
-  std::unique_ptr<gma::rt::ThreadPool>   pool;
-  std::unique_ptr<gma::AtomicStore>      store;
-  std::unique_ptr<gma::Dispatcher>       dispatcher;
-  std::unique_ptr<gma::ExecutionContext> exec;
-  std::unique_ptr<gma::WebSocketServer>  server;
+  std::unique_ptr<krn::rt::ThreadPool>   pool;
+  std::unique_ptr<krn::AtomicStore>      store;
+  std::unique_ptr<krn::Dispatcher>       dispatcher;
+  std::unique_ptr<krn::ExecutionContext> exec;
+  std::unique_ptr<krn::WebSocketServer>  server;
   std::thread                            ioThread;
 
   explicit SessionHarness(bool execHasPool = true) {
-    pool       = std::make_unique<gma::rt::ThreadPool>(4);
-    store      = std::make_unique<gma::AtomicStore>();
-    dispatcher = std::make_unique<gma::Dispatcher>(pool.get(), store.get());
-    exec       = std::make_unique<gma::ExecutionContext>(
+    pool       = std::make_unique<krn::rt::ThreadPool>(4);
+    store      = std::make_unique<krn::AtomicStore>();
+    dispatcher = std::make_unique<krn::Dispatcher>(pool.get(), store.get());
+    exec       = std::make_unique<krn::ExecutionContext>(
                    store.get(), execHasPool ? pool.get() : nullptr);
-    server     = std::make_unique<gma::WebSocketServer>(ioc, exec.get(),
+    server     = std::make_unique<krn::WebSocketServer>(ioc, exec.get(),
                                                         dispatcher.get(), 0);
     server->run();
     work = std::make_unique<
@@ -204,12 +204,12 @@ std::string readUntilType(ws::stream<tcp::socket>& stream,
 // For the single-field request these tests drive there is exactly one, so it is
 // the head; a request whose join inputs listened on the same (symbol, field)
 // would make "first" and "head" different things.
-std::shared_ptr<gma::nodes::Listener> listenerOn(gma::Dispatcher& d,
+std::shared_ptr<krn::nodes::Listener> listenerOn(krn::Dispatcher& d,
                                                    const std::string& symbol,
                                                    const std::string& field) {
   auto nodes = d.listenersFor(symbol, field);
   for (const auto& n : nodes) {
-    if (auto l = std::dynamic_pointer_cast<gma::nodes::Listener>(n)) return l;
+    if (auto l = std::dynamic_pointer_cast<krn::nodes::Listener>(n)) return l;
   }
   return nullptr;
 }
@@ -253,10 +253,10 @@ TEST(SubscriptionStrandMint, ProductionSubscribeMintsItsOwnStrandAtTheSessionSit
   // in the engine (file-local to ClientSession.cpp), so nothing else can
   // produce it: the backstop's strand reads `unattributed`, and so does a mint
   // inlined at the call site.
-  EXPECT_STREQ(strand->origin(), gma::server::SubscriptionStrandMint::origin())
+  EXPECT_STREQ(strand->origin(), krn::server::SubscriptionStrandMint::origin())
       << "the strand this subscription is running on was NOT minted by "
          "ClientSession::handleSubscribe. `"
-      << gma::rt::Strand::kUnattributedOrigin
+      << krn::rt::Strand::kUnattributedOrigin
       << "` means tree::buildForRequest's backstop silently supplied one — "
          "which is ENC-1005's M7, and the production mint is gone.";
 
@@ -302,7 +302,7 @@ TEST(SubscriptionStrandMint, AReSubscribeGetsAFreshSessionMintedStrand) {
   ASSERT_TRUE(first);
   const auto firstStrand = first->strand();
   ASSERT_TRUE(firstStrand);
-  EXPECT_STREQ(firstStrand->origin(), gma::server::SubscriptionStrandMint::origin());
+  EXPECT_STREQ(firstStrand->origin(), krn::server::SubscriptionStrandMint::origin());
 
   stream.write(asio::buffer(std::string(kSubscribeAapl)));
   ASSERT_FALSE(readUntilType(stream, "subscribed", std::chrono::seconds(3)).empty());
@@ -311,12 +311,12 @@ TEST(SubscriptionStrandMint, AReSubscribeGetsAFreshSessionMintedStrand) {
   // and that strand is the SESSION's, not a backstop's.
   bool sawFresh = false;
   for (const auto& n : srv.dispatcher->listenersFor("AAPL", "lastPrice")) {
-    auto l = std::dynamic_pointer_cast<gma::nodes::Listener>(n);
+    auto l = std::dynamic_pointer_cast<krn::nodes::Listener>(n);
     if (!l || l == first) continue;
     ASSERT_TRUE(l->strand());
     EXPECT_NE(l->strand(), firstStrand)
         << "the re-subscribed DAG shares the shut-down DAG's strand";
-    EXPECT_STREQ(l->strand()->origin(), gma::server::SubscriptionStrandMint::origin())
+    EXPECT_STREQ(l->strand()->origin(), krn::server::SubscriptionStrandMint::origin())
         << "the re-subscribed DAG's strand did not come from the session site";
     sawFresh = true;
   }
@@ -340,7 +340,7 @@ TEST(SubscriptionStrandMint, AReSubscribeGetsAFreshSessionMintedStrand) {
 //    only in a comment.
 // ───────────────────────────────────────────────────────────────────────────
 TEST(SubscriptionStrandMint, TheMintReturnsNullForAPoollessExecutor) {
-  EXPECT_EQ(gma::server::SubscriptionStrandMint::mint(nullptr), nullptr)
+  EXPECT_EQ(krn::server::SubscriptionStrandMint::mint(nullptr), nullptr)
       << "the production mint built a Strand over a null pool — ENC-1005's M10. "
          "A pool-less Strand runs inline on its caller AND makes the Listener "
          "claim its own executor, putting the entire DAG compute on the "
@@ -354,11 +354,11 @@ TEST(SubscriptionStrandMint, TheMintReturnsNullForAPoollessExecutor) {
 //    only thing under test.
 // ───────────────────────────────────────────────────────────────────────────
 TEST(SubscriptionStrandMint, TheMintReturnsAWorkingStrandTaggedWithItsSite) {
-  gma::rt::ThreadPool pool(4);
-  auto strand = gma::server::SubscriptionStrandMint::mint(&pool);
+  krn::rt::ThreadPool pool(4);
+  auto strand = krn::server::SubscriptionStrandMint::mint(&pool);
   ASSERT_TRUE(strand) << "the production mint produced NO strand for a real "
                          "pool — ENC-1005's M7 applied inside the helper";
-  EXPECT_STREQ(strand->origin(), gma::server::SubscriptionStrandMint::origin());
+  EXPECT_STREQ(strand->origin(), krn::server::SubscriptionStrandMint::origin());
 
   // It is a strand: FIFO, and never two tasks at once.
   constexpr int kTasks = 200;
