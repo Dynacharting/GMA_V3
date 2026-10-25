@@ -1,5 +1,5 @@
 // Market technical-analysis computations. Temporary home; moves into
-// libgma_connector_market in Step 7 of the engine/connector refactor.
+// libkrn_connector_market in Step 7 of the engine/connector refactor.
 #pragma once
 
 #include <string>

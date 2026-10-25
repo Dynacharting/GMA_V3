@@ -11,7 +11,7 @@
 //     "tests/treebuilder/corpus_requests.json"
 //
 // all of which are relative to the CURRENT WORKING DIRECTORY. CMake's
-// `add_test(... WORKING_DIRECTORY $<TARGET_FILE_DIR:gma_tests>)` makes that
+// `add_test(... WORKING_DIRECTORY $<TARGET_FILE_DIR:krn_tests>)` makes that
 // true under ctest, and a POST_BUILD step copies the corpus next to the binary
 // — so `ctest` is always fine. Running the RAW binary by hand from anywhere
 // else resolved none of the three, and the suite answered with **12 test
@@ -23,7 +23,7 @@
 //   1. SELF-HEALING — the candidate list now also contains paths that do not
 //      depend on the cwd at all: the directory of the running executable
 //      (where POST_BUILD put the copy) and the configure-time source tree
-//      (`GMA_TEST_SOURCE_DIR`, injected by CMake). A binary built by this
+//      (`KRN_TEST_SOURCE_DIR`, injected by CMake). A binary built by this
 //      project therefore finds its corpus from ANY working directory.
 //
 //   2. SELF-DIAGNOSING — when it genuinely cannot be found, callers print
@@ -63,9 +63,9 @@ inline const std::vector<std::string>& corpusCandidates() {
     if (!ec && exe.has_parent_path())
       v.push_back((exe.parent_path() / "corpus_requests.json").string());
 #endif
-#if defined(GMA_TEST_SOURCE_DIR)
+#if defined(KRN_TEST_SOURCE_DIR)
     // The checked-in original, at its configure-time absolute path.
-    v.push_back(std::string(GMA_TEST_SOURCE_DIR) +
+    v.push_back(std::string(KRN_TEST_SOURCE_DIR) +
                 "/tests/treebuilder/corpus_requests.json");
 #endif
     return v;
@@ -106,13 +106,13 @@ inline std::string corpusNotFoundDiagnostic() {
   std::string s =
       "corpus_requests.json could not be found.\n"
       "  This is almost always a WORKING-DIRECTORY problem, not a code "
-      "problem: the corpus is copied next to the gma_tests binary at build "
+      "problem: the corpus is copied next to the krn_tests binary at build "
       "time and `ctest` runs the binary from that directory "
       "(add_test sets WORKING_DIRECTORY). A hand-run of the raw binary from "
       "somewhere else is the failure mode — it produces a dozen unrelated-"
       "looking test failures that are ALL this one missing file.\n"
       "  Fix: run `ctest --test-dir build --output-on-failure`, or cd into the "
-      "directory holding gma_tests before running it by hand.\n"
+      "directory holding krn_tests before running it by hand.\n"
       "  cwd: " + cwd + "\n"
       "  searched:\n";
   for (const auto& c : corpusCandidates()) s += "    - " + c + "\n";

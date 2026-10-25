@@ -1,14 +1,14 @@
 //
-// gma_ingest — the ENC-1483 ingest job's command line.
+// krn_ingest — the ENC-1483 ingest job's command line.
 //
 // Design: specs/2026-10-14-gma-data-layer/SPEC.md D5, D6, D7, D11;
 //         docs/data-layer.md §8.6, §8.7, §8.8, §8.9.
 //
-//   gma_ingest ingest  [--url U] [--data-root P] [--session-id N]
+//   krn_ingest ingest  [--url U] [--data-root P] [--session-id N]
 //                      [--dbn-version V] [--no-insert] [--force-reencode]
-//   gma_ingest reload  [--url U] [--data-root P]      # ingest --from-dbn-only
-//   gma_ingest verify  [--url U] [--symbol S]         # the D11 demonstration
-//   gma_ingest resolve-target [--url U]               # which server, no I/O
+//   krn_ingest reload  [--url U] [--data-root P]      # ingest --from-dbn-only
+//   krn_ingest verify  [--url U] [--symbol S]         # the D11 demonstration
+//   krn_ingest resolve-target [--url U]               # which server, no I/O
 //
 // EXIT CODES, and the distinction is the point: 0 clean, 1 A FINDING (the data
 // or the completeness rows are not what they should be), 2 COULD NOT RUN (no
@@ -46,7 +46,7 @@ constexpr std::int64_t kDayNs = 86400000000000LL;
 
 void usage() {
   std::cout <<
-      "usage: gma_ingest <ingest|reload|verify|resolve-target> [options]\n"
+      "usage: krn_ingest <ingest|reload|verify|resolve-target> [options]\n"
       "\n"
       "  ingest           CSV -> DBN (retained) -> adapter -> gma.\n"
       "  reload           the SPEC D6 reload: the retained DBN only, no CSV.\n"
@@ -88,7 +88,7 @@ bool parseArgs(int argc, char** argv, Args& a) {
     const std::string f = argv[i];
     const auto next = [&](const char* name) -> const char* {
       if (i + 1 >= argc) {
-        std::cerr << "gma_ingest: " << name << " needs a value\n";
+        std::cerr << "krn_ingest: " << name << " needs a value\n";
         std::exit(kCouldNotRun);
       }
       return argv[++i];
@@ -120,12 +120,12 @@ bool parseArgs(int argc, char** argv, Args& a) {
       const char* last = text + std::strlen(text);
       const auto r = std::from_chars(text, last, v);
       if (r.ec != std::errc{} || r.ptr != last) {
-        std::cerr << "gma_ingest: " << name << " must be an integer (got \""
+        std::cerr << "krn_ingest: " << name << " must be an integer (got \""
                   << text << "\")\n";
         std::exit(kCouldNotRun);
       }
       if (v < static_cast<std::uint64_t>(lo) || v > static_cast<std::uint64_t>(hi)) {
-        std::cerr << "gma_ingest: " << name << " must be in [" << +lo << ", " << +hi
+        std::cerr << "krn_ingest: " << name << " must be in [" << +lo << ", " << +hi
                   << "] (got " << v << ")\n";
         std::exit(kCouldNotRun);
       }
@@ -154,7 +154,7 @@ bool parseArgs(int argc, char** argv, Args& a) {
       usage();
       std::exit(kClean);
     } else {
-      std::cerr << "gma_ingest: unknown flag " << f << "\n";
+      std::cerr << "krn_ingest: unknown flag " << f << "\n";
       return false;
     }
   }
@@ -304,8 +304,8 @@ int cmdIngest(const Args& a, bool fromDbnOnly) {
     // retry later" throws the finding away. The classification is made at each
     // refusal site and carried on the status; see Verdict.hpp.
     const int code = exitCodeFor(res.status());
-    std::cerr << "gma_ingest: " << res.status().ToString() << "\n"
-              << "gma_ingest: exiting " << code << " — "
+    std::cerr << "krn_ingest: " << res.status().ToString() << "\n"
+              << "krn_ingest: exiting " << code << " — "
               << (code == kFinding
                       ? "A FINDING: the job ran and what it found is wrong."
                       : "COULD NOT RUN: no verdict was reached.")
@@ -345,7 +345,7 @@ int cmdIngest(const Args& a, bool fromDbnOnly) {
 int cmdVerify(const Args& a) {
   auto target = ch::resolveTarget(a.url);
   if (!target.ok()) {
-    std::cerr << "gma_ingest: " << target.status().ToString() << "\n";
+    std::cerr << "krn_ingest: " << target.status().ToString() << "\n";
     return kCouldNotRun;
   }
   const ch::Client client(*target);
@@ -369,14 +369,14 @@ int cmdVerify(const Args& a) {
     const std::int64_t probeTo   = 4000000000000000000LL;  // ~2096
     auto wide = ingest::queryCompleteness(client, a.symbol, k.kind, probeFrom, probeTo);
     if (!wide.ok()) {
-      std::cerr << "gma_ingest: " << wide.status().ToString() << "\n";
+      std::cerr << "krn_ingest: " << wide.status().ToString() << "\n";
       return kCouldNotRun;
     }
     std::cout << "recorded windows resolved : " << wide->resolved
               << ", surviving state=1 after resolution : " << wide->survived << "\n";
     if (wide->covered.empty()) {
       std::cout << "  NOTHING is recorded as complete for this (symbol, kind). "
-                   "Run `gma_ingest ingest` first.\n";
+                   "Run `krn_ingest ingest` first.\n";
       ++findings;
       continue;
     }
@@ -415,7 +415,7 @@ int cmdVerify(const Args& a) {
     for (const auto& p : probes) {
       auto v = ingest::queryCompleteness(client, a.symbol, k.kind, p.from, p.to);
       if (!v.ok()) {
-        std::cerr << "gma_ingest: " << v.status().ToString() << "\n";
+        std::cerr << "krn_ingest: " << v.status().ToString() << "\n";
         return kCouldNotRun;
       }
       // ⚠ CODE-REVIEW FINDING #14: THE EXPECTATION IS DERIVED, NOT PINNED.
@@ -448,7 +448,7 @@ int cmdVerify(const Args& a) {
       // Row counts, printed ALONGSIDE the verdict and never instead of it.
       auto n = ingest::rowCount(client, k.table, a.symbol, p.from, p.to);
       if (!n.ok()) {
-        std::cerr << "gma_ingest: " << n.status().ToString() << "\n";
+        std::cerr << "krn_ingest: " << n.status().ToString() << "\n";
         return kCouldNotRun;
       }
       std::cout << "         gma." << k.table << " rows in that range: " << *n
@@ -494,7 +494,7 @@ int cmdVerify(const Args& a) {
         << "), 'UTC') AND state = 1 FORMAT TabSeparated";
       auto rows = client.select(q.str());
       if (!rows.ok()) {
-        std::cerr << "gma_ingest: " << rows.status().ToString() << "\n";
+        std::cerr << "krn_ingest: " << rows.status().ToString() << "\n";
         return kCouldNotRun;
       }
       // Newest state=1 row for THIS window, resolved in C++ like everything
@@ -504,14 +504,14 @@ int cmdVerify(const Args& a) {
       long long newest = -1;
       for (const auto& r : *rows) {
         if (r.size() != 2) {
-          std::cerr << "gma_ingest: gma.ingest_windows row has " << r.size()
+          std::cerr << "krn_ingest: gma.ingest_windows row has " << r.size()
                     << " field(s), expected 2\n";
           return kCouldNotRun;
         }
         long long inserted = 0;
         long long updated = 0;
         if (!parseLL(r[0], inserted) || !parseLL(r[1], updated)) {
-          std::cerr << "gma_ingest: ClickHouse returned a non-integer for "
+          std::cerr << "krn_ingest: ClickHouse returned a non-integer for "
                        "rows_inserted/updated_at (\""
                     << r[0] << "\", \"" << r[1] << "\")\n";
           return kCouldNotRun;
@@ -523,7 +523,7 @@ int cmdVerify(const Args& a) {
       }
       auto actual = ingest::rowCount(client, k.table, a.symbol, w.fromNs, w.toNs);
       if (!actual.ok()) {
-        std::cerr << "gma_ingest: " << actual.status().ToString() << "\n";
+        std::cerr << "krn_ingest: " << actual.status().ToString() << "\n";
         return kCouldNotRun;
       }
       if (claimedN > 0 && *actual == 0) {
@@ -535,7 +535,7 @@ int cmdVerify(const Args& a) {
                      "         cause is a DROP PARTITION that did not go through "
                      "the ingest job (it writes a\n"
                      "         state=3 or state=0 row first; a hand-typed ALTER "
-                     "does not). Run `gma_ingest reload`.\n";
+                     "does not). Run `krn_ingest reload`.\n";
         ++findings;
       } else {
         std::cout << "  [ok]   the state=1 claim on "
@@ -554,7 +554,7 @@ int cmdVerify(const Args& a) {
       "toString(valid_to), source_ref FROM gma.symbology FINAL ORDER BY "
       "dataset, instrument_id, valid_from FORMAT TabSeparated");
   if (!sym.ok()) {
-    std::cerr << "gma_ingest: " << sym.status().ToString() << "\n";
+    std::cerr << "krn_ingest: " << sym.status().ToString() << "\n";
     return kCouldNotRun;
   }
   if (sym->empty()) {
@@ -588,13 +588,13 @@ int main(int argc, char** argv) {
   if (a.command == "resolve-target") {
     auto t = krn::data::ch::resolveTarget(a.url);
     if (!t.ok()) {
-      std::cerr << "gma_ingest: " << t.status().ToString() << "\n";
+      std::cerr << "krn_ingest: " << t.status().ToString() << "\n";
       return kCouldNotRun;
     }
     printTarget(*t);
     return kClean;
   }
-  std::cerr << "gma_ingest: unknown command " << a.command << "\n";
+  std::cerr << "krn_ingest: unknown command " << a.command << "\n";
   usage();
   return kCouldNotRun;
 }

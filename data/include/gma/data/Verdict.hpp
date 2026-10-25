@@ -2,11 +2,11 @@
 //
 // Which exit code an error means (ENC-1483, code-review finding #1).
 //
-// Design: specs/2026-10-14-gma-data-layer/SPEC.md D11; `gma_ingest`'s documented
+// Design: specs/2026-10-14-gma-data-layer/SPEC.md D11; `krn_ingest`'s documented
 //         exit codes — 0 clean, 1 A FINDING, 2 COULD NOT RUN.
 //
 // THE DEFECT THIS EXISTS TO CLOSE, AND IT WAS THE INVERSE OF THE ONE GUARDED
-// AGAINST. `gma_ingest`'s header promises three exit codes and explains why:
+// AGAINST. `krn_ingest`'s header promises three exit codes and explains why:
 // "a tool that returns 1 for both makes 'the gate is red' and 'the gate never
 // ran' the same observation". `cmdIngest` then mapped EVERY non-OK status to
 // exit 2, so a round-trip mismatch, a retained DBN that would not read back,

@@ -15,7 +15,7 @@
 #include <boost/beast/http.hpp>
 #include <boost/beast/version.hpp>
 
-#ifdef GMA_HAS_SSL
+#ifdef KRN_HAS_SSL
 #include <boost/asio/ssl.hpp>
 #include <boost/beast/ssl.hpp>
 #endif
@@ -119,7 +119,7 @@ std::string fetchPlain(const ParsedURL& url,
   return std::string(res.body());
 }
 
-#ifdef GMA_HAS_SSL
+#ifdef KRN_HAS_SSL
 // Synchronous TLS-HTTPS GET → response body.
 std::string fetchTls(const ParsedURL& url,
                      const std::string& tenantId,
@@ -272,11 +272,11 @@ ConnectorsClient::fetchIngresses(const std::string& forumUrl,
 
   std::string body = fetchWithRetry([&] {
     if (url.tls) {
-#ifdef GMA_HAS_SSL
+#ifdef KRN_HAS_SSL
       return fetchTls(url, tenantId, bearer);
 #else
       throw std::runtime_error(
-          "ConnectorsClient: https forumUrl but binary built without GMA_HAS_SSL");
+          "ConnectorsClient: https forumUrl but binary built without KRN_HAS_SSL");
 #endif
     }
     return fetchPlain(url, tenantId, bearer);

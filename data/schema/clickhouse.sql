@@ -24,7 +24,7 @@
 --
 -- Apply it with data/schema/apply.sh. Every statement is IF NOT EXISTS, so
 -- applying it twice is a no-op; apply.sh proves that by doing exactly that.
--- Nothing in the C++ build applies this; ENC-1483's `gma_ingest` is the first
+-- Nothing in the C++ build applies this; ENC-1483's `krn_ingest` is the first
 -- WRITER against an already-applied schema, and it refuses rather than issues
 -- DDL if a table is missing.
 --

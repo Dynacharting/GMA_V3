@@ -255,10 +255,10 @@ Validates the `FeedEvent` variant types:
 cd build && ctest --output-on-failure
 
 # Just feed adapter tests
-./gma_tests --gtest_filter="ItchAdapter*:MarketFieldMap*:FeedEvent*"
+./krn_tests --gtest_filter="ItchAdapter*:MarketFieldMap*:FeedEvent*"
 
 # Just one suite
-./gma_tests --gtest_filter="ItchAdapterTest.*"
+./krn_tests --gtest_filter="ItchAdapterTest.*"
 ```
 
 ### Writing tests for a new adapter

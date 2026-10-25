@@ -433,9 +433,9 @@ Run:
 ```sh
 cd GMA_V3
 mkdir -p build && cd build
-cmake .. -DGMA_BUILD_TESTS=ON
-cmake --build . -j --target gma_tests
-./gma_tests --gtest_filter='Enc101CanonicalPatternTest.*'
+cmake .. -DKRN_BUILD_TESTS=ON
+cmake --build . -j --target krn_tests
+./krn_tests --gtest_filter='Enc101CanonicalPatternTest.*'
 ```
 
 Expected:

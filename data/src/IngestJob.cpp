@@ -43,7 +43,7 @@ const char* const kSessionIdRuling =
     "makes the stable half useless.\n"
     "  WHY THE FILE AND NOT THE VENDOR job_id, WHICH WAS THE FIRST ANSWER: the "
     "job_id is in metadata.json and is NOT IN DBN AT ALL. Deriving from it "
-    "makes `gma_ingest reload` -- the pure D6 reload, which reads only the "
+    "makes `krn_ingest reload` -- the pure D6 reload, which reads only the "
     "retained file -- produce a DIFFERENT session_id from the run that created "
     "it, so the reload's rows would differ from the originals in exactly the "
     "column that is supposed to prove they do not. Measured on this sample "
