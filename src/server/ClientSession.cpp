@@ -119,7 +119,7 @@ void ClientSession::run() {
         }
 
         self->open_.store(true);
-        GMA_METRIC_HIT("ws.accept");
+        KRN_METRIC_HIT("ws.accept");
 
         if (self->server_) {
           self->sessionId_ = self->server_->registerSession(self);
@@ -166,7 +166,7 @@ void ClientSession::onRead(beast::error_code ec, std::size_t) {
   const std::string text = beast::buffers_to_string(buffer_.data());
   buffer_.consume(buffer_.size());
 
-  GMA_METRIC_HIT("ws.msg_in");
+  KRN_METRIC_HIT("ws.msg_in");
 
   handleMessage(text);
 
@@ -233,7 +233,7 @@ void ClientSession::close() {
                                     { {"err", ec.message()} });
           }
 
-          GMA_METRIC_HIT("ws.close");
+          KRN_METRIC_HIT("ws.close");
 
           if (self->server_ && self->sessionId_ != 0) {
             self->server_->unregisterSession(self->sessionId_);
@@ -290,7 +290,7 @@ void ClientSession::enqueue(std::string payload, const CoalesceKeyView* ckey) {
       const std::uint64_t firstMutable = outboxHeadSeq_ + (writing_ ? 1u : 0u);
       if (seq >= firstMutable && seq < outboxHeadSeq_ + outbox_.size()) {
         outbox_[static_cast<std::size_t>(seq - outboxHeadSeq_)].payload = std::move(payload);
-        GMA_METRIC_HIT("ws.outbox_coalesced");
+        KRN_METRIC_HIT("ws.outbox_coalesced");
         noteBackpressure("coalesce-latest");
         return;
       }
@@ -318,7 +318,7 @@ void ClientSession::enqueue(std::string payload, const CoalesceKeyView* ckey) {
       const std::size_t victim = oldestCoalescableIndex();
       if (victim < outbox_.size()) {
         replaceFrame(victim, std::move(payload), *ckey);
-        GMA_METRIC_HIT("ws.outbox_shed");
+        KRN_METRIC_HIT("ws.outbox_shed");
         noteBackpressure("displace-oldest");
         return;
       }
@@ -328,7 +328,7 @@ void ClientSession::enqueue(std::string payload, const CoalesceKeyView* ckey) {
       // — `ws.outbox_shed` means "a stale value was dropped", which is the
       // designed degradation, while this means "the head of a stream was
       // dropped", which is not.
-      GMA_METRIC_HIT("ws.outbox_shed_newest");
+      KRN_METRIC_HIT("ws.outbox_shed_newest");
       noteBackpressure("shed-newest");
       return;
     }
@@ -340,7 +340,7 @@ void ClientSession::enqueue(std::string payload, const CoalesceKeyView* ckey) {
                               "ws.outbox_overflow",
                               {{"sessionId", std::to_string(sessionId_)},
                                {"queueSize", std::to_string(outbox_.size())}});
-      GMA_METRIC_HIT("ws.outbox_overflow");
+      KRN_METRIC_HIT("ws.outbox_overflow");
       close();
       return;
     }
@@ -436,7 +436,7 @@ bool ClientSession::evictOldestCoalescable() {
   // place via replaceFrame() — so a full rebuild is cheaper to reason about
   // than patching the index.
   reindexOutbox();
-  GMA_METRIC_HIT("ws.outbox_shed");
+  KRN_METRIC_HIT("ws.outbox_shed");
   return true;
 }
 
@@ -530,7 +530,7 @@ void ClientSession::sendError(const std::string& where, const std::string& messa
   if (reqKey) krn::server::writeRequestKeyJSON(w, *reqKey);
   w.EndObject();
 
-  GMA_METRIC_HIT("ws.msg_out");
+  KRN_METRIC_HIT("ws.msg_out");
   sendText(sb.GetString());
 }
 
@@ -680,7 +680,7 @@ void ClientSession::handleSubscribe(const ::rapidjson::Document& doc) {
         }
         w.EndObject();
 
-        GMA_METRIC_HIT("ws.msg_out");
+        KRN_METRIC_HIT("ws.msg_out");
         // Value updates are last-value-wins: queue them on the coalescable
         // path, keyed by (subscription instance, streamKey) so a fan-out
         // subscription's streams never supersede each other.
@@ -828,8 +828,8 @@ void ClientSession::handleSubscribe(const ::rapidjson::Document& doc) {
       krn::server::writeRequestKeyJSON(w, key);
       w.EndObject();
 
-      GMA_METRIC_HIT("ws.subscribe");
-      GMA_METRIC_HIT("ws.msg_out");
+      KRN_METRIC_HIT("ws.subscribe");
+      KRN_METRIC_HIT("ws.msg_out");
       sendText(sb.GetString());
 
       // Log structured field uses "key" or "requestId" mirroring the
@@ -920,8 +920,8 @@ void ClientSession::handleCancel(const ::rapidjson::Document& doc) {
     krn::server::writeRequestKeyJSON(w, key);
     w.EndObject();
 
-    GMA_METRIC_HIT("ws.cancel");
-    GMA_METRIC_HIT("ws.msg_out");
+    KRN_METRIC_HIT("ws.cancel");
+    KRN_METRIC_HIT("ws.msg_out");
     sendText(sb.GetString());
 
     krn::util::logger().log(krn::util::LogLevel::Info,

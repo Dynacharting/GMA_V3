@@ -347,7 +347,7 @@ Copy the helper templates from `tests/feed/ItchAdapterTest.cpp` — `hasEvent<T>
 cd build && cmake .. -DGMA_BUILD_TESTS=ON
 
 # Run just your tests
-./gma_tests --gtest_filter="BinanceAdapterTest.*"
+./krn_tests --gtest_filter="BinanceAdapterTest.*"
 ```
 
 ## Adapter checklist

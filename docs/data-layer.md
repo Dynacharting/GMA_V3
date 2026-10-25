@@ -246,7 +246,7 @@ window". Inline DAG drive (§6) makes this cheaper: no pool to drain on the fast
 ### C8 — `IIngressSource` has no completion signal and no clock
 
 `start()`/`stop()` is right for an endless feed, wrong for a replay that *finishes*. Both
-additions live on a `gma_data` interface adapting *to* `IIngressSource`, so wiring stays an
+additions live on a `krn_data` interface adapting *to* `IIngressSource`, so wiring stays an
 INI edit.
 
 ### C9 — Fixed-point scale — **resolved: global 1e-9**
@@ -318,7 +318,7 @@ grow it without limit, and `maxSymbols` does not cover it. Wants a cap.
 │   raw DBN files RETAINED on disk — L1 is a rebuildable projection of them    │
 └──────────────────────────────┬──────────────────────────────────────────────┘
                                ▼
-┌─ gma_data ──────────────────────────────────────────────────────────────────┐
+┌─ krn_data ──────────────────────────────────────────────────────────────────┐
 │  IProviderAdapter             INormalizer                                   │
 │  ┌──────────────┐             ┌─────────────────────────────────┐           │
 │  │ Databento    │   raw DBN   │ decode → canonical columns       │           │
@@ -344,7 +344,7 @@ grow it without limit, and `maxSymbols` does not cover it. Wants a cap.
 │  ISource:  LiveSource │ ReplaySource │ SplicedSource (§9, demoted)          │
 └─────────────────────────────────────────────┼──────────────────────────────┘
                                               ▼
-┌─ gma_engine — ALL COMPUTATION, ONE IMPLEMENTATION ──────────────────────────┐
+┌─ krn_engine — ALL COMPUTATION, ONE IMPLEMENTATION ──────────────────────────┐
 │  Dispatcher::onRecord ──▶ IEventComputer ──▶ AtomicStore                     │
 │                       ├─▶ OrderBookManager (MBO per-order API)               │
 │                       └─▶ Listener ──▶ … event-time clocked nodes … ──▶      │
@@ -360,7 +360,7 @@ Six rules:
 3. **gma owns no durability.** It reads L1; it never writes the raw path.
 4. **One conversion point** — column blocks → POD, column-wise, in the shim's decode.
 5. **The splice lives in `ISource`** and nowhere else.
-6. **`gma_data` depends on `gma_engine`, never the reverse.** Arrow and the ClickHouse
+6. **`krn_data` depends on `krn_engine`, never the reverse.** Arrow and the ClickHouse
    client must not become engine dependencies.
 
 ---
@@ -414,9 +414,9 @@ One column-wise function producing `TickRecord` / `BookRecord`. Two details:
   in per-tick work versus the shipped JSON ingress.
 
 **Where the two halves live — settled by ENC-1481.** The PODs are in
-`include/gma/data/Record.hpp`, i.e. inside **`gma_engine`**, not under `data/`. C2's
+`include/gma/data/Record.hpp`, i.e. inside **`krn_engine`**, not under `data/`. C2's
 `Dispatcher::onRecord(const data::TickRecord&)` is engine code and has to be able to name
-the type, so a POD reachable only from `gma_data` would make C2 unimplementable without
+the type, so a POD reachable only from `krn_data` would make C2 unimplementable without
 breaking §4 rule 6. The PODs are Arrow-free and dependency-free; the `arrow::Schema`s and
 this decode stay in `data/include/gma/data/Schema.hpp`, which is where Arrow stops. Same
 namespace (`krn::data`), one definition per type — the library boundary is a *dependency*
@@ -424,8 +424,8 @@ boundary, not a naming one. `SymbolTable` sits beside the PODs for the same reas
 interning happens in decode, but resolving an id back to a ticker happens at an output
 boundary, and every output boundary is engine code (`StreamValue` carries a `std::string`).
 So the invariant to enforce is not "no `gma/data` header reaches the engine" but **"Arrow,
-the ClickHouse client and `gma_data` are not engine dependencies"** —
-`tools/check_engine_isolation.py`, ctest case `gma_engine_isolation`.
+the ClickHouse client and `krn_data` are not engine dependencies"** —
+`tools/check_engine_isolation.py`, ctest case `krn_engine_isolation`.
 
 ### 5.4 The lint — the structural guarantee
 
@@ -433,7 +433,7 @@ Every emitted `SELECT` is parsed and checked against §1.2's forbidden list. A v
 a **build-time failure**, not a runtime warning:
 
 ```
-gma_shim_sql_lint:  planner output for corpus graph 86 contains
+krn_shim_sql_lint:  planner output for corpus graph 86 contains
                     aggregate function 'avg' in projection list
                     -> computation must not leave gma (docs/data-layer.md §1)
 ```
@@ -655,7 +655,7 @@ code obligation of the ingest job, so a `DROP PARTITION` issued *outside* the jo
 table asserting a window whose data is gone — measured, and `isComplete` duly returned
 complete over an empty table with the rule behaving perfectly. A row count cannot *establish*
 completeness, but it can *refute* a claim: a `state=1` window claiming `rows_inserted > 0`
-whose range holds zero rows is a lie, and `gma_ingest verify` checks exactly that.
+whose range holds zero rows is a lie, and `krn_ingest verify` checks exactly that.
 
 ### 8.9 Symbol identity — ticker as the key, `instrument_id` for provenance
 
@@ -831,7 +831,7 @@ Raw durability is never a sink's job.
 ## 13. In scope / deferred
 
 **First slice (the measurement).** ClickHouse via `tools/stack.sh`; L1 DDL;
-`gma_data` skeleton + schema; Databento trades+mbo adapter; the 7-day/1-symbol ingest with
+`krn_data` skeleton + schema; Databento trades+mbo adapter; the 7-day/1-symbol ingest with
 retained DBN and completeness rows; the sort-key uniqueness measurement; `onRecord`; B1 and
 B2. §17 has the tickets.
 
@@ -875,7 +875,7 @@ why measurement precedes C1's engine work.
 
 ### 14.1 Structural guarantees (replacing a parity tolerance)
 
-- **`gma_shim_sql_lint`** (§5.4) — no generated `SELECT` over the 272-entry corpus contains
+- **`krn_shim_sql_lint`** (§5.4) — no generated `SELECT` over the 272-entry corpus contains
   computation. Non-zero statement count asserted; a deliberately-violating `WILL_FAIL`
   fixture ships with it.
 - **Exact equality for any batch fast path** (§6) — bit-identical to the scalar path over
@@ -892,7 +892,7 @@ to the repo is a redistribution question not worth answering. Build the graphs t
 tolerance.
 
 Gates: **anti-vacuity** (`expected` non-empty, spans >1 bucket, contains windowed output),
-and a **falsification case** `gma_replay_parity_wallclock` registered `WILL_FAIL` that runs
+and a **falsification case** `krn_replay_parity_wallclock` registered `WILL_FAIL` that runs
 with the event-time driver disabled and **asserts the mutation applied** — a no-op mutation
 reads exactly like a passing gate.
 
@@ -914,12 +914,12 @@ wall-clock cadence by construction; formerly Q13), and multi-symbol graphs where
 | Parquet | — | **dropped** |
 | DuckDB | — | **dropped.** Largest dependency; existed only to query Parquet |
 | Databento client (`databento-cpp`) | avoidable by decoding DBN directly | **dropped — Q14 resolved by ENC-1482.** See §15.2 |
-| zstd | `.dbn.zst` decompression | **not in `gma_data`** — the ingest job decompresses; feeding a zstd frame to the adapter is refused by name |
+| zstd | `.dbn.zst` decompression | **not in `krn_data`** — the ingest job decompresses; feeding a zstd frame to the adapter is refused by name |
 
 D14's client profile has two variants and they do not cost the same. The **over-the-wire**
 variant (C10) needs Arrow plus a wire client and no store — far smaller than
 Arrow+Parquet+DuckDB. The **live-only** variant needs no Arrow at all, which is the whole
-premise of `GMA_BUILD_DATA=OFF`. `gma_data` is separately linkable so that one omits it,
+premise of `KRN_BUILD_DATA=OFF`. `krn_data` is separately linkable so that one omits it,
 and §15.1's Release row sizes the first, not the second.
 
 ### 15.1 Arrow, measured — ENC-1481, 2026-10-14
@@ -933,7 +933,7 @@ make it tolerable.
 
 Box: Fedora 44, 16 cores, GCC 16.2.1, CMake 4.3.0, Ninja. Arrow **23.0.1** from
 `archive.apache.org`, `SOURCE_SUBDIR cpp`, trimmed by
-`GMA_V3/data/cmake/GmaDataArrow.cmake`.
+`GMA_V3/data/cmake/KrnDataArrow.cmake`.
 
 | phase | wall clock | artifact |
 |---|---|---|
@@ -942,20 +942,20 @@ Box: Fedora 44, 16 cores, GCC 16.2.1, CMake 4.3.0, Ninja. Arrow **23.0.1** from
 | configure, warm | 0.6 s | — |
 | build, **Debug**, `-j16` | **45.0 s** | `libarrow.a` **366 MB**, bundled deps 7.2 MB |
 | build, **Release**, `-j16` | **1m 02.7 s** | `libarrow.a` **33.0 MB**, bundled deps 1.4 MB |
-| `gma_data` itself (Debug) | ~2 s | `libgma_data.a` 3.4 MB |
+| `krn_data` itself (Debug) | ~2 s | `libgma_data.a` 3.4 MB |
 
 The download dominates, and it is a one-time cost per build tree; a warm tree pays none of
 it. Debug `libarrow.a` is an order of magnitude larger than Release because it is `-O0`
 with full debug info — size the over-the-wire client variant off the Release row (the
 live-only variant links no Arrow at all).
 
-**Who pays it: `GMA_BUILD_DATA` defaults to `GMA_BUILD_TESTS`.** `-DGMA_BUILD_TESTS=ON` —
-the acceptance command and every gate configuration — builds `gma_data` and runs both
-engine-isolation cases plus `gma_data_tests`, so nothing is silently skipped where tests
+**Who pays it: `KRN_BUILD_DATA` defaults to `KRN_BUILD_TESTS`.** `-DGMA_BUILD_TESTS=ON` —
+the acceptance command and every gate configuration — builds `krn_data` and runs both
+engine-isolation cases plus `krn_data_tests`, so nothing is silently skipped where tests
 run. A bare `cmake -B build -DCMAKE_BUILD_TYPE=Release` fetches **nothing** and still
 builds `gma_server`, which is what the documented quickstart needs offline (before this
 library existed, a default configure fetched nothing at all — googletest sits behind
-`GMA_BUILD_TESTS=OFF` too — and a fixed `GMA_BUILD_DATA=ON` had made that configure
+`KRN_BUILD_TESTS=OFF` too — and a fixed `KRN_BUILD_DATA=ON` had made that configure
 hard-fail at the download behind a firewall). An explicit `-DGMA_BUILD_DATA=ON|OFF` always
 wins, and the configure prints which way it resolved and why.
 
@@ -989,7 +989,7 @@ scope-of-linkage fact, and the structural guarantee for D1 remains the SQL lint 
 
 ### 15.2 Databento: decode it ourselves — ENC-1482, 2026-10-14
 
-**Q14 resolved: `gma_data` decodes DBN itself and does not link `databento-cpp`.** The
+**Q14 resolved: `krn_data` decodes DBN itself and does not link `databento-cpp`.** The
 deciding number is dependency weight, and it is bigger than "one more library":
 
 | what `databento-cpp` requires | why we do not need it |
@@ -1132,7 +1132,7 @@ Nine tickets to a measured answer. Full detail and ticket ids:
 |---|---|---|---|
 | T1 | `stack.sh up clickhouse` — rootless podman, single node, memory-capped | workspace | — |
 | T2 | L1 DDL — trades, book_events, book_snapshots, symbology, ingest_windows, gaps | GMA_V3 | T1 |
-| T3 | `gma_data` skeleton + canonical `Schema.hpp` + CMake target | GMA_V3 | — |
+| T3 | `krn_data` skeleton + canonical `Schema.hpp` + CMake target | GMA_V3 | — |
 | T4 | Databento DBN adapter — trades + mbo → canonical batches | GMA_V3 | T3 |
 | T5 | ingest job — 7d/1symbol pull → L1, retain DBN, completeness rows | GMA_V3 | T2, T4 |
 | T6 | measure `book_events` sort-key uniqueness against real MBO | GMA_V3 | T5 |

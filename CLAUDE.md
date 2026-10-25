@@ -68,7 +68,7 @@ include/gma/              # Engine public headers (libgma_engine)
 src/                      # Engine implementations (mirrors include/ layout)
   main.cpp                # Composition root — boots engine, wires connectors
 
-connectors/market/        # libgma_connector_market (depends on gma_engine)
+connectors/market/        # libgma_connector_market (depends on krn_engine)
   include/gma/
     market/MarketConnector.hpp
     book/ ob/ ta/         # OB engine, TA indicator suite
@@ -87,9 +87,9 @@ connectors/synthetic/     # libgma_connector_synthetic (demo; linked only into t
 data/                     # libgma_data — L1 data/query layer (ENC-1481; see data/README.md)
   include/gma/data/Schema.hpp   # the three L1 arrow::Schemas + the column-wise codec
   src/Schema.cpp                #   (the rest of include/gma/data/ is still a design sketch)
-  cmake/GmaDataArrow.cmake      # find_package(Arrow) else FetchContent, trimmed hard
+  cmake/KrnDataArrow.cmake      # find_package(Arrow) else FetchContent, trimmed hard
   schema/clickhouse.sql         # L1 DDL
-  tests/                        # gma_data_tests — a SEPARATE binary from gma_tests
+  tests/                        # krn_data_tests — a SEPARATE binary from krn_tests
 
 tests/                    # GoogleTest suites
   engine/                 # Registry tests
@@ -114,24 +114,24 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full picture including 
 ## Tech Stack
 
 - **C++20** (`-DCMAKE_CXX_STANDARD=20`)
-- **CMake 3.20+** — produces `libgma_engine.a`, `libgma_connector_market.a`, `libgma_connector_synthetic.a`, `libgma_data.a`, `gma_server`, `gma_tests`, `gma_data_tests`
-- **Apache Arrow** (`gma_data` only) — found with `find_package(Arrow CONFIG)`, else built
-  from source by `data/cmake/GmaDataArrow.cmake`. A cold configure downloads a 17 MB
+- **CMake 3.20+** — produces `libgma_engine.a`, `libgma_connector_market.a`, `libgma_connector_synthetic.a`, `libgma_data.a`, `gma_server`, `krn_tests`, `krn_data_tests`
+- **Apache Arrow** (`krn_data` only) — found with `find_package(Arrow CONFIG)`, else built
+  from source by `data/cmake/KrnDataArrow.cmake`. A cold configure downloads a 17 MB
   archive (2m33s on this link) and the build costs 45s Debug / 63s Release on 16 cores;
   measured numbers and the full `ARROW_*=OFF` rationale are in `docs/data-layer.md` §15.1.
-  **`GMA_BUILD_DATA` defaults to `GMA_BUILD_TESTS`**, so a bare
+  **`KRN_BUILD_DATA` defaults to `KRN_BUILD_TESTS`**, so a bare
   `cmake -B build -DCMAKE_BUILD_TYPE=Release` fetches no Arrow at all and still builds
   `gma_server`, while `-DGMA_BUILD_TESTS=ON` builds and tests the data layer. An explicit
   `-DGMA_BUILD_DATA=ON|OFF` always wins and the configure says which way it resolved.
   `-DGMA_DATA_ARROW_FORCE_FETCH=ON` skips `find_package` when an installed Arrow is
   present but unusable — **it only exists when the data layer is in the build**, because it
-  is declared in `data/cmake/GmaDataArrow.cmake`, so pass it with `-DGMA_BUILD_DATA=ON` or
+  is declared in `data/cmake/KrnDataArrow.cmake`, so pass it with `-DGMA_BUILD_DATA=ON` or
   alongside `-DGMA_BUILD_TESTS=ON`. On its own with tests off it is an unused-variable
-  warning and nothing else. Conversely, `GMA_BUILD_DATA=OFF` while `GMA_BUILD_TESTS=ON`
-  now emits a `CMake Warning`: `gma_data_tests` is absent and the isolation gate's Arrow
+  warning and nothing else. Conversely, `KRN_BUILD_DATA=OFF` while `KRN_BUILD_TESTS=ON`
+  now emits a `CMake Warning`: `krn_data_tests` is absent and the isolation gate's Arrow
   positive control cannot run, so a green `ctest` there excludes the data layer. That is
   intended for D14's live-only variant and is a stale cache otherwise — `option()` writes
-  `GMA_BUILD_DATA` on a build dir's first configure and a later `-DGMA_BUILD_TESTS=ON`
+  `KRN_BUILD_DATA` on a build dir's first configure and a later `-DGMA_BUILD_TESTS=ON`
   does not move it.
 - **Boost.Asio / Beast** — networking + WebSocket
 - **RapidJSON** — JSON parsing and validation
@@ -141,32 +141,32 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full picture including 
 
 - Engine code under `include/gma/` + `src/`; connector code under `connectors/<name>/`;
   data-layer code under `data/`
-- Engine CMake target (`gma_engine`) must not depend on any connector headers
-- **`gma_engine` must not depend on Arrow, the ClickHouse client, or `gma_data` (ENC-1481).**
-  `gma_data` depends on `gma_engine`, never the reverse. This is a shipping constraint, not
-  taste — and the constraint is about **`gma_engine`**, not about the product. The
+- Engine CMake target (`krn_engine`) must not depend on any connector headers
+- **`krn_engine` must not depend on Arrow, the ClickHouse client, or `krn_data` (ENC-1481).**
+  `krn_data` depends on `krn_engine`, never the reverse. This is a shipping constraint, not
+  taste — and the constraint is about **`krn_engine`**, not about the product. The
   data-layer SPEC's D14 client profile reads *"live-only **or** reads a central L1 over the
   wire with no local store"*: the **live-only** variant omits the library, so
   `cmake -DGMA_BUILD_DATA=OFF` must build and link `gma_server` with no Arrow anywhere,
-  while the over-the-wire variant needs Arrow IPC and therefore does ship `gma_data`. Don't
+  while the over-the-wire variant needs Arrow IPC and therefore does ship `krn_data`. Don't
   shorten that to "the client profile omits the library" — that is true of one variant.
   **The engine-facing PODs are the one thing that crosses**, and they cross deliberately:
-  `include/gma/data/Record.hpp` and `include/gma/data/SymbolTable.hpp` are in `gma_engine`,
+  `include/gma/data/Record.hpp` and `include/gma/data/SymbolTable.hpp` are in `krn_engine`,
   Arrow-free, because `Dispatcher::onRecord` is engine code and has to name a record. Every
   way of breaking the invariant still compiles and still passes every other test, so it is
-  asserted by `tools/check_engine_isolation.py` as the ctest cases `gma_engine_isolation`
-  (four checks, refuses to pass on vacuous input) and `gma_engine_isolation_selftest` (runs
+  asserted by `tools/check_engine_isolation.py` as the ctest cases `krn_engine_isolation`
+  (four checks, refuses to pass on vacuous input) and `krn_engine_isolation_selftest` (runs
   each predicate against an input that violates it). Run them before claiming a layering
   change is safe; `--selftest` needs no build. **Checks C and D walk the transitive link
-  closure**, because `gma_server` links only the `gma` umbrella: one
-  `target_link_libraries(gma INTERFACE gma_data)` breaks the live-only build while both
+  closure**, because `gma_server` links only the `krn` umbrella: one
+  `target_link_libraries(krn INTERFACE krn_data)` breaks the live-only build while both
   roots' own link properties stay clean. CMake emits a `link.<target>` manifest row per
   first-party target — add one when you add a library target.
 - Namespace: `krn::` for public types, `krn::engine::` for engine contracts, `krn::market::` / `krn::synthetic::` for connector code
 - Globals: `krn::gThreadPool` (shared_ptr<ThreadPool>, set up in main.cpp)
 - Runtime config: INI-style key=value files (see `src/util/gma.conf`)
 - Prefer lock-free / fine-grained locking (shared_mutex, SPSCQueue)
-- Test files named `<Component>Test.cpp` under `tests/<category>/`; the gtest binary is a single `gma_tests` executable
+- Test files named `<Component>Test.cpp` under `tests/<category>/`; the gtest binary is a single `krn_tests` executable
 - **A test that writes to a process-global registry must derive its key per invocation (ENC-1102).** `FunctionMap`, `NodeTypeRegistry`, `EventComputerRegistry`, `EventTypeRegistry`, `IngressRegistry`, `AtomicProviderRegistry` and `ConfigNamespaceRegistry` are process-wide singletons with no per-entry removal, and `--gtest_repeat` re-runs every test body in the **same process**. A test that registers a *fixed* name therefore meets, on iteration 2, a registry its own iteration-1 run already populated — `registerNodeType` returns false, `EventComputerRegistry` reports double the factories, `FunctionMap::getAll()` does not grow. Five tests failed exactly this way. Build the name from a file-local `static std::atomic` counter (`uniqueKey()` in `tests/engine/RegistriesTest.cpp`, `uniqueType()` in `tests/engine/EventComputerCacheTest.cpp`) instead. This is a test-lifecycle fix only — the registries' production duplicate semantics (first-wins for node/event/ingress types, append for event computers, replace for functions/providers) are deliberate and unchanged.
 - **`--gtest_repeat` must be run against the FULL unsharded binary**, never with `--gtest_filter`. ENC-1065 requires the full binary because cross-suite corruption surfaces dozens of suites later; filtering a repeat run is what hid ENC-1102 for months, since every repeat check in the project happened to be filtered.
 - Connectors implement the strict `IConnector` lifecycle: `registerWith()` allocates and registers (no live sockets/timers), `start()` brings sources online, `stop()` noexcept tears down in reverse order. The composition root drives all three; never wire your own `ShutdownCoordinator` step from inside a connector.
@@ -290,7 +290,7 @@ compiled defaults.
 > (`config.feedport_arg_ignored`) instead of silently ignoring the argument —
 > and **the `listening` log line reports the port resolved into the ingress
 > entry**, not the intent, so it can no longer disagree with the socket.
-> Covered by `ctest`'s `gma_feed_port_override` (asserts the live acceptor) and
+> Covered by `ctest`'s `krn_feed_port_override` (asserts the live acceptor) and
 > four `ConfigTest` cases (assert the resolved ingress params).
 
 ## Design records (the umbrella D13 pointers)

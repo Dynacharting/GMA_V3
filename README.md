@@ -75,7 +75,7 @@ Key properties:
 │   │   ├── include/gma/        # market/, book/, ob/, ta/, feed/, ws/, server/
 │   │   └── src/
 │   └── synthetic/              # demo connector (linked into tests only)
-├── tests/                      # GoogleTest suites (one gma_tests binary)
+├── tests/                      # GoogleTest suites (one krn_tests binary)
 └── docs/                       # ARCHITECTURE.md, atomic-keys.md, feed-adapters.md, ...
 ```
 
@@ -87,7 +87,7 @@ Key properties:
 - **C++20 compiler** (GCC 12+, Clang 14+ — clang++ is preferred by `tools/compile.sh`)
 - **Boost.Asio / Beast** — networking + WebSocket
 - **RapidJSON** — JSON parsing
-- **GoogleTest** (only when `GMA_BUILD_TESTS=ON`)
+- **GoogleTest** (only when `KRN_BUILD_TESTS=ON`)
 - **Python 3** (utility scripts)
 
 Third-party deps are vendored under `third_party/` (override with
@@ -111,7 +111,7 @@ cmake --build build -j$(nproc)
 ```
 
 CMake targets: `libgma_engine.a`, `libgma_connector_market.a`,
-`libgma_connector_synthetic.a`, the **`gma_server`** binary, and `gma_tests`.
+`libgma_connector_synthetic.a`, the **`gma_server`** binary, and `krn_tests`.
 
 ---
 
@@ -213,10 +213,10 @@ cmake -B build -DGMA_BUILD_TESTS=ON && cmake --build build -j$(nproc)
 cd build && ctest --output-on-failure
 
 # A single suite
-./gma_tests --gtest_filter="ItchAdapterTest.*"
+./krn_tests --gtest_filter="ItchAdapterTest.*"
 ```
 
-All tests build into one `gma_tests` executable.
+All tests build into one `krn_tests` executable.
 
 ---
 

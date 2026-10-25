@@ -315,8 +315,8 @@ The **entire** order book system has **zero tests**:
 
 | Issue | Detail |
 |-------|--------|
-| **Two conflicting test strategies** | Root CMakeLists uses `GLOB_RECURSE` for monolithic `gma_tests`. `tests/CMakeLists.txt` uses per-module `add_subdirectory()`. They can't coexist |
-| **Tests OFF by default** | `option(GMA_BUILD_TESTS ... OFF)` with no documentation on how to enable |
+| **Two conflicting test strategies** | Root CMakeLists uses `GLOB_RECURSE` for monolithic `krn_tests`. `tests/CMakeLists.txt` uses per-module `add_subdirectory()`. They can't coexist |
+| **Tests OFF by default** | `option(KRN_BUILD_TESTS ... OFF)` with no documentation on how to enable |
 | **C++ standard mismatch** | CMake sets C++17 (`CMAKE_CXX_STANDARD 17`) but README claims C++20 |
 
 ### main.cpp Critical Issues
@@ -355,7 +355,7 @@ The **entire** order book system has **zero tests**:
 
 1. **Fix CMake**:
    - Add `find_package(GTest REQUIRED)` (or `FetchContent` for auto-download)
-   - Pick one test strategy (recommend monolithic `gma_tests` from root)
+   - Pick one test strategy (recommend monolithic `krn_tests` from root)
    - Remove Windows-only `GTEST_CTEST_RUNNER` or make it conditional
    - Set `CMAKE_CXX_STANDARD 20` to match actual usage
    - Document test build: `cmake .. -DGMA_BUILD_TESTS=ON`
@@ -404,7 +404,7 @@ Fix the build first so you can run tests. Fix the node pipeline so data can flow
 ### Completed (commit 391bb22 + audit fixes)
 
 **Phase 0 — Benchmark Infrastructure:**
-- Added `GMA_BUILD_BENCHMARKS` option with Google Benchmark v1.8.3 via FetchContent
+- Added `KRN_BUILD_BENCHMARKS` option with Google Benchmark v1.8.3 via FetchContent
 - Created 4 benchmark suites: `AtomicFunctionsBench`, `DispatcherBench`, `AtomicStoreBench`, `ThreadPoolBench`
 
 **Phase 1 — Algorithmic Fixes:**
@@ -425,7 +425,7 @@ Fix the build first so you can run tests. Fix the node pipeline so data can flow
 
 **Phase 4 — Build Optimizations:**
 - Release builds: `-O3 -march=native` (GCC/Clang), `/O2 /Ob2 /GL /LTCG` (MSVC)
-- LTO via `CheckIPOSupported` on both `gma` and `gma_server` targets
+- LTO via `CheckIPOSupported` on both `krn` and `gma_server` targets
 
 **Audit Fixes (post-commit):**
 - Fixed EMA lambda inconsistency (period-window → full-history seeding to match MACD)

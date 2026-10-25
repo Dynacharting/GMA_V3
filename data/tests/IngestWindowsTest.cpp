@@ -8,7 +8,7 @@
 // that can be wrong, and it is a function of rows. Driving it through
 // ClickHouse would make the suite SKIP when no server is up — and a skip looks
 // exactly like a pass (ENC-1095's three sessions reading a green 188/188 as
-// renderer coverage). The live exercise is `gma_ingest verify`, whose exit code
+// renderer coverage). The live exercise is `krn_ingest verify`, whose exit code
 // is the verdict and which cannot be mistaken for a passing test when the
 // server is absent: it exits 2.
 //

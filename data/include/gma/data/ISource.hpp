@@ -10,7 +10,7 @@
 // Relationship to the EXISTING engine seam: krn::engine::IIngressSource
 // (include/gma/engine/IngressRegistry.hpp) is start()/stop() and is exactly
 // right for an endless live feed. It is wrong for a replay, which FINISHES, and
-// it carries no clock. So ISource is a gma_data interface with the two extra
+// it carries no clock. So ISource is a krn_data interface with the two extra
 // members, and SourceIngress (bottom of this file) adapts it to
 // IIngressSource so wiring stays an INI edit against cfg.ingress[] and needs no
 // main.cpp change (ENC-31). docs/data-layer.md C7.

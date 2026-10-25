@@ -322,7 +322,7 @@ arrow::Status DatabentoAdapter::drain() {
       return arrow::Status::Invalid(
           "this is a zstd frame, not plain DBN. `.dbn.zst` must be decompressed "
           "before it reaches DatabentoAdapter — zstd is deliberately not a "
-          "dependency of gma_data (SPEC Q14).");
+          "dependency of krn_data (SPEC Q14).");
     }
     if (loadChar(p) != dbn::kMagic[0] || loadChar(p + 1) != dbn::kMagic[1] ||
         loadChar(p + 2) != dbn::kMagic[2]) {

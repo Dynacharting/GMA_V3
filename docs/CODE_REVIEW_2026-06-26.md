@@ -17,7 +17,7 @@ flagged **[2 streams]** were independently reproduced by two reviewers.
 
 **Baseline health (good news first):** builds clean with g++ 16.1.1 — **0 errors**, and the
 engine library is **warning-clean under `-Wall -Wextra -Wpedantic`**. **All 520 tests pass.**
-The engine↔connector boundary rule (`gma_engine` must not depend on connector headers) is
+The engine↔connector boundary rule (`krn_engine` must not depend on connector headers) is
 genuinely enforced. The problems below are real but sit against an otherwise disciplined
 codebase.
 
@@ -314,9 +314,9 @@ loops ~2e9 times. Only reachable if `eval()` is wired into the provider (current
 H4), hence latent. Add a clamp.
 
 ### L12 (build) — `-Wall -Wextra` applied to only 2 of 6 targets — CONFIRMED
-Warning flags cover `gma_engine` and `gma_connector_market`, **not** `gma_server` (main.cpp),
-`gma_connector_synthetic`, `gma_tests`, or benchmarks. Warnings in the composition root and
-test code are invisible. Also: no CI, so `GMA_WARNINGS_AS_ERRORS` (default OFF) never runs.
+Warning flags cover `krn_engine` and `krn_connector_market`, **not** `gma_server` (main.cpp),
+`krn_connector_synthetic`, `krn_tests`, or benchmarks. Warnings in the composition root and
+test code are invisible. Also: no CI, so `KRN_WARNINGS_AS_ERRORS` (default OFF) never runs.
 
 ### L13 (build) — `[-Wreorder]` member-init order mismatch in `FeedServer` — CONFIRMED
 `connectors/market/include/gma/server/FeedServer.hpp:52` vs ctor init list at

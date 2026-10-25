@@ -1,9 +1,9 @@
 # ===========================================================================
-# Arrow for gma_data (ENC-1481)
+# Arrow for krn_data (ENC-1481)
 #
 # Design: specs/2026-10-14-gma-data-layer/SPEC.md D14; docs/data-layer.md §15.
 #
-# Produces ONE target, `gma::arrow`, and nothing else. Everything downstream
+# Produces ONE target, `krn::arrow`, and nothing else. Everything downstream
 # links that, so whether Arrow came from the system or from source is invisible
 # past this file.
 #
@@ -29,7 +29,7 @@
 # DuckDB was the largest single dependency in the previous revision. Turning
 # Parquet back on is a design change, not a build tweak.
 #
-# What gma_data actually needs is small and worth naming precisely:
+# What krn_data actually needs is small and worth naming precisely:
 #   * arrow core — Buffer, Array, Schema, RecordBatch, the builders.
 #   * arrow IPC  — because ENC-1485 measures ClickHouse `FORMAT ArrowStream`
 #                  over HTTP, which is Arrow IPC on the wire.
@@ -47,22 +47,22 @@
 # visible in CMakeCache.txt and auditable.
 # ===========================================================================
 
-if (TARGET gma::arrow)
+if (TARGET krn::arrow)
   return()
 endif()
 
-set(GMA_DATA_ARROW_VERSION "23.0.1" CACHE STRING
+set(KRN_DATA_ARROW_VERSION "23.0.1" CACHE STRING
   "Apache Arrow version fetched when no installed Arrow is found")
-set(GMA_DATA_ARROW_URL
-  "https://archive.apache.org/dist/arrow/arrow-${GMA_DATA_ARROW_VERSION}/apache-arrow-${GMA_DATA_ARROW_VERSION}.tar.gz"
+set(KRN_DATA_ARROW_URL
+  "https://archive.apache.org/dist/arrow/arrow-${KRN_DATA_ARROW_VERSION}/apache-arrow-${KRN_DATA_ARROW_VERSION}.tar.gz"
   CACHE STRING
   "Source archive for the Arrow fallback build. May be a local file:// path or an absolute path to a already-downloaded tarball.")
-set(GMA_DATA_ARROW_SHA256
+set(KRN_DATA_ARROW_SHA256
   "bd09adb4feac11fe49d1604f296618866702be610c86e2d513b561d877de6b18"
   CACHE STRING
-  "SHA256 of GMA_DATA_ARROW_URL. Set to the empty string to skip the check when pointing at a different archive.")
+  "SHA256 of KRN_DATA_ARROW_URL. Set to the empty string to skip the check when pointing at a different archive.")
 
-option(GMA_DATA_ARROW_IPC_CODECS
+option(KRN_DATA_ARROW_IPC_CODECS
   "Build Arrow's LZ4 and ZSTD codecs. ON because ClickHouse's ArrowStream output compresses with lz4_frame by DEFAULT (output_format_arrow_compression_method), so a codec-free Arrow cannot read ENC-1485's stream at all without a per-query SETTINGS override."
   ON)
 
@@ -72,31 +72,31 @@ option(GMA_DATA_ARROW_IPC_CODECS
 # FATAL_ERROR, and before this option was implemented that error named a flag
 # that did not exist anywhere in the repo. It is also the honest way to ignore
 # a too-old or misconfigured system Arrow without uninstalling it.
-option(GMA_DATA_ARROW_FORCE_FETCH
+option(KRN_DATA_ARROW_FORCE_FETCH
   "Skip find_package(Arrow) and always build Arrow from source. Use when an installed Arrow is unusable (wrong target names, wrong version) — the source build is the measured path (docs/data-layer.md §15.1)."
   OFF)
 
 # ---------------------------------------------------------------------------
 # Route 1 — an installed Arrow.
 # ---------------------------------------------------------------------------
-if (GMA_DATA_ARROW_FORCE_FETCH)
+if (KRN_DATA_ARROW_FORCE_FETCH)
   message(STATUS
-    "gma_data: GMA_DATA_ARROW_FORCE_FETCH=ON — skipping find_package(Arrow); "
-    "Arrow ${GMA_DATA_ARROW_VERSION} will be built from source.")
+    "krn_data: KRN_DATA_ARROW_FORCE_FETCH=ON — skipping find_package(Arrow); "
+    "Arrow ${KRN_DATA_ARROW_VERSION} will be built from source.")
   set(Arrow_FOUND FALSE)
 else()
   find_package(Arrow CONFIG QUIET)
 endif()
 
 if (Arrow_FOUND)
-  set(_gma_arrow_impl "")
+  set(_krn_arrow_impl "")
   foreach (_cand Arrow::arrow_static Arrow::arrow_shared arrow_static arrow_shared)
     if (TARGET ${_cand})
-      set(_gma_arrow_impl ${_cand})
+      set(_krn_arrow_impl ${_cand})
       break()
     endif()
   endforeach()
-  if (_gma_arrow_impl STREQUAL "")
+  if (_krn_arrow_impl STREQUAL "")
     message(FATAL_ERROR
       "find_package(Arrow) succeeded but defined none of "
       "Arrow::arrow_static / Arrow::arrow_shared / arrow_static / arrow_shared. "
@@ -104,13 +104,13 @@ if (Arrow_FOUND)
       "build Arrow from source instead.")
   endif()
   # GLOBAL: an IMPORTED target is directory-scoped by default, and this module
-  # is included from data/, so without it `gma::arrow` would be invisible to
+  # is included from data/, so without it `krn::arrow` would be invisible to
   # any consumer defined at the root — including a future benchmark target.
-  add_library(gma::arrow INTERFACE IMPORTED GLOBAL)
-  target_link_libraries(gma::arrow INTERFACE ${_gma_arrow_impl})
-  set(GMA_DATA_ARROW_PROVENANCE "system (find_package, ${ARROW_VERSION}, target ${_gma_arrow_impl})"
+  add_library(krn::arrow INTERFACE IMPORTED GLOBAL)
+  target_link_libraries(krn::arrow INTERFACE ${_krn_arrow_impl})
+  set(KRN_DATA_ARROW_PROVENANCE "system (find_package, ${ARROW_VERSION}, target ${_krn_arrow_impl})"
       CACHE INTERNAL "" FORCE)
-  message(STATUS "gma_data: Arrow ${ARROW_VERSION} found via find_package -> ${_gma_arrow_impl}")
+  message(STATUS "krn_data: Arrow ${ARROW_VERSION} found via find_package -> ${_krn_arrow_impl}")
   return()
 endif()
 
@@ -120,14 +120,14 @@ endif()
 # Do not claim find_package failed when it was never run — the force-fetch
 # branch above already said why, and two contradictory STATUS lines in a row
 # is how a configure log stops being read.
-if (NOT GMA_DATA_ARROW_FORCE_FETCH)
+if (NOT KRN_DATA_ARROW_FORCE_FETCH)
   message(STATUS
-    "gma_data: no installed Arrow (find_package(Arrow CONFIG) failed) — "
-    "building ${GMA_DATA_ARROW_VERSION} from source. "
+    "krn_data: no installed Arrow (find_package(Arrow CONFIG) failed) — "
+    "building ${KRN_DATA_ARROW_VERSION} from source. "
     "This is the long pole in a cold configure; see docs/data-layer.md §15.")
 else()
   message(STATUS
-    "gma_data: building Arrow ${GMA_DATA_ARROW_VERSION} from source. "
+    "krn_data: building Arrow ${KRN_DATA_ARROW_VERSION} from source. "
     "This is the long pole in a cold configure; see docs/data-layer.md §15.")
 endif()
 
@@ -184,7 +184,7 @@ set(ARROW_WITH_SNAPPY    OFF CACHE BOOL "" FORCE)
 set(ARROW_WITH_ZLIB      OFF CACHE BOOL "" FORCE)
 set(ARROW_USE_CCACHE     OFF CACHE BOOL "" FORCE)
 
-if (GMA_DATA_ARROW_IPC_CODECS)
+if (KRN_DATA_ARROW_IPC_CODECS)
   set(ARROW_WITH_LZ4  ON CACHE BOOL "" FORCE)
   set(ARROW_WITH_ZSTD ON CACHE BOOL "" FORCE)
 else()
@@ -195,17 +195,17 @@ endif()
 # Arrow is C++17 and sets CMAKE_CXX_STANDARD while configuring. Restore ours
 # afterwards: gma is C++20 and `include/gma/data/Record.hpp` uses C++20 in
 # engine code that is compiled long after this file runs.
-set(_gma_saved_cxx_standard "${CMAKE_CXX_STANDARD}")
+set(_krn_saved_cxx_standard "${CMAKE_CXX_STANDARD}")
 
-set(_gma_arrow_hash "")
-if (NOT GMA_DATA_ARROW_SHA256 STREQUAL "")
-  set(_gma_arrow_hash URL_HASH "SHA256=${GMA_DATA_ARROW_SHA256}")
+set(_krn_arrow_hash "")
+if (NOT KRN_DATA_ARROW_SHA256 STREQUAL "")
+  set(_krn_arrow_hash URL_HASH "SHA256=${KRN_DATA_ARROW_SHA256}")
 endif()
 
 FetchContent_Declare(
   arrow
-  URL           "${GMA_DATA_ARROW_URL}"
-  ${_gma_arrow_hash}
+  URL           "${KRN_DATA_ARROW_URL}"
+  ${_krn_arrow_hash}
   # The release archive is the whole Arrow monorepo; the C++ build is one
   # subdirectory of it. Without this, CMake adds the top level, which has no
   # CMakeLists.txt at all.
@@ -214,27 +214,27 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(arrow)
 
-set(CMAKE_CXX_STANDARD "${_gma_saved_cxx_standard}")
+set(CMAKE_CXX_STANDARD "${_krn_saved_cxx_standard}")
 
 if (NOT TARGET arrow_static)
   message(FATAL_ERROR
-    "Arrow ${GMA_DATA_ARROW_VERSION} was fetched but defined no `arrow_static` "
+    "Arrow ${KRN_DATA_ARROW_VERSION} was fetched but defined no `arrow_static` "
     "target. Arrow renames its in-tree targets between releases; check "
     "cpp/cmake_modules/BuildUtils.cmake in the fetched tree "
     "(${arrow_SOURCE_DIR}) and update this file.")
 endif()
 
 # GLOBAL: an IMPORTED target is directory-scoped by default, and this module is
-# included from data/, so without it `gma::arrow` would be invisible to any
+# included from data/, so without it `krn::arrow` would be invisible to any
 # consumer defined at the root — including a future benchmark target.
-add_library(gma::arrow INTERFACE IMPORTED GLOBAL)
-target_link_libraries(gma::arrow INTERFACE arrow_static)
+add_library(krn::arrow INTERFACE IMPORTED GLOBAL)
+target_link_libraries(krn::arrow INTERFACE arrow_static)
 # Arrow's in-tree static target does not carry the generated-header dir for
 # consumers in every release; add both explicitly so a #include <arrow/api.h>
 # resolves regardless.
-target_include_directories(gma::arrow SYSTEM INTERFACE
+target_include_directories(krn::arrow SYSTEM INTERFACE
   "${arrow_SOURCE_DIR}/cpp/src"
   "${arrow_BINARY_DIR}/src")
 
-set(GMA_DATA_ARROW_PROVENANCE "source (FetchContent ${GMA_DATA_ARROW_VERSION})"
+set(KRN_DATA_ARROW_PROVENANCE "source (FetchContent ${KRN_DATA_ARROW_VERSION})"
     CACHE INTERNAL "" FORCE)

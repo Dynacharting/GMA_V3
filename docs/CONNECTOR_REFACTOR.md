@@ -336,7 +336,7 @@ Each step independently buildable + testable. `ctest --output-on-failure` must s
 - **Tests:** `tests/dispatch/DispatchTest.cpp` + add `tests/engine/DispatcherIsolationTest.cpp`.
 
 ### Step 7 — carve out `libgma_connector_market` as a separate CMake target
-- Three targets: `gma_engine`, `gma_connector_market`, `gma_server`.
+- Three targets: `krn_engine`, `krn_connector_market`, `gma_server`.
 - Move `include/gma/book/*`, `include/gma/ob/*`, `src/book/*`, `src/ob/*`, `src/feed/ItchAdapter.cpp`, `include/gma/feed/ItchAdapter.hpp`, `include/gma/feed/FeedEvent.hpp`, `src/core/MarketTA.cpp`, `src/core/MarketTickComputer.cpp`, `include/gma/SymbolHistory.hpp`, `include/gma/SourceProfile.hpp` (renamed) into `connectors/market/`.
 - CMake check: engine target cannot include connector headers.
 - **Tests:** existing pass.
@@ -367,7 +367,7 @@ Each step independently buildable + testable. `ctest --output-on-failure` must s
 ## 6. Risk & test strategy
 
 ### Engine in isolation
-- `tests/engine/` depends **only** on `gma_engine` target. CMake enforces: if a test accidentally uses `OrderBookManager`, link fails.
+- `tests/engine/` depends **only** on `krn_engine` target. CMake enforces: if a test accidentally uses `OrderBookManager`, link fails.
 - A "null connector" used by tests that don't need real data.
 
 ### Proving "zero core changes to add a connector"

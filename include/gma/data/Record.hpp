@@ -7,23 +7,23 @@
 //
 // WHY THIS FILE IS UNDER include/ AND NOT UNDER data/
 // ---------------------------------------------------
-// `gma_data` depends on `gma_engine`; `gma_engine` depends on neither it nor
+// `krn_data` depends on `krn_engine`; `krn_engine` depends on neither it nor
 // any connector, and **Arrow and the ClickHouse client must never become
 // engine dependencies** (SPEC D14, docs/data-layer.md §4 rule 6) — the
-// live-only variant of D14's client profile omits `gma_data` entirely and must
+// live-only variant of D14's client profile omits `krn_data` entirely and must
 // still link. (D14's other client variant reads a central L1 over the wire, so
-// it does ship `gma_data`; the invariant constrains `gma_engine`, not the
+// it does ship `krn_data`; the invariant constrains `krn_engine`, not the
 // deployment.)
 //
 // But the engine has to be able to *name* a record: ENC-1486 adds
 // `Dispatcher::onRecord(const TickRecord&)`, and `Dispatcher` is engine code.
 // So the split is:
 //
-//   include/gma/data/Record.hpp   (THIS FILE, in gma_engine)
+//   include/gma/data/Record.hpp   (THIS FILE, in krn_engine)
 //       The PODs. Arrow-free, ClickHouse-free, dependency-free — <cstdint>
 //       and nothing else. Plain aggregates of fixed-width fields.
 //
-//   data/include/gma/data/Schema.hpp   (in gma_data)
+//   data/include/gma/data/Schema.hpp   (in krn_data)
 //       The arrow::Schema for each table, and the column-wise codec between
 //       a RecordBatch and these PODs. That is where Arrow is linked and where
 //       it stops.

@@ -699,7 +699,7 @@ arrow::Result<std::shared_ptr<arrow::RecordBatch>> ipcRoundTrip(
 // compressed. Arrow gives no portable way to read a stream's body
 // compression back, so the real assertion about the codecs is that
 // `Codec::Create` succeeds at all -- it fails outright when the codec was not
-// built, which is the thing GMA_DATA_ARROW_IPC_CODECS controls. If Arrow ever
+// built, which is the thing KRN_DATA_ARROW_IPC_CODECS controls. If Arrow ever
 // silently ignored IpcWriteOptions::codec, these cases would still pass.
 template <typename Record, typename Encode, typename Decode, typename Compare>
 void expectStreamRoundTrip(const Tables& t, const std::vector<Record>& in,
@@ -741,7 +741,7 @@ void expectStreamRoundTrip(const Tables& t, const std::vector<Record>& in,
 // snapshots had no IPC coverage at all — a regression in the int32 symbol
 // dictionary surviving a stream would have been caught by nothing. And nothing
 // read a COMPRESSED stream, which is the sole stated reason
-// GMA_DATA_ARROW_IPC_CODECS defaults ON: ClickHouse's
+// KRN_DATA_ARROW_IPC_CODECS defaults ON: ClickHouse's
 // `output_format_arrow_compression_method` defaults to lz4_frame, so the one
 // thing that would break ENC-1485's transport was the untested one.
 TEST(IpcTest, EveryTableSurvivesAnIpcStreamRoundTrip) {
@@ -823,7 +823,7 @@ TEST(IpcTest, EveryTableSurvivesAnIpcStreamRoundTrip) {
 }
 
 TEST(IpcTest, TheIpcCodecsClickHouseDefaultsToAreActuallyBuilt) {
-  // GMA_DATA_ARROW_IPC_CODECS defaults ON for exactly one reason: a codec-free
+  // KRN_DATA_ARROW_IPC_CODECS defaults ON for exactly one reason: a codec-free
   // Arrow cannot read ENC-1485's stream at all, because ClickHouse compresses
   // ArrowStream output with lz4_frame unless told otherwise. Asserted against
   // the built library rather than inferred from the CMake option, which is

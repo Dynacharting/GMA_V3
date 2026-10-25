@@ -119,7 +119,7 @@ arrow::Result<std::string> Client::exec(std::string_view sql) const {
 
     http::request<http::string_body> req{http::verb::post, path_, 11};
     req.set(http::field::host, host_ + ":" + port_);
-    req.set(http::field::user_agent, "gma_ingest/ENC-1483");
+    req.set(http::field::user_agent, "krn_ingest/ENC-1483");
     req.body() = std::string(sql);
     req.prepare_payload();
     http::write(stream, req);
@@ -166,8 +166,8 @@ arrow::Result<std::string> Client::exec(std::string_view sql) const {
         ".\n⚠ WHETHER THE SERVER APPLIED IT IS UNKNOWN. This is a "
         "COULD-NOT-RUN rather than a finding — no verdict was reached — but it "
         "is not a no-op: if the statement was a DROP PARTITION or an INSERT, L1 "
-        "may have changed. Re-run `gma_ingest ingest` (DROP PARTITION + reload "
-        "is exact, SPEC D5) and then `gma_ingest verify`.\n--- statement ---\n",
+        "may have changed. Re-run `krn_ingest ingest` (DROP PARTITION + reload "
+        "is exact, SPEC D5) and then `krn_ingest verify`.\n--- statement ---\n",
         std::string(sql.substr(0, std::min<std::size_t>(sql.size(), 400))));
   }
 }

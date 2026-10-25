@@ -20,7 +20,7 @@ GMA_V3 is a **streaming-computation server**: JSON request trees come in over We
                        │ links
                        ▼
 ┌──────────────────────────────────────────────────────────────┐
-│ gma  (INTERFACE target — transitive convenience alias)       │
+│ krn  (INTERFACE target — transitive convenience alias)       │
 └───────────┬──────────────────────┬───────────────────────────┘
             │                      │
             ▼                      ▼
@@ -41,9 +41,9 @@ GMA_V3 is a **streaming-computation server**: JSON request trees come in over We
 └──────────────────────────────────────────────────────────────┘
 ```
 
-`libgma_connector_synthetic` sits next to the market connector (also depending on `gma_engine`) but is only linked into `gma_tests` — it exists as a demo + regression check, not a production feature.
+`libgma_connector_synthetic` sits next to the market connector (also depending on `krn_engine`) but is only linked into `krn_tests` — it exists as a demo + regression check, not a production feature.
 
-Engine isolation is enforced via CMake include scoping: `gma_engine`'s PUBLIC include path is `include/` only, so any accidental `#include "gma/book/..."` or `#include "gma/market/..."` from inside engine code fails at compile time.
+Engine isolation is enforced via CMake include scoping: `krn_engine`'s PUBLIC include path is `include/` only, so any accidental `#include "gma/book/..."` or `#include "gma/market/..."` from inside engine code fails at compile time.
 
 ## 3. Event lifecycle (the hot path)
 
@@ -141,7 +141,7 @@ member constructing a `std::string` per member per tick for the raw-admission
 ledger, and each computer then probes the DOM by name. For a chart tick that is
 irrelevant; at MBO rates — tens of millions of records per symbol-day — it is
 the dominant cost, not the math. `onRecord` takes a `krn::data::TickRecord`
-(`include/gma/data/Record.hpp`, an Arrow-free POD inside `gma_engine`) whose
+(`include/gma/data/Record.hpp`, an Arrow-free POD inside `krn_engine`) whose
 fields the normalizer already resolved, so nothing on that path constructs a
 DOM or a per-field string.
 
@@ -270,14 +270,14 @@ Concrete recipe to add a connector named `cool`:
 2. **CMake** — append to `CMakeLists.txt`:
 
    ```cmake
-   file(GLOB_RECURSE GMA_COOL_SOURCES "${CMAKE_SOURCE_DIR}/connectors/cool/src/*.cpp")
-   add_library(gma_connector_cool STATIC ${GMA_COOL_SOURCES})
-   target_include_directories(gma_connector_cool PUBLIC
+   file(GLOB_RECURSE KRN_COOL_SOURCES "${CMAKE_SOURCE_DIR}/connectors/cool/src/*.cpp")
+   add_library(krn_connector_cool STATIC ${KRN_COOL_SOURCES})
+   target_include_directories(krn_connector_cool PUBLIC
      "${CMAKE_SOURCE_DIR}/connectors/cool/include")
-   target_link_libraries(gma_connector_cool PUBLIC gma_engine)
+   target_link_libraries(krn_connector_cool PUBLIC krn_engine)
    ```
 
-   Link into `gma` (if you want the prod binary to use it) and/or into `gma_tests`.
+   Link into `krn` (if you want the prod binary to use it) and/or into `krn_tests`.
 
 3. **Implement `CoolConnector : public engine::IConnector`.** The `registerWith(EngineRegistries&)` method decides what you publish:
 
@@ -473,7 +473,7 @@ Typical order: `ws-stop-accept=5, metrics-stop=10, ws-close-sessions=40, ob-prov
 
 ## 10. Tests
 
-The entire test binary (`gma_tests`) is one executable; `ctest` runs it. Organization under `tests/`:
+The entire test binary (`krn_tests`) is one executable; `ctest` runs it. Organization under `tests/`:
 
 - `engine/` — engine registry unit tests
 - `connectors/` — synthetic connector tests (proves routing invariant)

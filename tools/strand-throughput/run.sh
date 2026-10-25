@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ENC-1005 — SPEC specs/2026-09-20-gma-join-correctness §5 Q2's instrument.
 #
-# Builds gma_engine and the throughput instrument into a PRIVATE mktemp -d and
+# Builds krn_engine and the throughput instrument into a PRIVATE mktemp -d and
 # runs the four profiles Q2 asks for. Nothing is written into the repo's own
 # build/ directory, so this never collides with a session that is mid-build —
 # and nothing is written to a fixed /tmp path, which is the ENC-1222 hazard
@@ -35,7 +35,7 @@ echo "# build dir: $work" >&2
 
 cmake -S "$repo" -B "$work/build" -G Ninja \
       -DCMAKE_BUILD_TYPE=Release -DGMA_BUILD_TESTS=OFF >/dev/null
-cmake --build "$work/build" --target gma_engine -j"$(nproc)" >/dev/null
+cmake --build "$work/build" --target krn_engine -j"$(nproc)" >/dev/null
 
 # Boost/RapidJSON come from the same places the CMake build found them; the
 # engine is header-light enough that the include dirs below are all it needs.

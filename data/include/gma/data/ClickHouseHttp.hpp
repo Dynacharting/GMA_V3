@@ -15,10 +15,10 @@
 // making one of its two arms the only one in the build.
 //
 // What this needs is a POST with a body and a status code, and Boost.Beast is
-// already in this build (gma_engine exposes Boost's include dirs and
+// already in this build (krn_engine exposes Boost's include dirs and
 // Boost::system PUBLIC for the WebSocket server), so the HTTP half costs
 // nothing new. SPEC D14's "Arrow and the ClickHouse client must never become
-// engine dependencies" is unaffected: this header lives in `gma_data`, and
+// engine dependencies" is unaffected: this header lives in `krn_data`, and
 // `tools/check_engine_isolation.py` check A refuses `clickhouse/` includes in
 // engine code, which this is not.
 //

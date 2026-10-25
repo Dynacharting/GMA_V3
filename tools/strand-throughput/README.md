@@ -19,7 +19,7 @@ REPS=1 WIDTHS=1,4 ./run.sh                 # a quick pass
 OUT=/tmp/$USER-strand.csv ./run.sh         # also tee to a file
 ```
 
-It builds `gma_engine` and the instrument into a **private `mktemp -d`**, never
+It builds `krn_engine` and the instrument into a **private `mktemp -d`**, never
 into the repo's `build/`, so it cannot collide with a session that is mid-build
 and cannot be clobbered by one (the shared-`/tmp` hazard, ENC-1222).
 

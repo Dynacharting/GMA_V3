@@ -4,7 +4,7 @@
 // NOT IN THE BUILD. See data/README.md.
 //
 // OPTIONAL IN THE STRICT SENSE: no sink in a graph means no history dependency
-// at runtime, and a build without gma_data still produces a working gma_server.
+// at runtime, and a build without krn_data still produces a working gma_server.
 //
 // THREE USES (docs §11):
 //

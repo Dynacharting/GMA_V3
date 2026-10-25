@@ -278,7 +278,7 @@ TEST_F(CorpusTestFixture, AllCorpusRequestsBuild) {
 // was the third; SPEC D3's per-request strand landed, it went green, its
 // `WILL_FAIL` block was deleted and the count pinned by
 // `gma_enc1289_expected_failures_really_failed` went from 3 to 2. It now runs
-// inside the main `gma_tests` case. This paragraph unwinding itself one line at
+// inside the main `krn_tests` case. This paragraph unwinding itself one line at
 // a time is the mechanism working as designed.
 //
 // ONE, not two, as of ENC-1291 (2026-09-20). SPEC D2's port-indexed fan-in
@@ -305,7 +305,7 @@ TEST_F(CorpusTestFixture, AllCorpusRequestsBuild) {
 // of what a control is for.
 //
 // To see the real verdicts rather than the inverted ones, run the binary
-// directly: `./gma_tests --gtest_filter='CorpusValueAssertions.*'`. That is
+// directly: `./krn_tests --gtest_filter='CorpusValueAssertions.*'`. That is
 // also the form the ENC-1065 `--gtest_repeat` check needs (full, unfiltered).
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -411,7 +411,7 @@ const rapidjson::Value* corpusRequest(int corpusId) {
 //     decodes 0 of 6 arrivals, every tuple scores UNDECODABLE, and it stays
 //     red for a reason ENC-1005 can never clear.
 //   * ..._SingleThreadControl               — the same checker, and it is NOT
-//     in GMA_ENC1289_EXPECTED_FAILURES, so it runs inside the MAIN `gma_tests`
+//     in GMA_ENC1289_EXPECTED_FAILURES, so it runs inside the MAIN `krn_tests`
 //     ctest case and took the primary target red.
 //   * Corpus87_CrossSymbolJoin...           — BROKEN. Its `>= 900.0` filter
 //     (there to drop the second chain's small diffs) kept 0 values, the test
@@ -766,7 +766,7 @@ TEST(CorpusValueAssertions, Corpus86_SpreadIsExactlyTwoCents_SingleThreadControl
 // |   gma_enc1289_xfail_spread_is_not_two_cents_under_concurrency         |
 // | with WILL_FAIL TRUE. ENC-1005 deleted that block and dropped the name |
 // | from GMA_ENC1289_EXPECTED_FAILURES, so this test now runs inside the  |
-// | main `gma_tests` ctest case like any ordinary test, and a regression  |
+// | main `krn_tests` ctest case like any ordinary test, and a regression  |
 // | in ordered delivery takes the PRIMARY target red.                     |
 // | The assertion is byte-for-byte ENC-1289's. Nothing about what it      |
 // | checks, how it drives, or how many threads it uses was touched.       |

@@ -749,7 +749,7 @@ TEST(RecordIngressParityTest, ComparatorSeesAQuoteSideDisappearing) {
 namespace {
 
 std::string readSource(const std::string& relative) {
-  const std::string path = std::string(GMA_TEST_SOURCE_DIR) + "/" + relative;
+  const std::string path = std::string(KRN_TEST_SOURCE_DIR) + "/" + relative;
   std::FILE* f = std::fopen(path.c_str(), "rb");
   // ENC-1233 §2 D10: a missing fixture is a failure, never a skip.
   if (!f) return {};
@@ -885,7 +885,7 @@ std::vector<std::string> jsonTokensIn(const std::string& scrubbed) {
 TEST(RecordPathIsJsonFreeTest, PositiveControlTheJsonPathDoesNameJson) {
   const std::string src = readSource("src/core/Dispatcher.cpp");
   ASSERT_FALSE(src.empty()) << "src/core/Dispatcher.cpp not readable from "
-                            << GMA_TEST_SOURCE_DIR;
+                            << KRN_TEST_SOURCE_DIR;
   const std::string body = functionBody(scrubComments(src), "onTick");
   ASSERT_FALSE(body.empty()) << "could not locate Dispatcher::onTick — the "
                                 "negative verdicts below would be vacuous";
