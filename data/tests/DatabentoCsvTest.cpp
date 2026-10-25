@@ -17,12 +17,12 @@
 // records" would be a test about a file nobody can check out.
 //
 
-#include "gma/data/DatabentoCsv.hpp"
+#include "krn/data/DatabentoCsv.hpp"
 
-#include "gma/data/DatabentoAdapter.hpp"
-#include "gma/data/IngestJob.hpp"
-#include "gma/data/SymbolTable.hpp"
-#include "gma/data/Verdict.hpp"
+#include "krn/data/DatabentoAdapter.hpp"
+#include "krn/data/IngestJob.hpp"
+#include "krn/data/SymbolTable.hpp"
+#include "krn/data/Verdict.hpp"
 
 #include <gtest/gtest.h>
 

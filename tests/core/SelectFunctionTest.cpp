@@ -1,5 +1,5 @@
-#include "gma/FunctionMap.hpp"
-#include "gma/Expr.hpp"
+#include "krn/FunctionMap.hpp"
+#include "krn/Expr.hpp"
 
 #include <gtest/gtest.h>
 #include <rapidjson/document.h>

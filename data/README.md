@@ -6,7 +6,7 @@ locked in [`../specs/2026-10-14-gma-data-layer/SPEC.md`](../specs/2026-10-14-gma
 **As of ENC-1481 the schema half is real and in the build.** `add_library(gma_data …)`
 lives in [`CMakeLists.txt`](CMakeLists.txt), Arrow is found-or-fetched by
 [`cmake/GmaDataArrow.cmake`](cmake/GmaDataArrow.cmake), and `ctest` runs
-`gma_data_tests`. Everything else in `include/gma/data/` is still a **declaration for
+`gma_data_tests`. Everything else in `include/krn/data/` is still a **declaration for
 review, not an implementation** — see *What is real and what is still a sketch* below.
 
 ## The one thing to understand before reading any of it
@@ -38,7 +38,7 @@ ClickHouse client must never become engine dependencies** (`docs/data-layer.md` 
 SPEC D14). That is a shipping constraint, not a preference. Read D14 as it is written,
 though: the client profile is **"live-only *or* reads a central L1 over the wire with no
 local store"** — two variants, not one. The **live-only** variant omits this library
-entirely, so `cmake -DGMA_BUILD_DATA=OFF` must build and link `gma_server` with no Arrow
+entirely, so `cmake -DGMA_BUILD_DATA=OFF` must build and link `krn_server` with no Arrow
 anywhere; it does, and that is checked. The **over-the-wire** variant needs Arrow IPC to
 read `FORMAT ArrowStream`, so it *does* ship `gma_data` — "the client profile omits this
 library" is true of one variant and not of D14. The invariant is unaffected either way,
@@ -47,7 +47,7 @@ deployment or it is not, and `gma_engine` must build in both cases.
 
 **The engine-facing PODs are deliberately NOT in this directory.** `RecordHeader`,
 `TickRecord`, `BookRecord` and `SnapshotRecord` live in
-[`../include/gma/data/Record.hpp`](../include/gma/data/Record.hpp), inside `gma_engine`,
+[`../include/krn/data/Record.hpp`](../include/krn/data/Record.hpp), inside `gma_engine`,
 because ENC-1486 adds `Dispatcher::onRecord(const data::TickRecord&)` and `Dispatcher` *is*
 engine code — the engine has to be able to name a record. They are Arrow-free and
 dependency-free; the `arrow::Schema`s and the codec, which are not, stay here. One
@@ -55,7 +55,7 @@ namespace (`krn::data`), one definition of each type, two libraries. `SymbolTabl
 beside the PODs for the same reason: interning happens here in decode, but resolving an id
 back to a ticker happens at an output boundary, and every output boundary is engine code.
 
-So the invariant worth encoding is **not** "no `gma/data` header is reachable from engine
+So the invariant worth encoding is **not** "no `krn/data` header is reachable from engine
 code" but:
 
 > `gma_engine` must not acquire a dependency on Arrow, the ClickHouse client, or the
@@ -66,7 +66,7 @@ that, as the ctest cases `gma_engine_isolation` and `gma_engine_isolation_selfte
 checks four things — no forbidden include in engine code or in the composition root, no
 `data/`-only or connector header reached from the engine, `gma_engine`'s in-repo include
 dirs are `include/` or a vendored `third_party/` tree, and no data-layer library anywhere in
-`gma_engine`'s or `gma_server`'s **transitive** link closure — refuses to report a pass on
+`gma_engine`'s or `krn_server`'s **transitive** link closure — refuses to report a pass on
 vacuous input, and ships a `--selftest` that runs each predicate against an input that
 violates it. Every way of breaking this invariant otherwise still compiles and still passes
 every existing test.
@@ -88,9 +88,9 @@ roots still fail: that is what this check is for. The *invariant* is carried by 
 scan and the two link-closure checks, not by this one.
 
 The last of the four is transitive because the direct property is the wrong place to look:
-`gma_server` links the `gma` umbrella and nothing else, so one
+`krn_server` links the `gma` umbrella and nothing else, so one
 `target_link_libraries(gma INTERFACE gma_data)` would make `GMA_BUILD_DATA=OFF` unlinkable
-while `gma_engine`'s and `gma_server`'s own link libraries stayed spotless. CMake emits one
+while `gma_engine`'s and `krn_server`'s own link libraries stayed spotless. CMake emits one
 `link.<target>` row per first-party target and the checker walks the graph. `gma_data`'s own
 row is the gate's **positive control**: its closure must trip a forbidden pattern (it links
 `gma::arrow`), or the patterns match nothing in this build and a clean verdict means nothing.
@@ -99,21 +99,21 @@ row is the gate's **positive control**: its closure must trip a forbidden patter
 
 | file | state |
 |---|---|
-| `include/gma/data/Schema.hpp` + `src/Schema.cpp` | **real** — the three first-slice Arrow schemas, `quotes`, and the column-wise codec |
-| `../include/gma/data/Record.hpp` | **real** — the engine-facing PODs (in `gma_engine`) |
-| `../include/gma/data/SymbolTable.hpp` | **real** — ticker/venue interning (in `gma_engine`) |
-| `include/gma/data/DatabentoAdapter.hpp` + `src/DatabentoAdapter.cpp` | **real** — the DBN decoder and the DBN→canonical mapping (ENC-1482) |
-| `include/gma/data/DbnEncoder.hpp` + `src/DbnEncoder.cpp` | **real** — a DBN *encoder*, promoted out of the test TU (ENC-1483). It is a non-circularity instrument first and a component second: the layout claims in `DatabentoAdapter.hpp` are believed only because this code reproduces five real vendor files byte for byte |
-| `include/gma/data/DatabentoCsv.hpp` + `src/DatabentoCsv.cpp` | **real** — vendor CSV → the vendor's own PODs → real DBN, plus `metadata.json` and D6 retention (ENC-1483). It stops at `dbn::MboMsg`/`dbn::TradeMsg`: one mapping to canonical form exists and it is the adapter's (D1) |
-| `include/gma/data/IngestWindows.hpp` + `src/IngestWindows.cpp` | **real** — the `gma.ingest_windows` read rule, as code (ENC-1483) |
-| `include/gma/data/ClickHouseHttp.hpp` + `src/ClickHouseHttp.cpp` | **real** — a minimal Boost.Beast HTTP client, for the ingest job only. Not the native-protocol client: that is one arm of ENC-1485's B1 measurement and shipping it here would pre-answer it |
-| `include/gma/data/IngestJob.hpp` + `src/IngestJob.cpp` + `tools/gma_ingest_main.cpp` | **real** — the ingest job and the `gma_ingest` binary (ENC-1483) |
+| `include/krn/data/Schema.hpp` + `src/Schema.cpp` | **real** — the three first-slice Arrow schemas, `quotes`, and the column-wise codec |
+| `../include/krn/data/Record.hpp` | **real** — the engine-facing PODs (in `gma_engine`) |
+| `../include/krn/data/SymbolTable.hpp` | **real** — ticker/venue interning (in `gma_engine`) |
+| `include/krn/data/DatabentoAdapter.hpp` + `src/DatabentoAdapter.cpp` | **real** — the DBN decoder and the DBN→canonical mapping (ENC-1482) |
+| `include/krn/data/DbnEncoder.hpp` + `src/DbnEncoder.cpp` | **real** — a DBN *encoder*, promoted out of the test TU (ENC-1483). It is a non-circularity instrument first and a component second: the layout claims in `DatabentoAdapter.hpp` are believed only because this code reproduces five real vendor files byte for byte |
+| `include/krn/data/DatabentoCsv.hpp` + `src/DatabentoCsv.cpp` | **real** — vendor CSV → the vendor's own PODs → real DBN, plus `metadata.json` and D6 retention (ENC-1483). It stops at `dbn::MboMsg`/`dbn::TradeMsg`: one mapping to canonical form exists and it is the adapter's (D1) |
+| `include/krn/data/IngestWindows.hpp` + `src/IngestWindows.cpp` | **real** — the `gma.ingest_windows` read rule, as code (ENC-1483) |
+| `include/krn/data/ClickHouseHttp.hpp` + `src/ClickHouseHttp.cpp` | **real** — a minimal Boost.Beast HTTP client, for the ingest job only. Not the native-protocol client: that is one arm of ENC-1485's B1 measurement and shipping it here would pre-answer it |
+| `include/krn/data/IngestJob.hpp` + `src/IngestJob.cpp` + `tools/gma_ingest_main.cpp` | **real** — the ingest job and the `gma_ingest` binary (ENC-1483) |
 | `tests/fixtures/dbn/` | **real Databento DBN bytes**, Apache-2.0 — see `PROVENANCE.md` there |
-| `include/gma/data/IProviderAdapter.hpp` | sketch — the `IProviderAdapter` / `INormalizer` interfaces. `DatabentoAdapter` deliberately does **not** implement it yet: that interface carries `subscribeFrame` / `snapshotRequestFrame` / `fetchHistory`, which are live-gateway and HTTP concerns outside ENC-1482's scope |
-| `include/gma/data/Shim.hpp` | sketch — ENC-1485 and the post-measurement plan |
-| `include/gma/data/IHistoryBackend.hpp` | sketch — `IL1Store`, ClickHouse + fixture impls |
-| `include/gma/data/ISource.hpp` | sketch — `ISource`, `LiveSource`, `ReplaySource`, `SplicedSource` |
-| `include/gma/data/ISinkNode.hpp` | sketch — research output, parity recording |
+| `include/krn/data/IProviderAdapter.hpp` | sketch — the `IProviderAdapter` / `INormalizer` interfaces. `DatabentoAdapter` deliberately does **not** implement it yet: that interface carries `subscribeFrame` / `snapshotRequestFrame` / `fetchHistory`, which are live-gateway and HTTP concerns outside ENC-1482's scope |
+| `include/krn/data/Shim.hpp` | sketch — ENC-1485 and the post-measurement plan |
+| `include/krn/data/IHistoryBackend.hpp` | sketch — `IL1Store`, ClickHouse + fixture impls |
+| `include/krn/data/ISource.hpp` | sketch — `ISource`, `LiveSource`, `ReplaySource`, `SplicedSource` |
+| `include/krn/data/ISinkNode.hpp` | sketch — research output, parity recording |
 | `schema/clickhouse.sql` | the L1 DDL — ENC-1480 |
 
 The sketches use forward-declared Arrow types (`arrow::RecordBatch`, `arrow::Schema`) behind
@@ -197,7 +197,7 @@ the largest single dependency in the design and existed only to query Parquet (S
 `gma_data_tests` and both engine-isolation cases are all built and run — nothing is
 silently skipped where tests run, which a fixed default could not give you in both
 directions. With tests off, a bare Release configure fetches **no** Arrow and still builds
-`gma_server`, so the quickstart works offline. An explicit `-DGMA_BUILD_DATA=ON|OFF` always
+`krn_server`, so the quickstart works offline. An explicit `-DGMA_BUILD_DATA=ON|OFF` always
 wins, and the configure prints which way it resolved and why.
 
 ```bash

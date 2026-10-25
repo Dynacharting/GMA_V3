@@ -1,7 +1,7 @@
-#include "gma/ws/ClientConnection.hpp"
-#include "gma/RequestRegistry.hpp"
-#include "gma/nodes/INode.hpp"
-#include "gma/StreamValue.hpp"
+#include "krn/ws/ClientConnection.hpp"
+#include "krn/RequestRegistry.hpp"
+#include "krn/nodes/INode.hpp"
+#include "krn/StreamValue.hpp"
 #include <gtest/gtest.h>
 #include <memory>
 

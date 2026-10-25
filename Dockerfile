@@ -1,5 +1,5 @@
 # GMA_V3 production image — multi-stage build that compiles the C++
-# `gma_server` against a known-good third-party set and ships the
+# `krn_server` against a known-good third-party set and ships the
 # binary on a slim Debian runtime.
 #
 # Build context is THIS repo root (so the sibling .dockerignore applies and
@@ -16,7 +16,7 @@
 #   4000 — embassy↔gma cloudchannel WebSocket
 #   9001 — TCP ITCH feed ingest
 #
-# Configuration: bind-mount or COPY a `gma.conf` over /app/gma.conf
+# Configuration: bind-mount or COPY a `krn.conf` over /app/krn.conf
 # in deployment. The default config bundled below points at the
 # canonical local-dev ports.
 
@@ -42,13 +42,13 @@ COPY . .
 # microarchitecture baseline by default (see GMA_NATIVE_ARCH / GMA_ARCH_BASELINE
 # in CMakeLists.txt) so the shipped binary runs on any modern x86_64 host.
 RUN cmake -S . -B /build -DCMAKE_BUILD_TYPE=Release \
- && cmake --build /build --target gma_server -j
+ && cmake --build /build --target krn_server -j
 
 # ─────────────────────────────────────────────────────────────────────
 
 FROM debian:stable-slim
 
-# Boost is statically linked into gma_server (Boost_USE_STATIC_LIBS ON), so the
+# Boost is statically linked into krn_server (Boost_USE_STATIC_LIBS ON), so the
 # runtime needs no libboost*. We deliberately do NOT pin a boost soname here
 # (the old libboost-system1.83.0 / libboost-thread1.83.0 pins broke whenever the
 # base image's boost version drifted — ENC-806/L16). The only dynamic deps are
@@ -59,13 +59,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY --from=build /build/gma_server /app/gma_server
-COPY src/util/gma.conf /app/gma.conf
+COPY --from=build /build/krn_server /app/krn_server
+COPY src/util/krn.conf /app/krn.conf
 
 EXPOSE 4000 9001
 STOPSIGNAL SIGTERM
 
-# CLI: ./gma_server <wsPort> <conf> [feedPort]. Default conf binds
-# 4000 and 9001 (see gma.conf). docker-compose can override the
+# CLI: ./krn_server <wsPort> <conf> [feedPort]. Default conf binds
+# 4000 and 9001 (see krn.conf). docker-compose can override the
 # command if a different config is mounted.
-ENTRYPOINT ["/app/gma_server", "4000", "/app/gma.conf"]
+ENTRYPOINT ["/app/krn_server", "4000", "/app/krn.conf"]

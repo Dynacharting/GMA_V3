@@ -1,18 +1,18 @@
 // Tests for krn::VectorReducer — vector<double> → scalar double via
-// FunctionMap. See include/gma/nodes/VectorReducer.hpp.
+// FunctionMap. See include/krn/nodes/VectorReducer.hpp.
 //
 // VectorReducer is synchronous (no timer / no thread pool dispatch), so
 // these tests can read the recorder immediately after onValue returns —
 // no sleep needed.
 
-#include "gma/nodes/VectorReducer.hpp"
-#include "gma/FunctionMap.hpp"
-#include "gma/TreeBuilder.hpp"
-#include "gma/AtomicStore.hpp"
-#include "gma/Dispatcher.hpp"
-#include "gma/rt/ThreadPool.hpp"
-#include "gma/nodes/INode.hpp"
-#include "gma/StreamValue.hpp"
+#include "krn/nodes/VectorReducer.hpp"
+#include "krn/FunctionMap.hpp"
+#include "krn/TreeBuilder.hpp"
+#include "krn/AtomicStore.hpp"
+#include "krn/Dispatcher.hpp"
+#include "krn/rt/ThreadPool.hpp"
+#include "krn/nodes/INode.hpp"
+#include "krn/StreamValue.hpp"
 #include <gtest/gtest.h>
 #include <rapidjson/document.h>
 #include <memory>

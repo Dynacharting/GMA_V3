@@ -1,4 +1,4 @@
-#include "gma/ta/Indicators.hpp"
+#include "krn/ta/Indicators.hpp"
 #include <gtest/gtest.h>
 #include <cmath>
 #include <deque>

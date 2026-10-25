@@ -3,7 +3,7 @@
 // load-bearing.
 //
 
-#include "gma/data/IngestWindows.hpp"
+#include "krn/data/IngestWindows.hpp"
 
 #include <algorithm>
 #include <map>

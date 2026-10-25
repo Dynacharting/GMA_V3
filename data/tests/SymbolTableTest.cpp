@@ -10,8 +10,8 @@
 // in SchemaRoundTripTest.cpp pins that, and the suite is run under
 // --gtest_repeat to prove it.
 
-#include "gma/data/Record.hpp"
-#include "gma/data/SymbolTable.hpp"
+#include "krn/data/Record.hpp"
+#include "krn/data/SymbolTable.hpp"
 
 #include <gtest/gtest.h>
 

@@ -16,7 +16,7 @@
 // makes "the gate is red" and "the gate never ran" the same observation.
 //
 
-#include "gma/data/IngestJob.hpp"
+#include "krn/data/IngestJob.hpp"
 
 #include <charconv>
 #include <cstdlib>

@@ -1,11 +1,11 @@
-#include "gma/ws/WsFeedClient.hpp"
+#include "krn/ws/WsFeedClient.hpp"
 
-#include "gma/feed/IFeedAdapter.hpp"
-#include "gma/Dispatcher.hpp"
-#include "gma/book/OrderBookManager.hpp"
-#include "gma/Event.hpp"
-#include "gma/util/Logger.hpp"
-#include "gma/util/Metrics.hpp"
+#include "krn/feed/IFeedAdapter.hpp"
+#include "krn/Dispatcher.hpp"
+#include "krn/book/OrderBookManager.hpp"
+#include "krn/Event.hpp"
+#include "krn/util/Logger.hpp"
+#include "krn/util/Metrics.hpp"
 
 #include <boost/beast/core/buffers_to_string.hpp>
 

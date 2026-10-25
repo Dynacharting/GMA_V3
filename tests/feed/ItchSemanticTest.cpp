@@ -17,8 +17,8 @@
 // knowingly-failing test. See CrossedBookTest.cpp for the OrderBook-level
 // consume characterization that IS stable across that fix.
 
-#include "gma/feed/ItchAdapter.hpp"
-#include "gma/feed/FeedEvent.hpp"
+#include "krn/feed/ItchAdapter.hpp"
+#include "krn/feed/FeedEvent.hpp"
 
 #include <gtest/gtest.h>
 

@@ -55,7 +55,7 @@ Key properties:
 ```
 ├── CMakeLists.txt              # Root build (engine + connectors + server + tests)
 ├── LICENSE                     # Proprietary, all-rights-reserved licence
-├── include/gma/                # Engine public headers (libgma_engine)
+├── include/krn/                # Engine public headers (libgma_engine)
 │   ├── engine/                 # IConnector, EngineRegistries, registries
 │   ├── nodes/                  # INode, Listener, Worker, Aggregate, Interval, ...
 │   ├── server/                 # WebSocketServer, ClientSession, RequestKey
@@ -68,11 +68,11 @@ Key properties:
 ├── src/                        # Engine implementations (mirrors include/)
 │   ├── core/                   # Dispatcher, TreeBuilder, Expr, builtins
 │   ├── nodes/  server/  ws/  rt/  util/
-│   ├── util/gma.conf           # Example INI runtime config
+│   ├── util/krn.conf           # Example INI runtime config
 │   └── main.cpp                # Composition root — boots engine, registers connectors
 ├── connectors/
 │   ├── market/                 # libgma_connector_market (OB, TA, ITCH, FeedServer, WsFeedClient)
-│   │   ├── include/gma/        # market/, book/, ob/, ta/, feed/, ws/, server/
+│   │   ├── include/krn/        # market/, book/, ob/, ta/, feed/, ws/, server/
 │   │   └── src/
 │   └── synthetic/              # demo connector (linked into tests only)
 ├── tests/                      # GoogleTest suites (one gma_tests binary)
@@ -111,7 +111,7 @@ cmake --build build -j$(nproc)
 ```
 
 CMake targets: `libgma_engine.a`, `libgma_connector_market.a`,
-`libgma_connector_synthetic.a`, the **`gma_server`** binary, and `gma_tests`.
+`libgma_connector_synthetic.a`, the **`krn_server`** binary, and `gma_tests`.
 
 ---
 
@@ -119,22 +119,22 @@ CMake targets: `libgma_engine.a`, `libgma_connector_market.a`,
 
 ```bash
 # Compiled defaults: wsPort=8080, feedPort=9001 (no config file loaded)
-./build/gma_server
+./build/krn_server
 
 # argv[1]=wsPort, argv[2]=configFile, argv[3]=feedPort (argv wins over the file)
-./build/gma_server 9002
-./build/gma_server 9002 gma.conf        # load the example INI (it sets wsPort=4000,
+./build/krn_server 9002
+./build/krn_server 9002 krn.conf        # load the example INI (it sets wsPort=4000,
                                         #   but argv[1]=9002 overrides it)
-./build/gma_server 9002 gma.conf 9005   # also override feedPort
+./build/krn_server 9002 krn.conf 9005   # also override feedPort
 ```
 
 > **Port note:** the **compiled-in** default `wsPort` is **8080**
-> (`include/gma/util/Config.hpp`). The shipped `src/util/gma.conf` *overrides*
+> (`include/krn/util/Config.hpp`). The shipped `src/util/krn.conf` *overrides*
 > it to **4000**, so the port you get depends on whether you pass that file.
 
 ### Configuration
 
-Runtime config is an **INI `key=value` file** (see `src/util/gma.conf`) parsed by
+Runtime config is an **INI `key=value` file** (see `src/util/krn.conf`) parsed by
 `src/util/Config.cpp` — there is no compile-time config struct to edit. Keys
 include `wsPort`, `feedPort`, `threadPoolSize`, `logLevel`,
 `metricsEnabled`/`metricsIntervalSec`, the TA periods
@@ -142,7 +142,7 @@ include `wsPort`, `feedPort`, `threadPoolSize`, `logLevel`,
 `taBBands_*`), memory bounds (`taHistoryMax`, `maxSymbols`,
 `maxFieldsPerSymbol`), `allowNegativePrices`, the `ingress.N.*` ingress entries,
 and the `market.source.*` field-map namespace. See **[CLAUDE.md](./CLAUDE.md) →
-Configuration** for the full table (including compiled-default vs `gma.conf`
+Configuration** for the full table (including compiled-default vs `krn.conf`
 values) and **[docs/feed-adapters.md](./docs/feed-adapters.md)** for the source
 field map.
 

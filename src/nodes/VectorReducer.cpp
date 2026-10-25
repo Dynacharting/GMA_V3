@@ -1,5 +1,5 @@
-#include "gma/nodes/VectorReducer.hpp"
-#include "gma/util/Logger.hpp"
+#include "krn/nodes/VectorReducer.hpp"
+#include "krn/util/Logger.hpp"
 
 #include <utility>
 #include <variant>

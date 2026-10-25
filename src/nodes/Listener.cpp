@@ -1,7 +1,7 @@
-#include "gma/nodes/Listener.hpp"
-#include "gma/Dispatcher.hpp"
-#include "gma/rt/ThreadPool.hpp"
-#include "gma/util/Logger.hpp"
+#include "krn/nodes/Listener.hpp"
+#include "krn/Dispatcher.hpp"
+#include "krn/rt/ThreadPool.hpp"
+#include "krn/util/Logger.hpp"
 
 #include <utility>
 

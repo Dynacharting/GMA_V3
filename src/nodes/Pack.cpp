@@ -1,5 +1,5 @@
-#include "gma/nodes/Pack.hpp"
-#include "gma/util/Logger.hpp"
+#include "krn/nodes/Pack.hpp"
+#include "krn/util/Logger.hpp"
 #include <stdexcept>
 
 namespace krn {

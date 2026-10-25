@@ -1,6 +1,6 @@
-#include "gma/data/SymbolTable.hpp"
+#include "krn/data/SymbolTable.hpp"
 
-#include "gma/data/Record.hpp"
+#include "krn/data/Record.hpp"
 
 #include <cmath>
 #include <mutex>

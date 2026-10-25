@@ -22,14 +22,14 @@
 // market-shaped field name would additionally be picked up by
 // MarketTickComputer and muddy what is being measured.
 
-#include "gma/AtomicStore.hpp"
-#include "gma/Dispatcher.hpp"
-#include "gma/Event.hpp"
-#include "gma/StreamValue.hpp"
-#include "gma/nodes/AtomicAccessor.hpp"
-#include "gma/nodes/INode.hpp"
-#include "gma/rt/ThreadPool.hpp"
-#include "gma/util/Config.hpp"
+#include "krn/AtomicStore.hpp"
+#include "krn/Dispatcher.hpp"
+#include "krn/Event.hpp"
+#include "krn/StreamValue.hpp"
+#include "krn/nodes/AtomicAccessor.hpp"
+#include "krn/nodes/INode.hpp"
+#include "krn/rt/ThreadPool.hpp"
+#include "krn/util/Config.hpp"
 
 #include <gtest/gtest.h>
 #include <rapidjson/document.h>

@@ -3,8 +3,8 @@
 // must reach a connector-registered ConfigReaderFn through the deferred
 // dispatchPendingKeys() flush, without any change to engine code.
 
-#include "gma/engine/ConfigNamespaceRegistry.hpp"
-#include "gma/util/Config.hpp"
+#include "krn/engine/ConfigNamespaceRegistry.hpp"
+#include "krn/util/Config.hpp"
 
 #include <gtest/gtest.h>
 #include <atomic>

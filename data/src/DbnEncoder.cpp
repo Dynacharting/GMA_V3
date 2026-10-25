@@ -11,7 +11,7 @@
 // the move had changed a single byte that test would be red.
 //
 
-#include "gma/data/DbnEncoder.hpp"
+#include "krn/data/DbnEncoder.hpp"
 
 #include <stdexcept>
 #include <string>

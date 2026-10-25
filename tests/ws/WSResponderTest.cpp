@@ -1,4 +1,4 @@
-#include "gma/ws/WSResponder.hpp"
+#include "krn/ws/WSResponder.hpp"
 #include <gtest/gtest.h>
 #include <rapidjson/document.h>
 #include <string>

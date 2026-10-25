@@ -9,16 +9,16 @@
 // each tick, but it no-ops when the test's payload doesn't carry the
 // default field names — leaving the custom computer's writes intact.
 
-#include "gma/AtomicFunctions.hpp"
-#include "gma/AtomicStore.hpp"
-#include "gma/Dispatcher.hpp"
-#include "gma/Event.hpp"
-#include "gma/MarketTA.hpp"
-#include "gma/StreamValue.hpp"
-#include "gma/market/MarketFieldMap.hpp"
-#include "gma/nodes/INode.hpp"
-#include "gma/rt/ThreadPool.hpp"
-#include "gma/util/Config.hpp"
+#include "krn/AtomicFunctions.hpp"
+#include "krn/AtomicStore.hpp"
+#include "krn/Dispatcher.hpp"
+#include "krn/Event.hpp"
+#include "krn/MarketTA.hpp"
+#include "krn/StreamValue.hpp"
+#include "krn/market/MarketFieldMap.hpp"
+#include "krn/nodes/INode.hpp"
+#include "krn/rt/ThreadPool.hpp"
+#include "krn/util/Config.hpp"
 
 #include <gtest/gtest.h>
 #include <rapidjson/document.h>

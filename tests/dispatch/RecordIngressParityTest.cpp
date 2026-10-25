@@ -52,23 +52,23 @@
 // no `EventComputerRegistry`, no `FunctionMap` writes. So `--gtest_repeat`
 // against the full binary is unaffected by it.
 
-#include "gma/AtomicStore.hpp"
-#include "gma/Dispatcher.hpp"
-#include "gma/Event.hpp"
-#include "gma/FunctionMap.hpp"
-#include "gma/MarketTA.hpp"
-#include "gma/StreamValue.hpp"
-#include "gma/SymbolHistory.hpp"
-#include "gma/data/Record.hpp"
-#include "gma/data/SymbolTable.hpp"
-#include "gma/engine/FieldSource.hpp"
-#include "gma/engine/IEventComputer.hpp"
-#include "gma/engine/JsonFieldSource.hpp"
-#include "gma/engine/RecordFieldSource.hpp"
-#include "gma/nodes/INode.hpp"
-#include "gma/rt/ThreadPool.hpp"
-#include "gma/util/Config.hpp"
-#include "gma/util/Logger.hpp"
+#include "krn/AtomicStore.hpp"
+#include "krn/Dispatcher.hpp"
+#include "krn/Event.hpp"
+#include "krn/FunctionMap.hpp"
+#include "krn/MarketTA.hpp"
+#include "krn/StreamValue.hpp"
+#include "krn/SymbolHistory.hpp"
+#include "krn/data/Record.hpp"
+#include "krn/data/SymbolTable.hpp"
+#include "krn/engine/FieldSource.hpp"
+#include "krn/engine/IEventComputer.hpp"
+#include "krn/engine/JsonFieldSource.hpp"
+#include "krn/engine/RecordFieldSource.hpp"
+#include "krn/nodes/INode.hpp"
+#include "krn/rt/ThreadPool.hpp"
+#include "krn/util/Config.hpp"
+#include "krn/util/Logger.hpp"
 
 #include <gtest/gtest.h>
 #include <rapidjson/document.h>
@@ -274,7 +274,7 @@ data::TickRecord makeRecord(data::SymbolId sym, double price, std::uint64_t size
 // record path uses — `RecordFieldSource` itself — and never restated here.
 //
 // That is the point. If the mapping in
-// include/gma/engine/RecordFieldSource.hpp gains a field, both sides of this
+// include/krn/engine/RecordFieldSource.hpp gains a field, both sides of this
 // test gain it together, so this test keeps measuring what it claims to
 // measure (do the two ENTRY POINTS agree) instead of silently becoming a test
 // of a hardcoded field list that has drifted. What the mapping SHOULD be is a
@@ -930,8 +930,8 @@ TEST(RecordPathIsJsonFreeTest, RecordPathTranslationUnitNamesNoJson) {
 }
 
 TEST(RecordPathIsJsonFreeTest, RecordFieldSourceHeaderNamesNoJsonButJsonOneDoes) {
-  const std::string rec = readSource("include/gma/engine/RecordFieldSource.hpp");
-  const std::string jsn = readSource("include/gma/engine/JsonFieldSource.hpp");
+  const std::string rec = readSource("include/krn/engine/RecordFieldSource.hpp");
+  const std::string jsn = readSource("include/krn/engine/JsonFieldSource.hpp");
   ASSERT_FALSE(rec.empty());
   ASSERT_FALSE(jsn.empty());
 
@@ -1019,7 +1019,7 @@ TEST(RecordFieldSourceMappingTest, TradeOnly) {
 
 TEST(RecordFieldSourceMappingTest, QuoteKindSuppressesPriceAndSize) {
   // One struct serves a trade and an L1 quote; `kind` says which half is
-  // meaningful (include/gma/data/Record.hpp).
+  // meaningful (include/krn/data/Record.hpp).
   data::TickRecord r = bare(data::RecordKind::Quote);
   r.price = data::toFixed(42.5);   // set, and must NOT be emitted
   r.size  = 7;                     // ditto

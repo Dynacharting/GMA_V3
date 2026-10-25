@@ -2,7 +2,7 @@
 // Verdict — see Verdict.hpp for why the classification is explicit.
 //
 
-#include "gma/data/Verdict.hpp"
+#include "krn/data/Verdict.hpp"
 
 #include <cstring>
 

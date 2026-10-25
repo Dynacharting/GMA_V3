@@ -1,6 +1,6 @@
-#include "gma/rt/ThreadPool.hpp"
+#include "krn/rt/ThreadPool.hpp"
 #include <cassert>
-#include "gma/util/Logger.hpp"
+#include "krn/util/Logger.hpp"
 
 namespace krn::rt {
 

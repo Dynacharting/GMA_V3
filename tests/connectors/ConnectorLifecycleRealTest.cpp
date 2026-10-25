@@ -7,17 +7,17 @@
 //   - MarketConnector::start() is a no-op that does not throw, with no test.
 // These tests assert what the connectors REALLY do (no aspirational throws).
 
-#include "gma/AtomicStore.hpp"
-#include "gma/Dispatcher.hpp"
-#include "gma/FunctionMap.hpp"
-#include "gma/atomic/AtomicProviderRegistry.hpp"
-#include "gma/engine/Registries.hpp"
-#include "gma/market/MarketConnector.hpp"
-#include "gma/rt/ThreadPool.hpp"
-#include "gma/runtime/ShutdownCoordinator.hpp"
-#include "gma/synthetic/SyntheticConnector.hpp"
-#include "gma/util/Config.hpp"
-#include "gma/util/Logger.hpp"
+#include "krn/AtomicStore.hpp"
+#include "krn/Dispatcher.hpp"
+#include "krn/FunctionMap.hpp"
+#include "krn/atomic/AtomicProviderRegistry.hpp"
+#include "krn/engine/Registries.hpp"
+#include "krn/market/MarketConnector.hpp"
+#include "krn/rt/ThreadPool.hpp"
+#include "krn/runtime/ShutdownCoordinator.hpp"
+#include "krn/synthetic/SyntheticConnector.hpp"
+#include "krn/util/Config.hpp"
+#include "krn/util/Logger.hpp"
 
 #include <boost/asio/io_context.hpp>
 #include <gtest/gtest.h>

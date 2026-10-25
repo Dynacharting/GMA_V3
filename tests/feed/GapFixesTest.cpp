@@ -10,20 +10,20 @@
 
 #include <gtest/gtest.h>
 
-#include "gma/util/Config.hpp"
-#include "gma/Dispatcher.hpp"
-#include "gma/AtomicStore.hpp"
-#include "gma/AtomicFunctions.hpp"
-#include "gma/Event.hpp"
-#include "gma/SymbolHistory.hpp"
-#include "gma/StreamValue.hpp"
-#include "gma/MarketTA.hpp"
-#include "gma/market/MarketFieldMap.hpp"
-#include "gma/rt/ThreadPool.hpp"
-#include "gma/book/OrderBookManager.hpp"
-#include "gma/feed/IFeedAdapter.hpp"
-#include "gma/feed/FeedEvent.hpp"
-#include "gma/nodes/INode.hpp"
+#include "krn/util/Config.hpp"
+#include "krn/Dispatcher.hpp"
+#include "krn/AtomicStore.hpp"
+#include "krn/AtomicFunctions.hpp"
+#include "krn/Event.hpp"
+#include "krn/SymbolHistory.hpp"
+#include "krn/StreamValue.hpp"
+#include "krn/MarketTA.hpp"
+#include "krn/market/MarketFieldMap.hpp"
+#include "krn/rt/ThreadPool.hpp"
+#include "krn/book/OrderBookManager.hpp"
+#include "krn/feed/IFeedAdapter.hpp"
+#include "krn/feed/FeedEvent.hpp"
+#include "krn/nodes/INode.hpp"
 
 #include <rapidjson/document.h>
 

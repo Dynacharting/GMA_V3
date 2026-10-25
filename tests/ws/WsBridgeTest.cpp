@@ -1,4 +1,4 @@
-#include "gma/ws/WsBridge.hpp"
+#include "krn/ws/WsBridge.hpp"
 #include <gtest/gtest.h>
 #include <string>
 #include <vector>

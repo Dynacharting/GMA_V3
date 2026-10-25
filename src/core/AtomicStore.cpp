@@ -1,5 +1,5 @@
 // src/core/AtomicStore.cpp
-#include "gma/AtomicStore.hpp"
+#include "krn/AtomicStore.hpp"
 #include <algorithm>
 #include <mutex>
 #include <thread>

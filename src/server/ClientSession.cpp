@@ -1,16 +1,16 @@
 // File: src/server/ClientSession.cpp
 
-#include "gma/server/ClientSession.hpp"
-#include "gma/server/WebSocketServer.hpp"
-#include "gma/ExecutionContext.hpp"
-#include "gma/Dispatcher.hpp"
-#include "gma/TreeBuilder.hpp"
-#include "gma/rt/Strand.hpp"
-#include "gma/JsonValidator.hpp"
-#include "gma/nodes/Responder.hpp"
-#include "gma/util/Logger.hpp"
-#include "gma/util/Metrics.hpp"
-#include "gma/util/JsonUtil.hpp"
+#include "krn/server/ClientSession.hpp"
+#include "krn/server/WebSocketServer.hpp"
+#include "krn/ExecutionContext.hpp"
+#include "krn/Dispatcher.hpp"
+#include "krn/TreeBuilder.hpp"
+#include "krn/rt/Strand.hpp"
+#include "krn/JsonValidator.hpp"
+#include "krn/nodes/Responder.hpp"
+#include "krn/util/Logger.hpp"
+#include "krn/util/Metrics.hpp"
+#include "krn/util/JsonUtil.hpp"
 
 #include <boost/beast/core/buffers_to_string.hpp>
 #include <boost/beast/websocket.hpp>
@@ -598,7 +598,7 @@ void ClientSession::handleSubscribe(const ::rapidjson::Document& doc) {
     }
 
     // Request key — int (smoke.js / legacy clients) or string
-    // (embassy / saved-scene). See gma/server/RequestKey.hpp.
+    // (embassy / saved-scene). See krn/server/RequestKey.hpp.
     if (krn::server::requestObjHasBothKeyAndId(r)) {
       sendError("subscribe", "request must have key (int) OR id (int|string), not both");
       continue;

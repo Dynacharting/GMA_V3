@@ -1,4 +1,4 @@
-#include "gma/server/WebSocketServer.hpp"
+#include "krn/server/WebSocketServer.hpp"
 
 #include <boost/asio/dispatch.hpp>
 #include <boost/asio/strand.hpp>
@@ -8,10 +8,10 @@
 #include <utility>
 
 // Project headers (adjust paths if your tree differs)
-#include "gma/server/ClientSession.hpp"
-#include "gma/Dispatcher.hpp"
-#include "gma/ExecutionContext.hpp"
-#include "gma/util/Metrics.hpp"
+#include "krn/server/ClientSession.hpp"
+#include "krn/Dispatcher.hpp"
+#include "krn/ExecutionContext.hpp"
+#include "krn/util/Metrics.hpp"
 
 namespace krn {
 

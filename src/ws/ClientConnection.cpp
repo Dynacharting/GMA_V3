@@ -1,5 +1,5 @@
-#include "gma/ws/ClientConnection.hpp"
-#include "gma/util/Logger.hpp"
+#include "krn/ws/ClientConnection.hpp"
+#include "krn/util/Logger.hpp"
 #include <boost/beast/version.hpp>
 #include <chrono>
 

@@ -2,7 +2,7 @@
 // directly so writes from any path (Dispatcher, IEventComputer::compute,
 // or external test code) are bounded uniformly.
 
-#include "gma/AtomicStore.hpp"
+#include "krn/AtomicStore.hpp"
 
 #include <gtest/gtest.h>
 #include <string>

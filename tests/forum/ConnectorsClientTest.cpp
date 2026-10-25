@@ -5,7 +5,7 @@
 // forum/internal/http/routes/connectors.go ListConnectors), so any
 // drift in that endpoint surfaces here.
 
-#include "gma/forum/ConnectorsClient.hpp"
+#include "krn/forum/ConnectorsClient.hpp"
 
 #include <gtest/gtest.h>
 

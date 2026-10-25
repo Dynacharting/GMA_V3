@@ -1,7 +1,7 @@
-#include "gma/nodes/Switch.hpp"
-#include "gma/Expr.hpp"
-#include "gma/StreamValue.hpp"
-#include "gma/nodes/INode.hpp"
+#include "krn/nodes/Switch.hpp"
+#include "krn/Expr.hpp"
+#include "krn/StreamValue.hpp"
+#include "krn/nodes/INode.hpp"
 #include <gtest/gtest.h>
 #include <memory>
 #include <rapidjson/document.h>

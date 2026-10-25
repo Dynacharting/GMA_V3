@@ -1,6 +1,6 @@
-#include "gma/ExecutionContext.hpp"
-#include "gma/AtomicStore.hpp"
-#include "gma/rt/ThreadPool.hpp"
+#include "krn/ExecutionContext.hpp"
+#include "krn/AtomicStore.hpp"
+#include "krn/rt/ThreadPool.hpp"
 #include <gtest/gtest.h>
 #include <memory>
 

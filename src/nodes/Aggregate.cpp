@@ -1,5 +1,5 @@
-#include "gma/nodes/Aggregate.hpp"
-#include "gma/util/Logger.hpp"
+#include "krn/nodes/Aggregate.hpp"
+#include "krn/util/Logger.hpp"
 #include <stdexcept>
 #include <utility>
 

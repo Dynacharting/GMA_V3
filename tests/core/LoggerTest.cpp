@@ -1,4 +1,4 @@
-#include "gma/util/Logger.hpp"
+#include "krn/util/Logger.hpp"
 #include <gtest/gtest.h>
 #include <cstdio>
 #include <fstream>

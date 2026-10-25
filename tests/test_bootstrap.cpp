@@ -6,19 +6,19 @@
 // of registerWith, so every Dispatcher built in any test picks up its own
 // fresh MarketTickComputer the first time it sees a tick.
 
-#include "gma/AtomicStore.hpp"
-#include "gma/Dispatcher.hpp"
-#include "gma/FunctionMap.hpp"
-#include "gma/FunctionRegistry.hpp"
-#include "gma/NodeRegistry.hpp"
-#include "gma/atomic/AtomicProviderRegistry.hpp"
-#include "gma/engine/EventComputerRegistry.hpp"
-#include "gma/engine/Registries.hpp"
-#include "gma/market/MarketConnector.hpp"
-#include "gma/rt/ThreadPool.hpp"
-#include "gma/runtime/ShutdownCoordinator.hpp"
-#include "gma/util/Config.hpp"
-#include "gma/util/Logger.hpp"
+#include "krn/AtomicStore.hpp"
+#include "krn/Dispatcher.hpp"
+#include "krn/FunctionMap.hpp"
+#include "krn/FunctionRegistry.hpp"
+#include "krn/NodeRegistry.hpp"
+#include "krn/atomic/AtomicProviderRegistry.hpp"
+#include "krn/engine/EventComputerRegistry.hpp"
+#include "krn/engine/Registries.hpp"
+#include "krn/market/MarketConnector.hpp"
+#include "krn/rt/ThreadPool.hpp"
+#include "krn/runtime/ShutdownCoordinator.hpp"
+#include "krn/util/Config.hpp"
+#include "krn/util/Logger.hpp"
 
 #include "support/CorpusPath.hpp"
 

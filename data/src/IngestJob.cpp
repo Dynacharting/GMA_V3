@@ -2,10 +2,10 @@
 // IngestJob — see IngestJob.hpp for the path and what is deliberately not here.
 //
 
-#include "gma/data/IngestJob.hpp"
+#include "krn/data/IngestJob.hpp"
 
-#include "gma/data/DatabentoAdapter.hpp"
-#include "gma/data/SymbolTable.hpp"
+#include "krn/data/DatabentoAdapter.hpp"
+#include "krn/data/SymbolTable.hpp"
 
 #include <algorithm>
 #include <charconv>

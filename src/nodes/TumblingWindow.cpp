@@ -1,6 +1,6 @@
-#include "gma/nodes/TumblingWindow.hpp"
-#include "gma/nodes/BucketTime.hpp"   // for BucketTime::nextAlignedAfter
-#include "gma/util/Logger.hpp"
+#include "krn/nodes/TumblingWindow.hpp"
+#include "krn/nodes/BucketTime.hpp"   // for BucketTime::nextAlignedAfter
+#include "krn/util/Logger.hpp"
 
 #include <cstdint>
 #include <utility>

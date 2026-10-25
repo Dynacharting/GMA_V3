@@ -5,7 +5,7 @@
 > the start of the GMA_V3 rework. **Every headline bug listed below has since
 > been fixed in the current code**, and the audit cites file paths and types
 > that **no longer exist** — e.g. `src/core/AtomicFunctions.cpp`,
-> `src/core/MarketDispatcher.cpp`, `gma/Config.hpp`/`gma/Logger.hpp` include
+> `src/core/MarketDispatcher.cpp`, `krn/Config.hpp`/`krn/Logger.hpp` include
 > shapes, the duplicate `ClientConnection`, and a C++17 CMake standard. The
 > live system builds clean (g++ 16, `-Wall -Wextra -Wpedantic`), all tests
 > pass, the engine/connector split is enforced, feed code lives under
@@ -57,7 +57,7 @@
 | `src/core/AtomicFunctions.cpp` | 77-82, 111, 127 | All TA periods hardcoded (SMA 5/20, EMA 12/26, RSI 14, BBands 20/2.0, ATR 14). Config exists but is never used here |
 | `src/core/AtomicFunctions.cpp` | 11 | `computeMedian` takes `std::deque` by value instead of const ref |
 | `src/core/TreeBuilder.cpp` | 278 | Unused variable `cap` with `(void)cap` suppression |
-| `src/core/TreeBuilder.cpp` | 19, 21 | Duplicate `#include "gma/rt/ThreadPool.hpp"` |
+| `src/core/TreeBuilder.cpp` | 19, 21 | Duplicate `#include "krn/rt/ThreadPool.hpp"` |
 | `src/core/TreeBuilder.cpp` | 293, 410 | Direct dependency on global `krn::gThreadPool` — untestable, violates DI |
 | `src/core/MarketDispatcher.cpp` | 74, 120 | Bare `catch(...)` swallows all exceptions with zero logging |
 | `src/core/JsonValidator.cpp` | — | Minimal validation: no size limits, no tree structure validation, no node type validation, no parameter range checks |
@@ -147,7 +147,7 @@
 
 | Files | Issue |
 |-------|-------|
-| `include/gma/ws/ClientConnection.hpp` vs `include/gma/ClientConnection.hpp` | **Two different ClientConnection classes in the same namespace** — different constructors, different callback sets (OnOpen/OnClose/OnError vs OnMessage only), different methods. Code could link against wrong version depending on include order |
+| `include/krn/ws/ClientConnection.hpp` vs `include/krn/ClientConnection.hpp` | **Two different ClientConnection classes in the same namespace** — different constructors, different callback sets (OnOpen/OnClose/OnError vs OnMessage only), different methods. Code could link against wrong version depending on include order |
 
 ### Thread-Safety & Protocol Issues
 
@@ -249,22 +249,22 @@ The **entire** order book system has **zero tests**:
 | File | Line(s) | Issue |
 |------|---------|-------|
 | `SPSCQueue.hpp` | 18-33 | **Missing acquire fence before `buf_[]` access** in both `try_push()` and `try_pop()`. Producer might read stale data from consumer's slot, consumer might read incomplete write from producer |
-| `include/gma/util/Metrics.hpp` | 40-44 | **Race on `thr_` assignment** — CAS sets `running_=true`, then assigns `thr_` outside the CAS. If `stopReporter()` called between CAS and assignment, `thr_` is uninitialized |
-| `include/gma/util/Config.hpp` | 18-24 | Config fields are non-const, non-atomic. Concurrent read during `loadFromFile()` is a data race |
+| `include/krn/util/Metrics.hpp` | 40-44 | **Race on `thr_` assignment** — CAS sets `running_=true`, then assigns `thr_` outside the CAS. If `stopReporter()` called between CAS and assignment, `thr_` is uninitialized |
+| `include/krn/util/Config.hpp` | 18-24 | Config fields are non-const, non-atomic. Concurrent read during `loadFromFile()` is a data race |
 
 ### Design Issues
 
 | File | Line(s) | Issue |
 |------|---------|-------|
-| `include/gma/util/Metrics.hpp` | 79-89 | **Reporter thread does nothing** — `reporterLoop()` sleeps in a loop but never actually reports. Comment says "intentionally do not print" |
+| `include/krn/util/Metrics.hpp` | 79-89 | **Reporter thread does nothing** — `reporterLoop()` sleeps in a loop but never actually reports. Comment says "intentionally do not print" |
 | `src/rt/ThreadPool.cpp` | 26 | **`post()` silently drops tasks when stopping** — no return value, no logging, caller never knows |
 | `src/rt/ThreadPool.cpp` | 46 | **Worker `catch(...)` swallows all exceptions** — no logging of what failed |
-| `include/gma/runtime/ShutdownCoordinator.hpp` | 30-31 | **`std::sort` is unstable** — steps with equal `order` may execute in arbitrary order between runs |
-| `include/gma/runtime/ShutdownCoordinator.hpp` | 38 | **Shutdown step failures swallowed silently** — `catch(...)` with no logging |
+| `include/krn/runtime/ShutdownCoordinator.hpp` | 30-31 | **`std::sort` is unstable** — steps with equal `order` may execute in arbitrary order between runs |
+| `include/krn/runtime/ShutdownCoordinator.hpp` | 38 | **Shutdown step failures swallowed silently** — `catch(...)` with no logging |
 | `src/util/Logger.cpp` | 77-109 | **JSON escaping incomplete** — doesn't escape newlines, backslashes, or control characters. Produces invalid JSON output |
 | `src/util/Logger.cpp` | 50 | **`setFile()` leaks file handle** if called multiple times (first close is correct, but destructor never closes) |
-| `include/gma/ta/Indicators.hpp` | 100-107 | **RSI `init` flag never set to true** — caller must manage initialization state externally but gets no signal. RSI stays in init mode returning NaN forever unless caller knows the period |
-| `include/gma/ta/TAComputer.hpp` | — | **TAComputer doesn't use Indicators.hpp** — SymState is a placeholder struct. TA functions exist but aren't wired into the state machine |
+| `include/krn/ta/Indicators.hpp` | 100-107 | **RSI `init` flag never set to true** — caller must manage initialization state externally but gets no signal. RSI stays in init mode returning NaN forever unless caller knows the period |
+| `include/krn/ta/TAComputer.hpp` | — | **TAComputer doesn't use Indicators.hpp** — SymState is a placeholder struct. TA functions exist but aren't wired into the state machine |
 
 ### Overhaul Plan
 
@@ -293,9 +293,9 @@ The **entire** order book system has **zero tests**:
 | File | Line(s) | Issue |
 |------|---------|-------|
 | Root `CMakeLists.txt` | — | **Missing `find_package(GTest REQUIRED)`** — test target links `GTest::gtest_main` but GTest is never found. Linker error |
-| `tests/core/ConfigTest.cpp` | 1 | **Wrong include path** — `#include "gma/Config.hpp"` should be `"gma/util/Config.hpp"` |
-| `tests/core/LoggerTest.cpp` | 1 | **Wrong include path** — `#include "gma/Logger.hpp"` should be `"gma/util/Logger.hpp"` |
-| `tests/treebuilder/TreeBuilderTest.cpp` | 4 | **Typo in include** — `"gma/rtThreadPool.hpp"` should be `"gma/rt/ThreadPool.hpp"` |
+| `tests/core/ConfigTest.cpp` | 1 | **Wrong include path** — `#include "krn/Config.hpp"` should be `"krn/util/Config.hpp"` |
+| `tests/core/LoggerTest.cpp` | 1 | **Wrong include path** — `#include "krn/Logger.hpp"` should be `"krn/util/Logger.hpp"` |
+| `tests/treebuilder/TreeBuilderTest.cpp` | 4 | **Typo in include** — `"krn/rtThreadPool.hpp"` should be `"krn/rt/ThreadPool.hpp"` |
 | `tests/core/ConfigTest.cpp` | 8-40 | **References non-existent statics** — `Config::ListenerQueueMax`, `Config::HistoryMaxSize`, `Config::ThreadPoolSize` don't exist in Config class |
 | `tests/core/LoggerTest.cpp` | 29-109 | **References non-existent static methods** — `Logger::info()`, `Logger::warn()`, `Logger::error()` don't exist. Logger uses instance method `log(LogLevel, ...)` |
 | `tests/CMakeLists.txt` | 12 | **Windows-only** — `set(GTEST_CTEST_RUNNER cmd ...)` breaks Linux/macOS |
@@ -425,7 +425,7 @@ Fix the build first so you can run tests. Fix the node pipeline so data can flow
 
 **Phase 4 — Build Optimizations:**
 - Release builds: `-O3 -march=native` (GCC/Clang), `/O2 /Ob2 /GL /LTCG` (MSVC)
-- LTO via `CheckIPOSupported` on both `gma` and `gma_server` targets
+- LTO via `CheckIPOSupported` on both `gma` and `krn_server` targets
 
 **Audit Fixes (post-commit):**
 - Fixed EMA lambda inconsistency (period-window → full-history seeding to match MACD)
@@ -478,7 +478,7 @@ Fix the build first so you can run tests. Fix the node pipeline so data can flow
 | Feed normalization layer (exchange JSON → internal TickEntry) | `src/feed/FeedNormalizer.cpp` (new) | High |
 | Reconnection with exponential backoff | `src/feed/ExchangeClient.cpp` | High |
 | Symbol subscription management (subscribe/unsubscribe to specific symbols) | `src/feed/SubscriptionManager.cpp` (new) | Medium |
-| Multiple exchange support with unified interface | `include/gma/feed/IFeedAdapter.hpp` (new) | Low |
+| Multiple exchange support with unified interface | `include/krn/feed/IFeedAdapter.hpp` (new) | Low |
 
 ### Deliverable 11: Observability & Operations
 

@@ -81,14 +81,14 @@
 
 #include <rapidjson/document.h>
 
-#include "gma/AtomicStore.hpp"
-#include "gma/Dispatcher.hpp"
-#include "gma/Event.hpp"
-#include "gma/StreamValue.hpp"
-#include "gma/TreeBuilder.hpp"
-#include "gma/nodes/Listener.hpp"
-#include "gma/rt/Strand.hpp"
-#include "gma/rt/ThreadPool.hpp"
+#include "krn/AtomicStore.hpp"
+#include "krn/Dispatcher.hpp"
+#include "krn/Event.hpp"
+#include "krn/StreamValue.hpp"
+#include "krn/TreeBuilder.hpp"
+#include "krn/nodes/Listener.hpp"
+#include "krn/rt/Strand.hpp"
+#include "krn/rt/ThreadPool.hpp"
 
 using namespace krn;
 using Clock = std::chrono::steady_clock;

@@ -4,8 +4,8 @@
 //   - start() / stop() are driven once each per instance, in order.
 //   - Multiple factories can register; lookup by kind picks the right one.
 
-#include "gma/engine/EngineRegistries.hpp"
-#include "gma/engine/IngressRegistry.hpp"
+#include "krn/engine/EngineRegistries.hpp"
+#include "krn/engine/IngressRegistry.hpp"
 
 #include <gtest/gtest.h>
 #include <atomic>

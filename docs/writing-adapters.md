@@ -3,10 +3,10 @@
 This guide covers everything needed to integrate a new data source into GMA through the feed adapter interface. By the end you'll have a working adapter, a matching `MarketFieldMap`, and a test suite.
 
 > **Paths moved (ENC-31/ENC-35).** Feed code is **connector-owned** — it lives
-> under `connectors/market/{include,src}/gma/...`, not at engine level. Field
+> under `connectors/market/{include,src}/krn/...`, not at engine level. Field
 > mapping is `krn::market::MarketFieldMap` (there is no engine `SourceProfile`),
 > and adapters are wired through the **ingress factory + INI** model, not by
-> editing `main.cpp`. The code snippets below keep the historic `include/gma/...`
+> editing `main.cpp`. The code snippets below keep the historic `include/krn/...`
 > / `src/...` shapes for brevity, but real files go under `connectors/market/`.
 
 ## Overview
@@ -40,9 +40,9 @@ Not every source will have all of these. A price-only feed (no order book) only 
 ### Header
 
 ```cpp
-// connectors/market/include/gma/feed/BinanceAdapter.hpp
+// connectors/market/include/krn/feed/BinanceAdapter.hpp
 #pragma once
-#include "gma/feed/IFeedAdapter.hpp"
+#include "krn/feed/IFeedAdapter.hpp"
 #include <unordered_map>
 #include <string>
 
@@ -68,7 +68,7 @@ private:
 
 ```cpp
 // connectors/market/src/feed/BinanceAdapter.cpp
-#include "gma/feed/BinanceAdapter.hpp"
+#include "krn/feed/BinanceAdapter.hpp"
 
 #include <rapidjson/document.h>
 
@@ -301,7 +301,7 @@ constructs.
 Create `tests/feed/BinanceAdapterTest.cpp`. The pattern is straightforward:
 
 ```cpp
-#include "gma/feed/BinanceAdapter.hpp"
+#include "krn/feed/BinanceAdapter.hpp"
 #include <gtest/gtest.h>
 
 using namespace krn::feed;
@@ -366,7 +366,7 @@ Before shipping a new adapter:
 ## Reference: IFeedAdapter interface
 
 ```cpp
-// connectors/market/include/gma/feed/IFeedAdapter.hpp
+// connectors/market/include/krn/feed/IFeedAdapter.hpp
 namespace krn::feed {
 
 class IFeedAdapter {
@@ -384,7 +384,7 @@ public:
 ## Reference: FeedEvent types
 
 ```cpp
-// connectors/market/include/gma/feed/FeedEvent.hpp
+// connectors/market/include/krn/feed/FeedEvent.hpp
 namespace krn::feed {
 
 struct TickEvent        { string symbol; shared_ptr<rapidjson::Document> payload; uint64_t timestampNs=0; };

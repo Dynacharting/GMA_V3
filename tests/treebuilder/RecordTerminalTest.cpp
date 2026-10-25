@@ -5,7 +5,7 @@
 // THE DEFECT THIS CLOSES IS SILENT, AND IT SPANS TWO REPOS.
 //
 // `Pack` emits a `krn::Record`. `util::writeArgTypeJson`
-// (include/gma/util/JsonUtil.hpp) serializes a Record as a JSON **object** onto
+// (include/krn/util/JsonUtil.hpp) serializes a Record as a JSON **object** onto
 // the live update frame written by `src/server/ClientSession.cpp`'s `sendFn`
 // — which is the production outbound path (`src/ws/WSResponder.cpp` is dead
 // code: `WSResponder` is constructed only by `src/ws/WsBridge.cpp`, and
@@ -44,13 +44,13 @@
 //              starts refusing one, that entry's chart is silently empty today
 //              and the number belongs in the SPEC.
 
-#include "gma/AtomicStore.hpp"
-#include "gma/Dispatcher.hpp"
-#include "gma/Event.hpp"
-#include "gma/StreamValue.hpp"
-#include "gma/TreeBuilder.hpp"
-#include "gma/nodes/INode.hpp"
-#include "gma/rt/ThreadPool.hpp"
+#include "krn/AtomicStore.hpp"
+#include "krn/Dispatcher.hpp"
+#include "krn/Event.hpp"
+#include "krn/StreamValue.hpp"
+#include "krn/TreeBuilder.hpp"
+#include "krn/nodes/INode.hpp"
+#include "krn/rt/ThreadPool.hpp"
 
 #include "../support/CorpusPath.hpp"
 

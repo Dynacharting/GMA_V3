@@ -5,14 +5,14 @@
 // Closes ADR-001 (chose WsBridge for Phase 1; now we have live-socket
 // coverage too).
 
-#include "gma/AtomicStore.hpp"
-#include "gma/Dispatcher.hpp"
-#include "gma/Event.hpp"
-#include "gma/ExecutionContext.hpp"
-#include "gma/FunctionRegistry.hpp"
-#include "gma/NodeRegistry.hpp"
-#include "gma/rt/ThreadPool.hpp"
-#include "gma/server/WebSocketServer.hpp"
+#include "krn/AtomicStore.hpp"
+#include "krn/Dispatcher.hpp"
+#include "krn/Event.hpp"
+#include "krn/ExecutionContext.hpp"
+#include "krn/FunctionRegistry.hpp"
+#include "krn/NodeRegistry.hpp"
+#include "krn/rt/ThreadPool.hpp"
+#include "krn/server/WebSocketServer.hpp"
 
 #include <boost/asio/connect.hpp>
 #include <boost/asio/io_context.hpp>

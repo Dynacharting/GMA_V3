@@ -1,6 +1,6 @@
-#include "gma/nodes/GroupSplit.hpp"
-#include "gma/nodes/INode.hpp"
-#include "gma/StreamValue.hpp"
+#include "krn/nodes/GroupSplit.hpp"
+#include "krn/nodes/INode.hpp"
+#include "krn/StreamValue.hpp"
 #include <gtest/gtest.h>
 #include <memory>
 #include <atomic>

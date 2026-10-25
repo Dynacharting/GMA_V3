@@ -1,5 +1,5 @@
-#include "gma/nodes/Responder.hpp"
-#include "gma/util/Logger.hpp"
+#include "krn/nodes/Responder.hpp"
+#include "krn/util/Logger.hpp"
 
 using namespace krn::nodes;
 

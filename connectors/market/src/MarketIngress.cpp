@@ -1,8 +1,8 @@
-#include "gma/market/MarketIngress.hpp"
+#include "krn/market/MarketIngress.hpp"
 
-#include "gma/feed/IFeedAdapter.hpp"
-#include "gma/server/FeedServer.hpp"
-#include "gma/ws/WsFeedClient.hpp"
+#include "krn/feed/IFeedAdapter.hpp"
+#include "krn/server/FeedServer.hpp"
+#include "krn/ws/WsFeedClient.hpp"
 
 namespace krn::market {
 

@@ -2,10 +2,10 @@
 // DatabentoCsv — see DatabentoCsv.hpp for why this stops at the vendor's PODs.
 //
 
-#include "gma/data/DatabentoCsv.hpp"
+#include "krn/data/DatabentoCsv.hpp"
 
-#include "gma/data/DbnEncoder.hpp"
-#include "gma/data/Verdict.hpp"
+#include "krn/data/DbnEncoder.hpp"
+#include "krn/data/Verdict.hpp"
 
 #include <unistd.h>
 

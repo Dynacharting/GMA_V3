@@ -9,8 +9,8 @@ THE INVARIANT, in the wording that actually matters:
     gma_engine must not acquire a dependency on Arrow, the ClickHouse client,
     or the gma_data library target.
 
-Not "no gma/data header is reachable from engine code" -- that phrasing is
-wrong, and the distinction is load-bearing.  `include/gma/data/Record.hpp`
+Not "no krn/data header is reachable from engine code" -- that phrasing is
+wrong, and the distinction is load-bearing.  `include/krn/data/Record.hpp`
 lives inside the engine's own include tree on purpose: ENC-1486 adds
 `Dispatcher::onRecord(const data::TickRecord&)`, and Dispatcher IS engine code,
 so the engine has to be able to name a record.  What it must not be able to
@@ -38,7 +38,7 @@ FOUR CHECKS, each closing a different route in:
                dependency.  See CHECK B IS THE WEAKEST OF THE FOUR below.
   C  link      nothing matching gma_data / arrow / parquet / clickhouse is
                reachable from gma_engine's link libraries — TRANSITIVELY.
-  D  profile   nothing matching them is reachable from gma_server's either,
+  D  profile   nothing matching them is reachable from krn_server's either,
                which is what makes the LIVE-ONLY VARIANT of SPEC D14's client
                profile (GMA_BUILD_DATA=OFF) actually buildable rather than
                nominally so.  `gma_tests` is checked on the same rule, because
@@ -79,7 +79,7 @@ What B is NOT is the load-bearing check.  Vendoring Arrow under some
 unrecognised name would get past it; it would not get past A (no engine
 translation unit may include an Arrow/Parquet/ClickHouse/DuckDB header, matched
 on the include text, not on a directory name) or C/D (nothing matching those
-names anywhere in the TRANSITIVE link closure of gma_engine, gma_server or
+names anywhere in the TRANSITIVE link closure of gma_engine, krn_server or
 gma_tests).  B is a cheap structural sanity check on one target property; A and
 C/D carry the invariant.  Read a B failure as "the engine's include path grew
 something it should not have", never as the only thing standing between the
@@ -95,11 +95,11 @@ from the gate's own output.
 
 C AND D WALK THE CLOSURE, AND HAVE TO.  They read a *link graph* out of the
 manifest, not one target's own property, because the direct property is the
-wrong place to look.  `gma_server` links the `gma` umbrella and nothing else
-(`link.gma_server=gma|Boost::system|Threads::Threads|RapidJSON::rapidjson`),
+wrong place to look.  `krn_server` links the `gma` umbrella and nothing else
+(`link.krn_server=gma|Boost::system|Threads::Threads|RapidJSON::rapidjson`),
 so a single `target_link_libraries(gma INTERFACE gma_data)` -- or `gma::arrow`
 on `gma_connector_market`, which `gma` also pulls in -- makes
-`GMA_BUILD_DATA=OFF` unlinkable while gma_engine's and gma_server's OWN
+`GMA_BUILD_DATA=OFF` unlinkable while gma_engine's and krn_server's OWN
 properties stay spotless.  That is precisely the "one line and nothing would
 say so" failure this file exists to close, so a one-level check does not close
 it.  CMake emits one row per first-party target (`link.<target>` /
@@ -117,10 +117,10 @@ that is stated in the summary rather than passed over.
 
 `src/main.cpp` IS NOT ENGINE CODE and is checked by a weaker rule.  The root
 CMakeLists removes it from gma_engine's sources and compiles it into
-`gma_server` against the `gma` umbrella, so it legitimately includes
-`gma/market/MarketConnector.hpp` -- which the first run of this script flagged,
+`krn_server` against the `gma` umbrella, so it legitimately includes
+`krn/market/MarketConnector.hpp` -- which the first run of this script flagged,
 correctly, as a connector header reached from `src/`.  It still must not reach
-Arrow or `data/`, because gma_server has to link with GMA_BUILD_DATA=OFF.
+Arrow or `data/`, because krn_server has to link with GMA_BUILD_DATA=OFF.
 
 The file list for check A comes from CMake's own
 `$<TARGET_PROPERTY:gma_engine,SOURCES>`, not from this script re-deriving the
@@ -190,7 +190,7 @@ FORBIDDEN_VENDOR_RE = re.compile(
 # Floors for the anti-vacuity assertions.  The margin has to be real, not
 # claimed: the engine is **99** source/header files once src/main.cpp is
 # excluded (measured 2026-10-14 -- `find src include -type f` is 101, of which
-# one is src/util/gma.conf and one is the composition root, and the gate prints
+# one is src/util/krn.conf and one is the composition root, and the gate prints
 # the 99 it actually scanned).  The 50 that stood here was advertised as "well
 # under the real count (the engine was ~190 files)"; the engine has never been
 # 190 files, and the 190's provenance is unknown -- the whole repo is **231**
@@ -246,7 +246,7 @@ def dedupe(items: list[str]) -> list[str]:
 
 SOURCE_SUFFIXES = (".cpp", ".hpp", ".h", ".cc", ".cxx", ".ipp")
 
-# Compiled into gma_server, not gma_engine -- see the docstring.
+# Compiled into krn_server, not gma_engine -- see the docstring.
 COMPOSITION_ROOT = os.path.join("src", "main.cpp")
 
 
@@ -285,7 +285,7 @@ def check_cmake_sources_stay_in_the_engine_trees(
         if real == composition:
             problems.append(
                 "gma_engine compiles src/main.cpp -- the composition root "
-                "belongs to gma_server, and pulling it into the engine library "
+                "belongs to krn_server, and pulling it into the engine library "
                 "drags the market connector in with it")
             continue
         if real not in walked:
@@ -337,13 +337,13 @@ def check_a_includes(root: str, sources: list[str], foreign_roots: list[str],
                     problems.append(
                         f"{os.path.relpath(path, root)}:{lineno}: {label} "
                         f"includes <{inc}> -- Arrow/ClickHouse must never become "
-                        f"a gma_engine or gma_server dependency (SPEC D14)")
+                        f"a gma_engine or krn_server dependency (SPEC D14)")
                     break
             else:
                 # A header that resolves under data/ or a connector but NOT
                 # under the engine's own include/ is a layering violation.
-                # `gma/data/Record.hpp` resolves under include/, so it passes;
-                # `gma/data/Schema.hpp` does not, so it does not.
+                # `krn/data/Record.hpp` resolves under include/, so it passes;
+                # `krn/data/Schema.hpp` does not, so it does not.
                 if os.path.exists(os.path.join(engine_include, inc)):
                     continue
                 for froot in foreign_roots:
@@ -668,21 +668,21 @@ def selftest() -> int:
 
     with tempfile.TemporaryDirectory(prefix="enc1481-isolation-") as tmp:
         # A miniature repo with the real shape: an engine include tree that
-        # legitimately holds gma/data/Record.hpp, and a data/include tree that
-        # holds gma/data/Schema.hpp.
-        os.makedirs(os.path.join(tmp, "include", "gma", "data"))
-        os.makedirs(os.path.join(tmp, "data", "include", "gma", "data"))
+        # legitimately holds krn/data/Record.hpp, and a data/include tree that
+        # holds krn/data/Schema.hpp.
+        os.makedirs(os.path.join(tmp, "include", "krn", "data"))
+        os.makedirs(os.path.join(tmp, "data", "include", "krn", "data"))
         os.makedirs(os.path.join(tmp, "src", "core"))
-        open(os.path.join(tmp, "include", "gma", "data", "Record.hpp"), "w").close()
-        open(os.path.join(tmp, "data", "include", "gma", "data", "Schema.hpp"), "w").close()
+        open(os.path.join(tmp, "include", "krn", "data", "Record.hpp"), "w").close()
+        open(os.path.join(tmp, "data", "include", "krn", "data", "Schema.hpp"), "w").close()
 
-        os.makedirs(os.path.join(tmp, "connectors", "market", "include", "gma", "market"))
-        open(os.path.join(tmp, "connectors", "market", "include", "gma",
+        os.makedirs(os.path.join(tmp, "connectors", "market", "include", "krn", "market"))
+        open(os.path.join(tmp, "connectors", "market", "include", "krn",
                           "market", "MarketConnector.hpp"), "w").close()
 
         good = os.path.join(tmp, "src", "core", "Ok.cpp")
         with open(good, "w", encoding="utf-8") as fh:
-            fh.write('#include "gma/data/Record.hpp"\n#include <vector>\n')
+            fh.write('#include "krn/data/Record.hpp"\n#include <vector>\n')
 
         foreign = non_engine_header_roots(tmp)
         expect_clean("A/legal-Record.hpp", check_a_includes(tmp, [good], foreign))
@@ -692,7 +692,7 @@ def selftest() -> int:
         # script surfaced, so both halves of it are pinned here.
         main_cpp = os.path.join(tmp, "src", "main.cpp")
         with open(main_cpp, "w", encoding="utf-8") as fh:
-            fh.write('#include "gma/market/MarketConnector.hpp"\n')
+            fh.write('#include "krn/market/MarketConnector.hpp"\n')
         data_only = [r for r in foreign if r.endswith(os.path.join("data", "include"))]
         expect_clean("A/composition-root-may-use-a-connector",
                      check_a_includes(tmp, [main_cpp], data_only, "composition root"))
@@ -728,7 +728,7 @@ def selftest() -> int:
 
         bad_schema = os.path.join(tmp, "src", "core", "BadSchema.cpp")
         with open(bad_schema, "w", encoding="utf-8") as fh:
-            fh.write('#include "gma/data/Schema.hpp"\n')
+            fh.write('#include "krn/data/Schema.hpp"\n')
         expect_detected("A/data-only-header",
                         check_a_includes(tmp, [bad_schema], foreign))
 
@@ -833,7 +833,7 @@ def selftest() -> int:
         # 2026-10-14) rather than from memory -- OpenSSL included, and with
         # no decoration, because the real rows carry none.
         legal = {
-            "gma_server": ["gma", "Boost::system", "Threads::Threads",
+            "krn_server": ["gma", "Boost::system", "Threads::Threads",
                            "RapidJSON::rapidjson"],
             "gma": ["gma_engine", "gma_connector_market"],
             "gma_engine": ["Boost::system", "Threads::Threads",
@@ -846,25 +846,25 @@ def selftest() -> int:
                           "gma_connector_synthetic"],
         }
         expect_clean("C/closure-legal", forbidden_links(legal, "gma_engine"))
-        expect_clean("D/closure-legal", forbidden_links(legal, "gma_server"))
+        expect_clean("D/closure-legal", forbidden_links(legal, "krn_server"))
         expect_clean("D/closure-legal-gma_tests",
                      forbidden_links(legal, "gma_tests"))
 
         # THE CASE THAT MOTIVATED THE CLOSURE. One line on the umbrella makes
-        # GMA_BUILD_DATA=OFF unlinkable; neither gma_engine's nor gma_server's
+        # GMA_BUILD_DATA=OFF unlinkable; neither gma_engine's nor krn_server's
         # own property changes at all.
         umbrella = dict(legal)
         umbrella["gma"] = ["gma_engine", "gma_connector_market", "gma_data"]
         expect_detected("D/umbrella-links-gma_data",
-                        forbidden_links(umbrella, "gma_server"))
+                        forbidden_links(umbrella, "krn_server"))
         expect_clean("C/umbrella-does-not-touch-the-engine",
                      forbidden_links(umbrella, "gma_engine"))
 
         # CONTRAST, not a gate: the review finding in one assertion. A check
-        # that reads only gma_server's OWN link libraries sees
+        # that reads only krn_server's OWN link libraries sees
         # ["gma", "Boost::system", ...] and passes the graph above. If this
         # ever stops being true the contrast is stale and should be deleted.
-        direct_only = [link_item_name(x) for x in umbrella["gma_server"]]
+        direct_only = [link_item_name(x) for x in umbrella["krn_server"]]
         if any(p.search(n) for n in direct_only for p in FORBIDDEN_LINK_PATTERNS):
             failures.append(
                 "SELFTEST: the one-level contrast case is no longer one-level "
@@ -877,7 +877,7 @@ def selftest() -> int:
         connector_arrow = dict(legal)
         connector_arrow["gma_connector_market"] = ["gma_engine", "gma::arrow"]
         expect_detected("D/connector-links-arrow",
-                        forbidden_links(connector_arrow, "gma_server"))
+                        forbidden_links(connector_arrow, "krn_server"))
         expect_clean("C/connector-arrow-is-not-an-engine-dependency",
                      forbidden_links(connector_arrow, "gma_engine"))
 
@@ -888,26 +888,26 @@ def selftest() -> int:
         new_lib = dict(legal)
         new_lib["gma"] = ["gma_engine", "gma_connector_market", "gma_store"]
         expect_detected("D/unregistered-first-party-library",
-                        forbidden_links(new_lib, "gma_server"))
+                        forbidden_links(new_lib, "krn_server"))
         aliased = dict(legal)
         aliased["gma"] = ["gma_engine", "gma_connector_market", "gma::data"]
         expect_detected("D/alias-for-gma_data",
-                        forbidden_links(aliased, "gma_server"))
+                        forbidden_links(aliased, "krn_server"))
         # ... and once the row exists, the walk reaches through it.
         registered = dict(new_lib)
         registered["gma_store"] = ["gma_engine", "gma_data"]
         expect_detected("D/through-a-registered-new-library",
-                        forbidden_links(registered, "gma_server"))
+                        forbidden_links(registered, "krn_server"))
         clean_new_lib = dict(new_lib)
         clean_new_lib["gma_store"] = ["gma_engine"]
         expect_clean("D/a-registered-new-library-that-is-clean",
-                     forbidden_links(clean_new_lib, "gma_server"))
+                     forbidden_links(clean_new_lib, "krn_server"))
         # A genuinely third-party leaf must NOT trip the first-party rule.
         expect_clean("D/third-party-leaves-are-leaves",
-                     forbidden_links({"gma_server": ["Boost::system", "m",
+                     forbidden_links({"krn_server": ["Boost::system", "m",
                                                      "GTest::gtest_main",
                                                      "stdc++fs", "libm.so"]},
-                                     "gma_server"))
+                                     "krn_server"))
 
         # Direct links still caught, one per forbidden pattern.
         for name in ("gma_data", "gma::arrow", "arrow_static", "parquet",
@@ -936,14 +936,14 @@ def selftest() -> int:
         # A wrapped edge must still be TRAVERSED, not merely matched.
         expect_detected("D/wrapped-edge-is-still-walked (defensive)",
                         forbidden_links(
-                            {"gma_server": ["$<LINK_LIBRARY:WHOLE_ARCHIVE,gma>"],
+                            {"krn_server": ["$<LINK_LIBRARY:WHOLE_ARCHIVE,gma>"],
                              "gma": ["gma_data"]},
-                            "gma_server"))
+                            "krn_server"))
         expect_detected("C/directory-scoped-interface-entry (defensive)",
                         forbidden_links(
-                            {"gma_server": ["gma::@(0x55f0)"],
+                            {"krn_server": ["gma::@(0x55f0)"],
                              "gma": ["gma_data"]},
-                            "gma_server"))
+                            "krn_server"))
         # And a decorated LEGAL entry must not be mistaken for a violation.
         expect_clean("C/decorated-legal-entry (defensive)",
                      forbidden_links(
@@ -1013,9 +1013,9 @@ def main() -> int:
         split_list(manifest.get("engine_interface_include_dirs", "")))
     graph = parse_link_graph(manifest)
     link_libs = graph.get("gma_engine", [])
-    server_libs = graph.get("gma_server", [])
+    server_libs = graph.get("krn_server", [])
     engine_closure = link_closure(graph, "gma_engine")
-    server_closure = link_closure(graph, "gma_server")
+    server_closure = link_closure(graph, "krn_server")
     tests_closure = (link_closure(graph, "gma_tests")
                      if "gma_tests" in graph else [])
     cmake_sources = dedupe(split_list(manifest.get("engine_cmake_sources", "")))
@@ -1073,8 +1073,8 @@ def main() -> int:
             "expression did not resolve, so the cross-check is inert")
     if not server_libs:
         vacuous.append(
-            "the manifest lists no gma_server link libraries -- check D is "
-            "inert (gma_server links at least the `gma` umbrella)")
+            "the manifest lists no krn_server link libraries -- check D is "
+            "inert (krn_server links at least the `gma` umbrella)")
     if "gma" not in graph:
         vacuous.append(
             "the link graph has no row for the `gma` umbrella -- the manifest "
@@ -1083,8 +1083,8 @@ def main() -> int:
             "first-party target)")
     if not any(name == "gma_engine" for name, _, _ in server_closure):
         vacuous.append(
-            "gma_server's link closure does not reach gma_engine -- it goes "
-            "gma_server -> gma -> gma_engine, so a closure that does not "
+            "krn_server's link closure does not reach gma_engine -- it goes "
+            "krn_server -> gma -> gma_engine, so a closure that does not "
             "contain gma_engine never traversed an edge and check D is a "
             "one-level check wearing a closure's name")
     # POSITIVE CONTROL: the patterns must be shown to match something in THIS
@@ -1131,7 +1131,7 @@ def main() -> int:
                     root, cmake_sources, walked_set) +
                 check_b_include_dirs(root, include_dirs) +
                 forbidden_links(graph, "gma_engine") +
-                forbidden_links(graph, "gma_server") +
+                forbidden_links(graph, "krn_server") +
                 (forbidden_links(graph, "gma_tests")
                  if "gma_tests" in graph else []))
 
@@ -1146,7 +1146,7 @@ def main() -> int:
     print(f"  link libraries  : {len(link_libs)} engine, {len(server_libs)} server "
           f"(direct)")
     print(f"  link closure    : {len(engine_closure)} from gma_engine, "
-          f"{len(server_closure)} from gma_server, "
+          f"{len(server_closure)} from krn_server, "
           f"{len(tests_closure)} from gma_tests, over "
           f"{len(graph)} graphed target(s): {sorted(graph)}")
     print(f"  positive control: {control}")
@@ -1173,7 +1173,7 @@ def main() -> int:
           "root, no data/ or connector header reached from the engine, engine "
           "include path is include/ or a non-forbidden vendored tree, and no "
           "data-layer library anywhere "
-          "in the TRANSITIVE link closure of gma_engine, gma_server or "
+          "in the TRANSITIVE link closure of gma_engine, krn_server or "
           "gma_tests.")
     return 0
 

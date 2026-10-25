@@ -15,7 +15,7 @@ GMA_V3 is a **streaming-computation server**: JSON request trees come in over We
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│ gma_server  (composition root; main.cpp, ~160 lines)         │
+│ krn_server  (composition root; main.cpp, ~160 lines)         │
 └──────────────────────┬───────────────────────────────────────┘
                        │ links
                        ▼
@@ -43,7 +43,7 @@ GMA_V3 is a **streaming-computation server**: JSON request trees come in over We
 
 `libgma_connector_synthetic` sits next to the market connector (also depending on `gma_engine`) but is only linked into `gma_tests` — it exists as a demo + regression check, not a production feature.
 
-Engine isolation is enforced via CMake include scoping: `gma_engine`'s PUBLIC include path is `include/` only, so any accidental `#include "gma/book/..."` or `#include "gma/market/..."` from inside engine code fails at compile time.
+Engine isolation is enforced via CMake include scoping: `gma_engine`'s PUBLIC include path is `include/` only, so any accidental `#include "krn/book/..."` or `#include "krn/market/..."` from inside engine code fails at compile time.
 
 ## 3. Event lifecycle (the hot path)
 
@@ -141,7 +141,7 @@ member constructing a `std::string` per member per tick for the raw-admission
 ledger, and each computer then probes the DOM by name. For a chart tick that is
 irrelevant; at MBO rates — tens of millions of records per symbol-day — it is
 the dominant cost, not the math. `onRecord` takes a `krn::data::TickRecord`
-(`include/gma/data/Record.hpp`, an Arrow-free POD inside `gma_engine`) whose
+(`include/krn/data/Record.hpp`, an Arrow-free POD inside `gma_engine`) whose
 fields the normalizer already resolved, so nothing on that path constructs a
 DOM or a per-field string.
 
@@ -178,7 +178,7 @@ Design: `specs/2026-10-14-gma-data-layer/SPEC.md` D1/D3/D9,
 
 ## 4. Engine registries (extension points)
 
-All live under `include/gma/engine/`. Most are header-only static singletons with a mutex-guarded map. Connectors publish here during `registerWith()`.
+All live under `include/krn/engine/`. Most are header-only static singletons with a mutex-guarded map. Connectors publish here during `registerWith()`.
 
 | Registry | Purpose | Who consumes |
 |---|---|---|
@@ -263,7 +263,7 @@ Concrete recipe to add a connector named `cool`:
 
    ```
    connectors/cool/
-     include/gma/cool/CoolConnector.hpp
+     include/krn/cool/CoolConnector.hpp
      src/CoolConnector.cpp
    ```
 
@@ -337,9 +337,9 @@ Built-in node types (all registered by `registerBuiltinNodeTypes()`):
 ### WebSocket (port `cfg.wsPort`) — `ClientSession`
 
 > **Port default:** the compiled-in default `wsPort` is **8080**
-> (`include/gma/util/Config.hpp`). The shipped `src/util/gma.conf` overrides it
-> to **4000**, so `./gma_server <wsPort> gma.conf` listens on 4000 while
-> `./gma_server` with no config file listens on 8080. See §"Configuration".
+> (`include/krn/util/Config.hpp`). The shipped `src/util/krn.conf` overrides it
+> to **4000**, so `./krn_server <wsPort> krn.conf` listens on 4000 while
+> `./krn_server` with no config file listens on 8080. See §"Configuration".
 
 Subscribe (each request lives in a top-level `requests` array):
 ```json
@@ -489,9 +489,9 @@ The entire test binary (`gma_tests`) is one executable; `ctest` runs it. Organiz
 Minor architectural debts that are deliberately unresolved — none block adding new connectors:
 
 - **Source field mapping is connector-owned (ENC-35).** The old engine-level
-  `include/gma/SourceProfile.hpp` and the `util::Config::sourceProfile` member
+  `include/krn/SourceProfile.hpp` and the `util::Config::sourceProfile` member
   are **gone**. The replacement is `krn::market::MarketFieldMap`
-  (`connectors/market/include/gma/market/MarketFieldMap.hpp`:
+  (`connectors/market/include/krn/market/MarketFieldMap.hpp`:
   `name`/`priceFields`/`volumeFields`/`bidFields`/`askFields`/`timestampField`/
   `taEnabled`), owned by `MarketConnector` and populated from the
   `market.source.*` config namespace via `ConfigNamespaceRegistry` (the legacy
@@ -507,7 +507,7 @@ If you need to find something quickly:
 
 | Goal | File |
 |---|---|
-| Add a new node type | `include/gma/engine/NodeTypeRegistry.hpp`, register in your connector's `registerWith` |
+| Add a new node type | `include/krn/engine/NodeTypeRegistry.hpp`, register in your connector's `registerWith` |
 | Add a math function | `FunctionMap::instance().registerFunction(...)` in your connector or in `src/core/BuiltinFunctions.cpp` for engine-wide defaults |
 | Understand a TA value | `connectors/market/src/MarketTA.cpp::computeAllAtomicValues` |
 | Trace an incoming WS request | `src/server/ClientSession.cpp::handleSubscribe` → `src/core/TreeBuilder.cpp::buildForRequest` |
