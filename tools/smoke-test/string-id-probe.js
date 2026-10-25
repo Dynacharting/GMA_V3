@@ -3,7 +3,7 @@
 // matching what embassy emits on the saved-scene path, asserts the
 // subscribed ack carries `requestId` and at least one value frame
 // arrives carrying `requestId` (no `key` field). Bypasses embassy
-// entirely; tests gma_v3 in isolation against the embassy wire shape.
+// entirely; tests krn in isolation against the embassy wire shape.
 
 'use strict';
 const WebSocket = require('ws');

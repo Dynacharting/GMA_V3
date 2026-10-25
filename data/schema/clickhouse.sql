@@ -1,5 +1,5 @@
 -- ---------------------------------------------------------------------------
--- GMA_V3 canonical market-data schema — ClickHouse L1 DDL
+-- KRN canonical market-data schema — ClickHouse L1 DDL
 --
 -- Design: specs/2026-10-14-gma-data-layer/SPEC.md (D2, D4, D5, D6, D7, D8, D11)
 -- and docs/data-layer.md §8 (revision 3).

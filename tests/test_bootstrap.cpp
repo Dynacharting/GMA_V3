@@ -76,7 +76,7 @@ public:
     if (!krn::testsupport::corpusRequestsFound()) {
       std::fputs("\n"
                  "========================================================\n"
-                 "GMA_V3 TEST BOOTSTRAP — corpus_requests.json NOT FOUND\n"
+                 "KRN TEST BOOTSTRAP — corpus_requests.json NOT FOUND\n"
                  "Every corpus-backed test below will fail for THIS reason\n"
                  "and for no other. Do not debug them individually.\n"
                  "========================================================\n",

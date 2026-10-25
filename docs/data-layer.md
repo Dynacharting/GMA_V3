@@ -1,4 +1,4 @@
-# GMA_V3 Data Layer — ClickHouse selects, gma computes
+# KRN Data Layer — ClickHouse selects, gma computes
 
 **Status:** design, revision 3. Nothing implemented. ENC-1478.
 **Locked decisions + ticket breakdown:** `specs/2026-10-14-gma-data-layer/SPEC.md`.

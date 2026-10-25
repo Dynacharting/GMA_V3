@@ -1,8 +1,8 @@
-# CLAUDE.md — GMA_V3
+# CLAUDE.md — KRN
 
 ## Project Overview
 
-GMA_V3 is a high-performance C++20 WebSocket server and library for real-time atomic analysis computations over streaming data. Clients submit JSON-encoded request trees that execute nested statistical operations asynchronously.
+KRN is a high-performance C++20 WebSocket server and library for real-time atomic analysis computations over streaming data. Clients submit JSON-encoded request trees that execute nested statistical operations asynchronously.
 
 The codebase is organized as a **domain-agnostic core engine** plus **pluggable connectors**. The market connector contributes order-book / technical-analysis capabilities; adding a new data source (crypto, FIX, sensor feed, …) means writing a new connector with no changes to the engine.
 

@@ -1,4 +1,4 @@
-# GMA_V3 production image — multi-stage build that compiles the C++
+# KRN production image — multi-stage build that compiles the C++
 # `gma_server` against a known-good third-party set and ships the
 # binary on a slim Debian runtime.
 #
@@ -6,7 +6,7 @@
 # host build/ artifacts are excluded — ENC-790/H6):
 #
 #   cd <path-to>/gma_v3
-#   docker build -t gma_v3:dev .
+#   docker build -t krn:dev .
 #
 # Runtime image is `debian:stable-slim` (not scratch). The C++
 # binary links against system libstdc++/libgcc; copying those out of

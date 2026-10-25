@@ -1,8 +1,8 @@
-# GMA_V3 Overhaul — 6 Deliverables
+# KRN Overhaul — 6 Deliverables
 
 > ⚠️ **HISTORICAL RECORD — DO NOT TREAT AS A LIVE BUG LIST.**
 > This is the *original* overhaul audit and its remediation plan, captured at
-> the start of the GMA_V3 rework. **Every headline bug listed below has since
+> the start of the KRN rework. **Every headline bug listed below has since
 > been fixed in the current code**, and the audit cites file paths and types
 > that **no longer exist** — e.g. `src/core/AtomicFunctions.cpp`,
 > `src/core/MarketDispatcher.cpp`, `gma/Config.hpp`/`gma/Logger.hpp` include

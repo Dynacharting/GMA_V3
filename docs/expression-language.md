@@ -1,6 +1,6 @@
 # Expression Language (request-tree compute model)
 
-GMA_V3 request trees compose a small set of dataflow **nodes** over streaming
+KRN request trees compose a small set of dataflow **nodes** over streaming
 values. This doc covers the *expression-language* layer (project
 `2026-06-17-gma-expression-language`) that turns the fixed reducer menu into a
 composable language: structured values, user-defined formulas, conditionals,

@@ -27,7 +27,7 @@ namespace krn {
 //                     so that every stored forum graph keeps its meaning with
 //                     NO MIGRATION (D6): forum emits `Aggregate` as the only
 //                     join shape it can produce and its stored graphs are
-//                     unmigratable from GMA_V3.
+//                     unmigratable from KRN.
 //
 //   `by:"none"`       Correlate by PORT ALONE, ignoring the symbol. This is
 //                     the cross-symbol join. Every port's values land in one

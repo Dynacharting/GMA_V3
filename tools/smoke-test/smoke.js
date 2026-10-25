@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// smoke.js — GMA_V3 end-to-end smoke test client
+// smoke.js — KRN end-to-end smoke test client
 //
 // Connects to the GMA WS server, subscribes to a comprehensive set of
 // pipeline patterns, and verifies that every key receives at least one
