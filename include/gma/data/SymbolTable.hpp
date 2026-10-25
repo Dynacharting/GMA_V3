@@ -2,7 +2,7 @@
 //
 // String interning for the record path (ENC-1481).
 //
-// Design: specs/2026-10-14-gma-data-layer/SPEC.md D3; docs/data-layer.md §5.3.
+// Design: specs/2026-10-14-krn-data-layer/SPEC.md D3; docs/data-layer.md §5.3.
 //
 // WHY THIS IS IN gma_engine AND NOT IN gma_data
 // ---------------------------------------------

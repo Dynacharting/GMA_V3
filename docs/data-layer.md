@@ -1,7 +1,7 @@
 # GMA_V3 Data Layer — ClickHouse selects, gma computes
 
 **Status:** design, revision 3. Nothing implemented. ENC-1478.
-**Locked decisions + ticket breakdown:** `specs/2026-10-14-gma-data-layer/SPEC.md`.
+**Locked decisions + ticket breakdown:** `specs/2026-10-14-krn-data-layer/SPEC.md`.
 **Read §1 first.** It is one decision and everything else is downstream of it.
 
 ---
@@ -1087,7 +1087,7 @@ existed).
 emission rule from the planner) · Q4 (→ C9, global 1e-9) · Q6 (→ C12 dissolved; now a
 granule-skipping measurement, T6) · Q9 (→ §8.5, snapshots required) · Q12 (→ §8.7, DBN
 retained; L1 is a rebuildable projection) · Q13 (→ §14.2, `Interval` is live-only) ·
-Q16 (→ this doc is the deep reference; `specs/2026-10-14-gma-data-layer/SPEC.md` is the
+Q16 (→ this doc is the deep reference; `specs/2026-10-14-krn-data-layer/SPEC.md` is the
 locked-decision record).
 
 **Still open:**
@@ -1126,7 +1126,7 @@ convenience.
 ## 17. First slice
 
 Nine tickets to a measured answer. Full detail and ticket ids:
-**`specs/2026-10-14-gma-data-layer/SPEC.md` §6.**
+**`specs/2026-10-14-krn-data-layer/SPEC.md` §6.**
 
 | # | ticket | repo | deps |
 |---|---|---|---|

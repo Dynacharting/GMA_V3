@@ -10,7 +10,7 @@
 | `clickhouse_aggregates.txt` | the aggregate-function vocabulary, read off the server rather than recalled. |
 | `fixtures/` | files the check is proven to reject, and one it is proven to accept. |
 
-Design: `specs/2026-10-14-gma-data-layer/SPEC.md` (D2, D4, D5, D6, D7, D8, D11) and
+Design: `specs/2026-10-14-krn-data-layer/SPEC.md` (D2, D4, D5, D6, D7, D8, D11) and
 `../../docs/data-layer.md` §8. Ticket: ENC-1480.
 
 ## Running it

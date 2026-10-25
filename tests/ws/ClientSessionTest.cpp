@@ -448,7 +448,7 @@ TEST(ClientSessionTest, RateLimitEnforcedOnBurstSubscribes) {
   stream.close(ws::close_code::normal, ec);
 }
 
-// gma-string-id-subscriptions phase 2: subscribe via the embassy-shaped
+// krn-string-id-subscriptions phase 2: subscribe via the embassy-shaped
 // {id:"<string>"} input. The ack must carry "requestId" (not "key"); the
 // value frame must too. No "key" field in either path.
 TEST(ClientSessionTest, SubscribeWithStringIdEchoesRequestId) {

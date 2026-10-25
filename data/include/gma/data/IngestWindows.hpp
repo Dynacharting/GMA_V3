@@ -2,7 +2,7 @@
 //
 // `gma.ingest_windows` — the read rule, as code (ENC-1483).
 //
-// Design: specs/2026-10-14-gma-data-layer/SPEC.md D11;
+// Design: specs/2026-10-14-krn-data-layer/SPEC.md D11;
 //         docs/data-layer.md §8.8; and the ⚠ READ RULE block in
 //         `data/schema/clickhouse.sql` above `CREATE TABLE gma.ingest_windows`,
 //         which is the authority this file implements rather than reinvents.

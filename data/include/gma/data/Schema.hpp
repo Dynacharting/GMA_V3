@@ -3,7 +3,7 @@
 // Canonical L1 Arrow schemas, and the one codec between them and the engine's
 // PODs (ENC-1481).
 //
-// Design: specs/2026-10-14-gma-data-layer/SPEC.md D3, D7, D8;
+// Design: specs/2026-10-14-krn-data-layer/SPEC.md D3, D7, D8;
 //         docs/data-layer.md §5.3, §8.3, §8.4.
 //
 // TWO REPRESENTATIONS, DELIBERATELY:

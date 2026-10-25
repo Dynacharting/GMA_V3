@@ -106,7 +106,7 @@ property of the provider's own encoding, not something the adapter has to achiev
 
 ## Facts these files settle, and facts they do not
 
-**Settled by measurement** (and recorded in `specs/2026-10-14-gma-data-layer/SPEC.md` §5):
+**Settled by measurement** (and recorded in `specs/2026-10-14-krn-data-layer/SPEC.md` §5):
 the DBN magic and version byte, the 100-byte fixed metadata block and its field order, the
 v1 extra `record_count`, the v2+ `symbol_cstr_len`, the 53/47-byte reserved region, the
 variable-length symbol and mapping sections, **DBN v3's 8-byte alignment padding at the end

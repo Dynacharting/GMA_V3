@@ -6,7 +6,7 @@ option(GMA_BUILD_TESTS "Build unit tests in tests/" OFF)
 option(GMA_BUILD_BENCHMARKS "Build Google Benchmark suite in benchmarks/" OFF)
 option(GMA_WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
 
-# Data layer (ENC-1481, specs/2026-10-14-gma-data-layer/SPEC.md).
+# Data layer (ENC-1481, specs/2026-10-14-krn-data-layer/SPEC.md).
 #
 # THE DEFAULT FOLLOWS GMA_BUILD_TESTS, and an explicit -DGMA_BUILD_DATA always
 # wins. Three constraints had to hold at once and no fixed default holds all

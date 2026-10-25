@@ -1,7 +1,7 @@
 # ===========================================================================
 # gma_data — L1 schema, codec and (later) shim (ENC-1481)
 #
-# Design: specs/2026-10-14-gma-data-layer/SPEC.md; docs/data-layer.md.
+# Design: specs/2026-10-14-krn-data-layer/SPEC.md; docs/data-layer.md.
 #
 # LAYERING, WHICH IS THE ONE THING NOT TO GET WRONG:
 #

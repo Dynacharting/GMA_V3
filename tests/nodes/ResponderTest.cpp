@@ -69,7 +69,7 @@ TEST(ResponderTest, NullCallbackSafe) {
     EXPECT_NO_THROW(responder.onValue({"S", 1}));
 }
 
-// Phase 1 of gma-string-id-subscriptions: the string-id path through
+// Phase 1 of krn-string-id-subscriptions: the string-id path through
 // Responder. Callback receives a RequestKey whose alternative is the
 // std::string. Phase 2 adds round-trip integration tests through
 // ClientSession.

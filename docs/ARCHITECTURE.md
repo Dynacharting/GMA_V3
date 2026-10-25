@@ -172,7 +172,7 @@ Consequences worth knowing before you touch either:
 - **There is no event time on this path.** `header.tsEventNs` is not exposed as
   a field and the clock nodes are untouched.
 
-Design: `specs/2026-10-14-gma-data-layer/SPEC.md` D1/D3/D9,
+Design: `specs/2026-10-14-krn-data-layer/SPEC.md` D1/D3/D9,
 `docs/data-layer.md` §C2/§C6/§6. Pinned by
 `tests/dispatch/RecordIngressParityTest.cpp`.
 

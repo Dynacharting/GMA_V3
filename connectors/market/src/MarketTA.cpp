@@ -325,7 +325,7 @@ MarketTickComputer::MarketTickComputer(const util::Config& cfg,
 // ENC-1486 — reads its inputs through an `engine::FieldSource` rather than a
 // rapidjson DOM, so this ONE implementation is what both `Dispatcher::onTick`
 // (JSON) and `Dispatcher::onRecord` (`data::TickRecord`) reach. SPEC
-// specs/2026-10-14-gma-data-layer/SPEC.md D1: one implementation of every
+// specs/2026-10-14-krn-data-layer/SPEC.md D1: one implementation of every
 // operator, and the field extraction below is as much one as the TA suite is.
 //
 // EVERY READ IS A 1:1 SUBSTITUTION of the DOM pair it replaces, chosen so the

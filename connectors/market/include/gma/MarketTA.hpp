@@ -43,7 +43,7 @@ std::vector<std::pair<std::string, ArgType>> computeAllAtomicValues(
 // ENC-1486: the field names are no longer specifically JSON keys. `compute`
 // takes an `engine::FieldSource`, so one implementation serves both
 // `Dispatcher::onTick` (a rapidjson DOM) and `Dispatcher::onRecord` (a
-// `data::TickRecord`, no DOM). SPEC specs/2026-10-14-gma-data-layer/SPEC.md
+// `data::TickRecord`, no DOM). SPEC specs/2026-10-14-krn-data-layer/SPEC.md
 // D1 forbids a second implementation, and a record-shaped overload of the
 // extraction below would have been one — with the two free to drift, which is
 // precisely what would let a graph tell which ingress fed it.

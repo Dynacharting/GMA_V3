@@ -14,7 +14,7 @@ example below shows how four of these expressions feed a compound
 buffer to drive per-minute candles.
 
 The two nodes were proposed and landed under
-`specs/2026-05-12-gma-window-nodes` (Phase 1 = TumblingWindow,
+`specs/2026-05-12-krn-window-nodes` (Phase 1 = TumblingWindow,
 Phase 2 = VectorReducer + composition + this doc).
 
 ## TumblingWindow
@@ -217,4 +217,4 @@ The saved-chart-slice demo currently uses bare atomic keys
 `taHistoryMax` that updates per tick, not per minute. Switching its seed
 back to `pipeline_json` subscriptions driven by these nodes is a
 separate proposal (the embassy ferrying path already supports it). See
-`specs/2026-05-12-gma-window-nodes/PLAN.md` "Out of plan" for context.
+`specs/2026-05-12-krn-window-nodes/PLAN.md` "Out of plan" for context.

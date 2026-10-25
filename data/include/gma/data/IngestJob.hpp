@@ -2,7 +2,7 @@
 //
 // The ingest job: retained Databento raw -> canonical records -> L1 (ENC-1483).
 //
-// Design: specs/2026-10-14-gma-data-layer/SPEC.md D5, D6, D7, D8, D11, D12;
+// Design: specs/2026-10-14-krn-data-layer/SPEC.md D5, D6, D7, D8, D11, D12;
 //         docs/data-layer.md §8.4, §8.6, §8.7, §8.8, §8.9.
 //
 // THE PATH, AND EVERY LEG OF IT IS THE REAL ONE

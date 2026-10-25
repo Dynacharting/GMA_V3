@@ -2,7 +2,7 @@
 """THE DDL MUST NOT COMPUTE — the committed check for SPEC D2, applied to
 `data/schema/clickhouse.sql`.
 
-SPEC `specs/2026-10-14-gma-data-layer/SPEC.md` D1/D2: ClickHouse does selection,
+SPEC `specs/2026-10-14-krn-data-layer/SPEC.md` D1/D2: ClickHouse does selection,
 gma does computation, and nothing computes a value twice. D2 is usually read as a
 rule about the shim's SELECTs (`gma_shim_sql_lint`, docs §5.4 — a different
 check, not this one), but it binds the schema just as hard: a `MATERIALIZED`

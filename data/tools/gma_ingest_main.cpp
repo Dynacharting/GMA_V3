@@ -1,7 +1,7 @@
 //
 // gma_ingest — the ENC-1483 ingest job's command line.
 //
-// Design: specs/2026-10-14-gma-data-layer/SPEC.md D5, D6, D7, D11;
+// Design: specs/2026-10-14-krn-data-layer/SPEC.md D5, D6, D7, D11;
 //         docs/data-layer.md §8.6, §8.7, §8.8, §8.9.
 //
 //   gma_ingest ingest  [--url U] [--data-root P] [--session-id N]

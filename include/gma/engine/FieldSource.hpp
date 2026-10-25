@@ -3,7 +3,7 @@
 // FieldSource — one tick's resolved numeric fields, independent of how they
 // arrived (ENC-1486).
 //
-// Design: specs/2026-10-14-gma-data-layer/SPEC.md D1, D3;
+// Design: specs/2026-10-14-krn-data-layer/SPEC.md D1, D3;
 //         docs/data-layer.md §C2, §C6, §6.
 //
 // WHY THIS TYPE EXISTS

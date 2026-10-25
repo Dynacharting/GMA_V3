@@ -1,6 +1,6 @@
 // ENC-1486 — Dispatcher::onRecord reaches the same place onTick does.
 //
-// Design: specs/2026-10-14-gma-data-layer/SPEC.md D1, D3, D9;
+// Design: specs/2026-10-14-krn-data-layer/SPEC.md D1, D3, D9;
 //         docs/data-layer.md §C2, §C6, §C7, §6.
 //
 // WHAT "IDENTICAL" HAS TO MEAN HERE
