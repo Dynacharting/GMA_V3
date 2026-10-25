@@ -34,7 +34,7 @@ trap 'rm -rf "$work"' EXIT
 echo "# build dir: $work" >&2
 
 cmake -S "$repo" -B "$work/build" -G Ninja \
-      -DCMAKE_BUILD_TYPE=Release -DGMA_BUILD_TESTS=OFF >/dev/null
+      -DCMAKE_BUILD_TYPE=Release -DKRN_BUILD_TESTS=OFF >/dev/null
 cmake --build "$work/build" --target krn_engine -j"$(nproc)" >/dev/null
 
 # Boost/RapidJSON come from the same places the CMake build found them; the
@@ -42,7 +42,7 @@ cmake --build "$work/build" --target krn_engine -j"$(nproc)" >/dev/null
 g++ -std=c++20 -O3 -DNDEBUG \
     -I"$repo/include" \
     "$here/strand_throughput.cpp" \
-    "$work/build/libgma_engine.a" \
+    "$work/build/libkrn_engine.a" \
     -lpthread -lssl -lcrypto \
     -o "$work/strand_throughput"
 

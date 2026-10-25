@@ -344,7 +344,7 @@ Copy the helper templates from `tests/feed/ItchAdapterTest.cpp` — `hasEvent<T>
 
 ```bash
 # Reconfigure cmake to pick up the new test file
-cd build && cmake .. -DGMA_BUILD_TESTS=ON
+cd build && cmake .. -DKRN_BUILD_TESTS=ON
 
 # Run just your tests
 ./krn_tests --gtest_filter="BinanceAdapterTest.*"

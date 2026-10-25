@@ -1,5 +1,5 @@
 // Market technical-analysis computations. Moves into
-// libgma_connector_market in Step 7.
+// libkrn_connector_market in Step 7.
 #include "gma/MarketTA.hpp"
 #include "gma/FunctionMap.hpp"
 #include "gma/Dispatcher.hpp"

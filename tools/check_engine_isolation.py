@@ -532,7 +532,7 @@ def link_item_candidates(item: str) -> list[str]:
 def cmake_true(value: str) -> bool:
     """CMake's truthiness, for the boolean strings the manifest carries.
 
-    `option()` does not normalise, so `-DGMA_BUILD_DATA=1` reaches the manifest
+    `option()` does not normalise, so `-DKRN_BUILD_DATA=1` reaches the manifest
     as "1", not "ON".  Anything unrecognised is false, which is also CMake's
     rule and is the safe direction: an unparseable value then DISAGREES with
     the link graph and is reported rather than quietly believed.
@@ -1092,12 +1092,12 @@ def main() -> int:
     #
     # Driven by the GRAPH, not by the krn_data_enabled string, and the two are
     # cross-checked.  CMake writes whichever truthy spelling the user passed --
-    # `-DGMA_BUILD_DATA=1` yields "1" -- so a bare `== "ON"` would report the
+    # `-DKRN_BUILD_DATA=1` yields "1" -- so a bare `== "ON"` would report the
     # control as unavailable, in those words, in a build that does have
     # krn_data.  A control that announces its own absence incorrectly is worse
     # than no control.
-    have_gma_data = "krn_data" in graph
-    if have_gma_data:
+    have_krn_data = "krn_data" in graph
+    if have_krn_data:
         hits = forbidden_links(graph, "krn_data")
         if not hits:
             vacuous.append(
@@ -1111,10 +1111,10 @@ def main() -> int:
     else:
         control = (f"unavailable -- krn_data is not a target in this build "
                    f"(krn_data_enabled={data_enabled!r})")
-    if have_gma_data != cmake_true(data_enabled):
+    if have_krn_data != cmake_true(data_enabled):
         vacuous.append(
             f"krn_data_enabled={data_enabled!r} but the manifest "
-            f"{'has' if have_gma_data else 'has no'} link.krn_data row -- the "
+            f"{'has' if have_krn_data else 'has no'} link.krn_data row -- the "
             f"two disagree, so the positive control's verdict describes a "
             f"build this manifest is not")
     if not os.path.isfile(composition_root):

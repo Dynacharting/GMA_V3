@@ -17,7 +17,7 @@ cmake .. -DCMAKE_BUILD_TYPE=Release
 cmake --build . -j$(nproc)
 
 # Build with tests
-cmake .. -DCMAKE_BUILD_TYPE=Debug -DGMA_BUILD_TESTS=ON
+cmake .. -DCMAKE_BUILD_TYPE=Debug -DKRN_BUILD_TESTS=ON
 cmake --build . -j$(nproc)
 
 # Build via script (prefers clang++)
@@ -37,7 +37,7 @@ cd build && ctest --output-on-failure
 ## Project Structure
 
 ```
-include/gma/              # Engine public headers (libgma_engine)
+include/gma/              # Engine public headers (libkrn_engine)
   engine/                 # Engine-side contracts & registries
                           #   IConnector, EngineRegistries, IEventComputer,
                           #   EventTypeRegistry, EventComputerRegistry,
@@ -68,7 +68,7 @@ include/gma/              # Engine public headers (libgma_engine)
 src/                      # Engine implementations (mirrors include/ layout)
   main.cpp                # Composition root — boots engine, wires connectors
 
-connectors/market/        # libgma_connector_market (depends on krn_engine)
+connectors/market/        # libkrn_connector_market (depends on krn_engine)
   include/gma/
     market/MarketConnector.hpp
     book/ ob/ ta/         # OB engine, TA indicator suite
@@ -80,11 +80,11 @@ connectors/market/        # libgma_connector_market (depends on krn_engine)
     AtomicFunctions.hpp   # Transitional umbrella (TA + builtins)
   src/                    # Implementations mirrored
 
-connectors/synthetic/     # libgma_connector_synthetic (demo; linked only into tests)
+connectors/synthetic/     # libkrn_connector_synthetic (demo; linked only into tests)
   include/gma/synthetic/SyntheticConnector.hpp
   src/SyntheticConnector.cpp
 
-data/                     # libgma_data — L1 data/query layer (ENC-1481; see data/README.md)
+data/                     # libkrn_data — L1 data/query layer (ENC-1481; see data/README.md)
   include/gma/data/Schema.hpp   # the three L1 arrow::Schemas + the column-wise codec
   src/Schema.cpp                #   (the rest of include/gma/data/ is still a design sketch)
   cmake/KrnDataArrow.cmake      # find_package(Arrow) else FetchContent, trimmed hard
@@ -114,24 +114,24 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full picture including 
 ## Tech Stack
 
 - **C++20** (`-DCMAKE_CXX_STANDARD=20`)
-- **CMake 3.20+** — produces `libgma_engine.a`, `libgma_connector_market.a`, `libgma_connector_synthetic.a`, `libgma_data.a`, `gma_server`, `krn_tests`, `krn_data_tests`
+- **CMake 3.20+** — produces `libkrn_engine.a`, `libkrn_connector_market.a`, `libkrn_connector_synthetic.a`, `libkrn_data.a`, `gma_server`, `krn_tests`, `krn_data_tests`
 - **Apache Arrow** (`krn_data` only) — found with `find_package(Arrow CONFIG)`, else built
   from source by `data/cmake/KrnDataArrow.cmake`. A cold configure downloads a 17 MB
   archive (2m33s on this link) and the build costs 45s Debug / 63s Release on 16 cores;
   measured numbers and the full `ARROW_*=OFF` rationale are in `docs/data-layer.md` §15.1.
   **`KRN_BUILD_DATA` defaults to `KRN_BUILD_TESTS`**, so a bare
   `cmake -B build -DCMAKE_BUILD_TYPE=Release` fetches no Arrow at all and still builds
-  `gma_server`, while `-DGMA_BUILD_TESTS=ON` builds and tests the data layer. An explicit
-  `-DGMA_BUILD_DATA=ON|OFF` always wins and the configure says which way it resolved.
-  `-DGMA_DATA_ARROW_FORCE_FETCH=ON` skips `find_package` when an installed Arrow is
+  `gma_server`, while `-DKRN_BUILD_TESTS=ON` builds and tests the data layer. An explicit
+  `-DKRN_BUILD_DATA=ON|OFF` always wins and the configure says which way it resolved.
+  `-DKRN_DATA_ARROW_FORCE_FETCH=ON` skips `find_package` when an installed Arrow is
   present but unusable — **it only exists when the data layer is in the build**, because it
-  is declared in `data/cmake/KrnDataArrow.cmake`, so pass it with `-DGMA_BUILD_DATA=ON` or
-  alongside `-DGMA_BUILD_TESTS=ON`. On its own with tests off it is an unused-variable
+  is declared in `data/cmake/KrnDataArrow.cmake`, so pass it with `-DKRN_BUILD_DATA=ON` or
+  alongside `-DKRN_BUILD_TESTS=ON`. On its own with tests off it is an unused-variable
   warning and nothing else. Conversely, `KRN_BUILD_DATA=OFF` while `KRN_BUILD_TESTS=ON`
   now emits a `CMake Warning`: `krn_data_tests` is absent and the isolation gate's Arrow
   positive control cannot run, so a green `ctest` there excludes the data layer. That is
   intended for D14's live-only variant and is a stale cache otherwise — `option()` writes
-  `KRN_BUILD_DATA` on a build dir's first configure and a later `-DGMA_BUILD_TESTS=ON`
+  `KRN_BUILD_DATA` on a build dir's first configure and a later `-DKRN_BUILD_TESTS=ON`
   does not move it.
 - **Boost.Asio / Beast** — networking + WebSocket
 - **RapidJSON** — JSON parsing and validation
@@ -147,7 +147,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full picture including 
   taste — and the constraint is about **`krn_engine`**, not about the product. The
   data-layer SPEC's D14 client profile reads *"live-only **or** reads a central L1 over the
   wire with no local store"*: the **live-only** variant omits the library, so
-  `cmake -DGMA_BUILD_DATA=OFF` must build and link `gma_server` with no Arrow anywhere,
+  `cmake -DKRN_BUILD_DATA=OFF` must build and link `gma_server` with no Arrow anywhere,
   while the over-the-wire variant needs Arrow IPC and therefore does ship `krn_data`. Don't
   shorten that to "the client profile omits the library" — that is true of one variant.
   **The engine-facing PODs are the one thing that crosses**, and they cross deliberately:

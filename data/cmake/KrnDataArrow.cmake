@@ -17,7 +17,7 @@
 #      only the unrelated `arrows` package is wrong), installing it needs a
 #      sudo password this environment does not have. So route 1 is untested
 #      here and route 2 is what the measured number in SPEC §5 describes.
-#      `-DGMA_DATA_ARROW_FORCE_FETCH=ON` skips it, which is the only way past
+#      `-DKRN_DATA_ARROW_FORCE_FETCH=ON` skips it, which is the only way past
 #      an installed-but-unusable Arrow.
 #
 #   2. FetchContent of the Apache source release, trimmed hard.
@@ -100,7 +100,7 @@ if (Arrow_FOUND)
     message(FATAL_ERROR
       "find_package(Arrow) succeeded but defined none of "
       "Arrow::arrow_static / Arrow::arrow_shared / arrow_static / arrow_shared. "
-      "Refusing to guess a target name — set -DGMA_DATA_ARROW_FORCE_FETCH=ON to "
+      "Refusing to guess a target name — set -DKRN_DATA_ARROW_FORCE_FETCH=ON to "
       "build Arrow from source instead.")
   endif()
   # GLOBAL: an IMPORTED target is directory-scoped by default, and this module

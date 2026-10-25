@@ -8,14 +8,14 @@ option(KRN_WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
 
 # Data layer (ENC-1481, specs/2026-10-14-gma-data-layer/SPEC.md).
 #
-# THE DEFAULT FOLLOWS KRN_BUILD_TESTS, and an explicit -DGMA_BUILD_DATA always
+# THE DEFAULT FOLLOWS KRN_BUILD_TESTS, and an explicit -DKRN_BUILD_DATA always
 # wins. Three constraints had to hold at once and no fixed default holds all
 # three:
 #
 #   * Nothing may be silently skipped in a configuration that runs tests. A
 #     skipped target reads exactly like a passing one and this repo has paid for
 #     that twice (ENC-994 / ENC-1095). The acceptance command and every gate
-#     configuration pass -DGMA_BUILD_TESTS=ON, so krn_data, krn_data_tests and
+#     configuration pass -DKRN_BUILD_TESTS=ON, so krn_data, krn_data_tests and
 #     both engine-isolation cases are built and run there.
 #   * The documented quickstart — `cmake -B build -DCMAKE_BUILD_TYPE=Release`,
 #     tests off — must still work offline. A fixed ON made it fetch a 17 MB
@@ -63,18 +63,18 @@ else()
   message(STATUS
     "KRN_BUILD_DATA=OFF [${_krn_data_why}] — SPEC D14's live-only client "
     "variant: NO Arrow is fetched or built, and krn_data / krn_data_tests do not "
-    "exist in this build. Pass -DGMA_BUILD_DATA=ON to build them regardless.")
+    "exist in this build. Pass -DKRN_BUILD_DATA=ON to build them regardless.")
 endif()
 
 # A SKIP IN A CONFIGURATION THAT RUNS TESTS MUST NOT BE SILENT. The default
 # above makes `KRN_BUILD_TESTS=ON` imply the data layer, but a CACHE ENTRY
 # OUTLIVES IT: configure a dir with tests off (data defaults off), then
-# re-run with -DGMA_BUILD_TESTS=ON, and `option()` leaves KRN_BUILD_DATA=OFF.
+# re-run with -DKRN_BUILD_TESTS=ON, and `option()` leaves KRN_BUILD_DATA=OFF.
 # ctest then goes green over a build with no krn_data_tests and no positive
 # control — exactly the ENC-994 / ENC-1095 mode this default was chosen to
 # avoid, arriving through the cache instead of through the default. It cannot
 # be fixed by forcing the value (that would silently discard a deliberate
-# -DGMA_BUILD_DATA=OFF), so it is NAMED instead.
+# -DKRN_BUILD_DATA=OFF), so it is NAMED instead.
 if (KRN_BUILD_TESTS AND NOT KRN_BUILD_DATA)
   message(WARNING
     "KRN_BUILD_DATA=OFF while KRN_BUILD_TESTS=ON: krn_data_tests is NOT "
@@ -83,8 +83,8 @@ if (KRN_BUILD_TESTS AND NOT KRN_BUILD_DATA)
     "the entire data layer. Intended if you asked for SPEC D14's live-only "
     "client variant. If you did not: this is a STALE CACHE — `option()` wrote "
     "KRN_BUILD_DATA on the first configure of this directory and a later "
-    "-DGMA_BUILD_TESTS=ON does not move it. Re-run with an explicit "
-    "-DGMA_BUILD_DATA=ON, or configure a fresh build directory.")
+    "-DKRN_BUILD_TESTS=ON does not move it. Re-run with an explicit "
+    "-DKRN_BUILD_DATA=ON, or configure a fresh build directory.")
 endif()
 
 # Microarchitecture (ENC-790 / H5): -march=native pins the binary to the exact
@@ -146,19 +146,19 @@ if (NOT KRN_SANITIZE STREQUAL "off")
     message(WARNING "KRN_SANITIZE=${KRN_SANITIZE} is not supported with this MSVC toolchain — ignoring")
   else()
     if (KRN_SANITIZE STREQUAL "address")
-      set(_GMA_SAN_FLAGS -fsanitize=address -fno-omit-frame-pointer)
+      set(_KRN_SAN_FLAGS -fsanitize=address -fno-omit-frame-pointer)
     elseif (KRN_SANITIZE STREQUAL "thread")
-      set(_GMA_SAN_FLAGS -fsanitize=thread -fno-omit-frame-pointer)
+      set(_KRN_SAN_FLAGS -fsanitize=thread -fno-omit-frame-pointer)
     elseif (KRN_SANITIZE STREQUAL "undefined")
-      set(_GMA_SAN_FLAGS -fsanitize=undefined -fno-omit-frame-pointer)
+      set(_KRN_SAN_FLAGS -fsanitize=undefined -fno-omit-frame-pointer)
     elseif (KRN_SANITIZE STREQUAL "address+undefined")
-      set(_GMA_SAN_FLAGS -fsanitize=address,undefined -fno-omit-frame-pointer)
+      set(_KRN_SAN_FLAGS -fsanitize=address,undefined -fno-omit-frame-pointer)
     else()
       message(FATAL_ERROR
         "KRN_SANITIZE='${KRN_SANITIZE}' is invalid — use off|address|thread|undefined|address+undefined")
     endif()
-    add_compile_options(${_GMA_SAN_FLAGS})
-    add_link_options(${_GMA_SAN_FLAGS})
+    add_compile_options(${_KRN_SAN_FLAGS})
+    add_link_options(${_KRN_SAN_FLAGS})
     message(STATUS "Sanitizer enabled for all targets: ${KRN_SANITIZE}")
   endif()
 endif()

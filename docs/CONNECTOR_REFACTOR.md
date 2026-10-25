@@ -28,7 +28,7 @@ Three labels: **ENGINE** (generic, stays in core), **CONNECTOR** (market-specifi
 | Execution context | `include/gma/ExecutionContext.hpp` | ENGINE |
 | Worker functions in `registerBuiltinFunctions` | `src/core/AtomicFunctions.cpp:262-585` | ENGINE — generic stats/math |
 
-### Connector (market) — becomes `libgma_connector_market`
+### Connector (market) — becomes `libkrn_connector_market`
 
 | Component | Path |
 |---|---|
@@ -71,7 +71,7 @@ Three labels: **ENGINE** (generic, stays in core), **CONNECTOR** (market-specifi
 ### Module split
 
 ```
-libgma_engine                     (no knowledge of any domain)
+libkrn_engine                     (no knowledge of any domain)
 ├── nodes/                        INode, Worker, Aggregate, Interval, AtomicAccessor, Responder,
 │                                  GroupSplit (renamed SymbolSplit)
 ├── runtime/                      ThreadPool, ShutdownCoordinator
@@ -90,7 +90,7 @@ libgma_engine                     (no knowledge of any domain)
 ├── transport/                    WebSocketServer + ClientSession (neutral protocol)
 └── config/                       ConfigNamespaceRegistry (connectors own sub-namespaces)
 
-libgma_connector_market
+libkrn_connector_market
 ├── book/                         OrderBook, OrderBookManager
 ├── ob/                           Provider, FunctionalSnapshotSource, ObMaterializer, ObKey
 ├── ta/                           SMA/EMA/RSI/MACD/Bollinger/ATR/OBV/VWAP
@@ -335,7 +335,7 @@ Each step independently buildable + testable. `ctest --output-on-failure` must s
 - `main.cpp` registers the computer before starting servers (still in main for this step).
 - **Tests:** `tests/dispatch/DispatchTest.cpp` + add `tests/engine/DispatcherIsolationTest.cpp`.
 
-### Step 7 — carve out `libgma_connector_market` as a separate CMake target
+### Step 7 — carve out `libkrn_connector_market` as a separate CMake target
 - Three targets: `krn_engine`, `krn_connector_market`, `gma_server`.
 - Move `include/gma/book/*`, `include/gma/ob/*`, `src/book/*`, `src/ob/*`, `src/feed/ItchAdapter.cpp`, `include/gma/feed/ItchAdapter.hpp`, `include/gma/feed/FeedEvent.hpp`, `src/core/MarketTA.cpp`, `src/core/MarketTickComputer.cpp`, `include/gma/SymbolHistory.hpp`, `include/gma/SourceProfile.hpp` (renamed) into `connectors/market/`.
 - CMake check: engine target cannot include connector headers.

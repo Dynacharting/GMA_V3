@@ -942,21 +942,21 @@ Box: Fedora 44, 16 cores, GCC 16.2.1, CMake 4.3.0, Ninja. Arrow **23.0.1** from
 | configure, warm | 0.6 s | — |
 | build, **Debug**, `-j16` | **45.0 s** | `libarrow.a` **366 MB**, bundled deps 7.2 MB |
 | build, **Release**, `-j16` | **1m 02.7 s** | `libarrow.a` **33.0 MB**, bundled deps 1.4 MB |
-| `krn_data` itself (Debug) | ~2 s | `libgma_data.a` 3.4 MB |
+| `krn_data` itself (Debug) | ~2 s | `libkrn_data.a` 3.4 MB |
 
 The download dominates, and it is a one-time cost per build tree; a warm tree pays none of
 it. Debug `libarrow.a` is an order of magnitude larger than Release because it is `-O0`
 with full debug info — size the over-the-wire client variant off the Release row (the
 live-only variant links no Arrow at all).
 
-**Who pays it: `KRN_BUILD_DATA` defaults to `KRN_BUILD_TESTS`.** `-DGMA_BUILD_TESTS=ON` —
+**Who pays it: `KRN_BUILD_DATA` defaults to `KRN_BUILD_TESTS`.** `-DKRN_BUILD_TESTS=ON` —
 the acceptance command and every gate configuration — builds `krn_data` and runs both
 engine-isolation cases plus `krn_data_tests`, so nothing is silently skipped where tests
 run. A bare `cmake -B build -DCMAKE_BUILD_TYPE=Release` fetches **nothing** and still
 builds `gma_server`, which is what the documented quickstart needs offline (before this
 library existed, a default configure fetched nothing at all — googletest sits behind
 `KRN_BUILD_TESTS=OFF` too — and a fixed `KRN_BUILD_DATA=ON` had made that configure
-hard-fail at the download behind a firewall). An explicit `-DGMA_BUILD_DATA=ON|OFF` always
+hard-fail at the download behind a firewall). An explicit `-DKRN_BUILD_DATA=ON|OFF` always
 wins, and the configure prints which way it resolved and why.
 
 **What is off, and which entries are decisions rather than tweaks.** Arrow 23 already
@@ -973,7 +973,7 @@ a future release is free to change and a decision is not:
 - `ARROW_WITH_LZ4=ON`, `ARROW_WITH_ZSTD=ON` — **not a size tweak either.** ClickHouse's
   `output_format_arrow_compression_method` defaults to `lz4_frame`, so a codec-free Arrow
   cannot read ENC-1485's stream at all without a per-query `SETTINGS` override. Both are
-  bundled builds (lz4 ≈ 1 MB, zstd ≈ 2.3 MB of source); `-DGMA_DATA_ARROW_IPC_CODECS=OFF`
+  bundled builds (lz4 ≈ 1 MB, zstd ≈ 2.3 MB of source); `-DKRN_DATA_ARROW_IPC_CODECS=OFF`
   drops them. Brotli, bz2, snappy and zlib stay off.
 - Off and uncontroversial: shared libs, jemalloc, mimalloc, filesystem, S3/GCS/Azure/HDFS,
   Flight and Flight SQL, ORC, CSV and JSON readers, RE2, utf8proc, OpenTelemetry, UCX,
@@ -1074,7 +1074,7 @@ one. `pkg-config --modversion arrow` fails and no `/usr/lib64/cmake/arrow` exist
 unrelated `arrows` package is wrong), but installing it needs a sudo password this
 environment does not have. `find_package(Arrow CONFIG QUIET)` is tried first and kept
 working for machines that have one; it is **untested here** for that reason.
-`-DGMA_DATA_ARROW_FORCE_FETCH=ON` skips it — the escape hatch for an installed Arrow that
+`-DKRN_DATA_ARROW_FORCE_FETCH=ON` skips it — the escape hatch for an installed Arrow that
 is present but unusable (a config package exporting target names outside the candidate
 list makes the module a `FATAL_ERROR`, and that error used to name this flag before it
 existed).

@@ -358,7 +358,7 @@ The **entire** order book system has **zero tests**:
    - Pick one test strategy (recommend monolithic `krn_tests` from root)
    - Remove Windows-only `GTEST_CTEST_RUNNER` or make it conditional
    - Set `CMAKE_CXX_STANDARD 20` to match actual usage
-   - Document test build: `cmake .. -DGMA_BUILD_TESTS=ON`
+   - Document test build: `cmake .. -DKRN_BUILD_TESTS=ON`
 2. **Fix all test include paths**: `Config.hpp` → `util/Config.hpp`, `Logger.hpp` → `util/Logger.hpp`, `rtThreadPool.hpp` → `rt/ThreadPool.hpp`
 3. **Fix test API mismatches**: Rewrite ConfigTest and LoggerTest to match actual class interfaces
 4. **Fix main.cpp**:

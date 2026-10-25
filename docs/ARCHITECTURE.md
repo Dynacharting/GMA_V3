@@ -6,8 +6,8 @@ This document is the authoritative reference for how GMA_V3 is put together. `CL
 
 GMA_V3 is a **streaming-computation server**: JSON request trees come in over WebSocket, events come in from data feeds, and the node pipeline runs user-specified math on the stream and pushes results back out. The codebase is split into two layers:
 
-- **Engine** (`libgma_engine`): everything that has no idea what it's processing — node pipeline, event routing, JSON tree builder, WebSocket transport, thread pool, atomic store.
-- **Connectors** (`libgma_connector_market`, `libgma_connector_synthetic`, …): everything domain-specific — feed protocols, per-event computations (e.g. TA), order books, custom atomic provider namespaces, specialized node types.
+- **Engine** (`libkrn_engine`): everything that has no idea what it's processing — node pipeline, event routing, JSON tree builder, WebSocket transport, thread pool, atomic store.
+- **Connectors** (`libkrn_connector_market`, `libkrn_connector_synthetic`, …): everything domain-specific — feed protocols, per-event computations (e.g. TA), order books, custom atomic provider namespaces, specialized node types.
 
 **The core invariant:** adding a new connector touches only the connector's own directory plus one line at the composition root. No engine edits. If a change to the engine is ever required to support a new connector, something went wrong in the extension-point design.
 
@@ -25,7 +25,7 @@ GMA_V3 is a **streaming-computation server**: JSON request trees come in over We
             │                      │
             ▼                      ▼
 ┌───────────────────────┐ ┌────────────────────────────────────┐
-│ libgma_connector_     │ │                                    │
+│ libkrn_connector_     │ │                                    │
 │   market              │ │                                    │
 │   (OB, TA, ITCH,      │ │                                    │
 │    FeedServer,        │ │                                    │
@@ -34,14 +34,14 @@ GMA_V3 is a **streaming-computation server**: JSON request trees come in over We
        │ depends on       │                                    │
        ▼                  ▼                                    │
 ┌──────────────────────────────────────────────────────────────┐
-│ libgma_engine                                                │
+│ libkrn_engine                                                │
 │   Dispatcher, TreeBuilder, Node pipeline, WebSocketServer,   │
 │   AtomicStore, FunctionMap, AtomicProviderRegistry,          │
 │   ThreadPool, ShutdownCoordinator, registries under engine/  │
 └──────────────────────────────────────────────────────────────┘
 ```
 
-`libgma_connector_synthetic` sits next to the market connector (also depending on `krn_engine`) but is only linked into `krn_tests` — it exists as a demo + regression check, not a production feature.
+`libkrn_connector_synthetic` sits next to the market connector (also depending on `krn_engine`) but is only linked into `krn_tests` — it exists as a demo + regression check, not a production feature.
 
 Engine isolation is enforced via CMake include scoping: `krn_engine`'s PUBLIC include path is `include/` only, so any accidental `#include "gma/book/..."` or `#include "gma/market/..."` from inside engine code fails at compile time.
 

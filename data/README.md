@@ -38,7 +38,7 @@ ClickHouse client must never become engine dependencies** (`docs/data-layer.md` 
 SPEC D14). That is a shipping constraint, not a preference. Read D14 as it is written,
 though: the client profile is **"live-only *or* reads a central L1 over the wire with no
 local store"** — two variants, not one. The **live-only** variant omits this library
-entirely, so `cmake -DGMA_BUILD_DATA=OFF` must build and link `gma_server` with no Arrow
+entirely, so `cmake -DKRN_BUILD_DATA=OFF` must build and link `gma_server` with no Arrow
 anywhere; it does, and that is checked. The **over-the-wire** variant needs Arrow IPC to
 read `FORMAT ArrowStream`, so it *does* ship `krn_data` — "the client profile omits this
 library" is true of one variant and not of D14. The invariant is unaffected either way,
@@ -197,12 +197,12 @@ the largest single dependency in the design and existed only to query Parquet (S
 `krn_data_tests` and both engine-isolation cases are all built and run — nothing is
 silently skipped where tests run, which a fixed default could not give you in both
 directions. With tests off, a bare Release configure fetches **no** Arrow and still builds
-`gma_server`, so the quickstart works offline. An explicit `-DGMA_BUILD_DATA=ON|OFF` always
+`gma_server`, so the quickstart works offline. An explicit `-DKRN_BUILD_DATA=ON|OFF` always
 wins, and the configure prints which way it resolved and why.
 
 ```bash
 # Tests on => krn_data on by default (Arrow is found or fetched).
-cmake -B build -DCMAKE_BUILD_TYPE=Debug -DGMA_BUILD_TESTS=ON
+cmake -B build -DCMAKE_BUILD_TYPE=Debug -DKRN_BUILD_TESTS=ON
 cmake --build build -j$(nproc)
 ctest --test-dir build --output-on-failure
 
@@ -210,16 +210,16 @@ ctest --test-dir build --output-on-failure
 cmake -B build-release -DCMAKE_BUILD_TYPE=Release
 
 # SPEC D14's live-only client variant, with tests: no local store, no Arrow at all.
-cmake -B build-liveonly -DCMAKE_BUILD_TYPE=Debug -DGMA_BUILD_TESTS=ON -DGMA_BUILD_DATA=OFF
+cmake -B build-liveonly -DCMAKE_BUILD_TYPE=Debug -DKRN_BUILD_TESTS=ON -DKRN_BUILD_DATA=OFF
 
 # The data layer without the engine test suite.
-cmake -B build-dataonly -DCMAKE_BUILD_TYPE=Debug -DGMA_BUILD_DATA=ON
+cmake -B build-dataonly -DCMAKE_BUILD_TYPE=Debug -DKRN_BUILD_DATA=ON
 
 # Point the Arrow fallback at an already-downloaded archive instead of the network.
-cmake -B build -DGMA_DATA_ARROW_URL=/path/to/apache-arrow-23.0.1.tar.gz
+cmake -B build -DKRN_DATA_ARROW_URL=/path/to/apache-arrow-23.0.1.tar.gz
 
 # Ignore an installed-but-unusable Arrow and build it from source regardless.
-cmake -B build -DGMA_BUILD_DATA=ON -DGMA_DATA_ARROW_FORCE_FETCH=ON
+cmake -B build -DKRN_BUILD_DATA=ON -DKRN_DATA_ARROW_FORCE_FETCH=ON
 ```
 
 Arrow's measured cost on this toolchain is in `docs/data-layer.md` §15 — it is far cheaper
