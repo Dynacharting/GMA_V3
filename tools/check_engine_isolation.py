@@ -678,7 +678,7 @@ def control_reachers(graph: dict[str, list[str]]) -> list[str]:
     return problems
 
 
-def selftest_gate(failures: list[str]) -> None:
+def selftest_gate(failures: list[str]) -> int:
     """The whole gate, exit code included, on a fixture manifest.  (ENC-1507)
 
     The fixture clears every anti-vacuity floor, and the legal case is asserted
@@ -688,6 +688,7 @@ def selftest_gate(failures: list[str]) -> None:
     """
     import tempfile
 
+    ran: list[str] = []
     with tempfile.TemporaryDirectory(prefix="enc1507-gate-") as fx:
         os.makedirs(os.path.join(fx, "include", "krn"))
         os.makedirs(os.path.join(fx, "src", "core"))
@@ -727,6 +728,7 @@ def selftest_gate(failures: list[str]) -> None:
                     fh.write(f"{k}={v}\n")
             vac, probs, summary = evaluate(read_manifest(path))
             got = exit_code(vac, probs)
+            ran.append(f"{name}={got}")
             if got != want:
                 failures.append(
                     f"SELFTEST: gate/{name} exited {got}, expected {want} "
@@ -783,6 +785,7 @@ def selftest_gate(failures: list[str]) -> None:
              mutant("control-in-unreached-target",
                     lambda g: g.update({"krn_other": [CONTROL_TARGET]})),
              "OFF", 1)
+    return len(ran)
 
 
 def selftest() -> int:
@@ -1111,7 +1114,7 @@ def selftest() -> int:
             if cmake_true(falsy):
                 failures.append(f"SELFTEST: cmake_true({falsy!r}) is True")
 
-    selftest_gate(failures)
+    gate_cases = selftest_gate(failures)
 
     if failures:
         for f in failures:
@@ -1119,7 +1122,8 @@ def selftest() -> int:
         print(f"\nSELFTEST FAILED: {len(failures)} predicate(s) are not gating.",
               file=sys.stderr)
         return 1
-    print("selftest: all predicates detect their violation and pass legal input")
+    print("selftest: all predicates detect their violation and pass legal input "
+          f"({gate_cases} whole-gate exit-code cases)")
     return 0
 
 
