@@ -771,6 +771,10 @@ def selftest_gate(failures: list[str]) -> int:
         silent = mutant("control-silent", lambda g: g.update(
             {CONTROL_TARGET: ["Threads::Threads"]}))
         gate("control-silent", silent, "OFF", 2, CONTROL_TARGET)
+        # One that fires but not through the stub has drifted from CMake.
+        drifted = mutant("control-without-stub", lambda g: g.update(
+            {CONTROL_TARGET: ["krn::arrow"]}))
+        gate("control-without-stub", drifted, "OFF", 2, CONTROL_TARGET)
 
         # Scanned, never linked: the stub or the control target in a real one.
         gate("stub-in-krn_engine",

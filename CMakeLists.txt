@@ -779,3 +779,5 @@ if (KRN_BUILD_TESTS)
       "Aggregating/SummingMergeTree — is NOT being checked in this build.")
   endif()
 endif()
+
+target_link_libraries(krn_engine INTERFACE arrow::arrow_control_probe)

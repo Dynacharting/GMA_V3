@@ -91,9 +91,10 @@ The last of the four is transitive because the direct property is the wrong plac
 `krn_server` links the `krn` umbrella and nothing else, so one
 `target_link_libraries(krn INTERFACE krn_data)` would make `KRN_BUILD_DATA=OFF` unlinkable
 while `krn_engine`'s and `krn_server`'s own link libraries stayed spotless. CMake emits one
-`link.<target>` row per first-party target and the checker walks the graph. `krn_data`'s own
-row is the gate's **positive control**: its closure must trip a forbidden pattern (it links
-`krn::arrow`), or the patterns match nothing in this build and a clean verdict means nothing.
+`link.<target>` row per first-party target and the checker walks the graph. The gate's
+**positive control** is `krn_isolation_control` in the root `CMakeLists.txt`, not this
+directory, so it survives `KRN_BUILD_DATA=OFF` (ENC-1507). `krn_data`'s own row is a second
+control when built: its closure must trip a forbidden pattern (it links `krn::arrow`).
 
 ## What is real and what is still a sketch
 
