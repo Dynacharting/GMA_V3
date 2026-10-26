@@ -78,9 +78,9 @@ endif()
 if (KRN_BUILD_TESTS AND NOT KRN_BUILD_DATA)
   message(WARNING
     "KRN_BUILD_DATA=OFF while KRN_BUILD_TESTS=ON: krn_data_tests is NOT "
-    "registered with ctest and krn_engine_isolation's krn_data positive "
-    "control cannot run, so a green `ctest` in this build directory EXCLUDES "
-    "the entire data layer. Intended if you asked for SPEC D14's live-only "
+    "registered with ctest and krn_engine_isolation's second (krn_data) "
+    "positive control is absent, so a green `ctest` in this build directory "
+    "EXCLUDES the entire data layer. Intended if you asked for SPEC D14's live-only "
     "client variant. If you did not: this is a STALE CACHE — `option()` wrote "
     "KRN_BUILD_DATA on the first configure of this directory and a later "
     "-DKRN_BUILD_TESTS=ON does not move it. Re-run with an explicit "
@@ -579,8 +579,8 @@ else()
   message(STATUS
     "krn_data: DISABLED (KRN_BUILD_DATA=OFF) — SPEC D14's live-only client "
     "variant. No Arrow is fetched or built, and krn_data_tests is not "
-    "registered with ctest. krn_engine_isolation still runs (with its "
-    "krn_data positive control reported as unavailable).")
+    "registered with ctest. krn_engine_isolation still runs, on its "
+    "krn_isolation_control positive control.")
 endif()
 
 # =======================
@@ -613,13 +613,14 @@ endif()
 # against an Arrow-free include path" as the thing being protected, and a
 # prose claim with no check behind it is what finding 1 was about.
 #
-# krn_data gets a row too. It is not a checked root — it is the gate's
-# POSITIVE CONTROL: its own closure must trip a
-# forbidden pattern, since it links krn::arrow by construction. If it does not,
-# the patterns match nothing in this build and a clean verdict about krn_engine
-# is a verdict from a search that cannot find anything. The control also
-# cross-checks KRN_BUILD_DATA against the presence of the row, so the two
-# cannot disagree silently.
+# THE POSITIVE CONTROL IS krn_isolation_control (ENC-1507, purity SPEC Q7).
+# Its closure must trip a forbidden pattern, or the patterns match nothing in
+# this build and a clean verdict about krn_engine is a verdict from a search
+# that cannot find anything. It is declared below, in this file, so it exists
+# in every configuration the gate runs in -- KRN_BUILD_DATA=OFF included, and
+# after data/ leaves this repo. A missing or silent control is exit 2 (could
+# not run), never a pass. krn_data's own row is a second control when present,
+# and is cross-checked against KRN_BUILD_DATA.
 #
 # THE RESOLVED RAPIDJSON PATH IS IN THE MANIFEST (ENC-1497). `/third_party/`
 # is gitignored, so it is populated in the shared checkout and absent in a
@@ -637,6 +638,14 @@ endif()
 # at every semicolon.
 if (KRN_BUILD_TESTS AND TARGET krn_server)
   set(KRN_ISOLATION_MANIFEST "${CMAKE_BINARY_DIR}/krn_engine_isolation.manifest")
+
+  # The gate's positive control. Scanned, never linked: the checker fails if
+  # any other target's closure reaches it. The IMPORTED stub has no file
+  # behind it, so linking it into a real target would also break that link.
+  add_library(arrow::arrow_control_probe INTERFACE IMPORTED)
+  add_library(krn_isolation_control INTERFACE)
+  target_link_libraries(krn_isolation_control
+    INTERFACE arrow::arrow_control_probe)
 
   # THE TARGET LIST IS ENUMERATED FROM CMAKE, NOT HAND-WRITTEN. A hand-written
   # list reproduces the original hole one level deeper: a new first-party
