@@ -678,6 +678,113 @@ def control_reachers(graph: dict[str, list[str]]) -> list[str]:
     return problems
 
 
+def selftest_gate(failures: list[str]) -> None:
+    """The whole gate, exit code included, on a fixture manifest.  (ENC-1507)
+
+    The fixture clears every anti-vacuity floor, and the legal case is asserted
+    to exit 0 first, so each refusal below is caused by its own mutation and
+    not by the fixture being thin.  Each mutant also asserts it changed the
+    manifest before its verdict is judged.
+    """
+    import tempfile
+
+    with tempfile.TemporaryDirectory(prefix="enc1507-gate-") as fx:
+        os.makedirs(os.path.join(fx, "include", "krn"))
+        os.makedirs(os.path.join(fx, "src", "core"))
+        os.makedirs(os.path.join(fx, "data", "include"))
+        sources = []
+        for i in range(MIN_ENGINE_FILES + 5):
+            path = os.path.join(fx, "src", "core", f"E{i}.cpp")
+            open(path, "w").close()
+            sources.append(path)
+        open(os.path.join(fx, COMPOSITION_ROOT), "w").close()
+        inc = os.path.join(fx, "include")
+
+        base_graph = {
+            "krn_engine": ["Threads::Threads"],
+            "krn": ["krn_engine", "krn_connector_market"],
+            "krn_connector_market": ["krn_engine"],
+            "krn_server": ["krn", "Threads::Threads"],
+            "krn_tests": ["krn", "GTest::gtest_main"],
+            CONTROL_TARGET: [CONTROL_PROBE],
+        }
+
+        def manifest(graph: dict[str, list[str]], data: str) -> dict[str, str]:
+            m = {"root": fx, "engine_include_dirs": inc,
+                 "engine_interface_include_dirs": inc,
+                 "engine_cmake_sources": "|".join(sources),
+                 "krn_data_enabled": data,
+                 "rapidjson_include_dir": "/usr/include"}
+            for t, libs in graph.items():
+                m[f"link.{t}"] = "|".join(libs)
+            return m
+
+        def gate(name, graph, data, want, vacuity_mentions=None):
+            # Through the file, so read_manifest is exercised too.
+            path = os.path.join(fx, f"{len(os.listdir(fx))}.manifest")
+            with open(path, "w", encoding="utf-8") as fh:
+                for k, v in manifest(graph, data).items():
+                    fh.write(f"{k}={v}\n")
+            vac, probs, summary = evaluate(read_manifest(path))
+            got = exit_code(vac, probs)
+            if got != want:
+                failures.append(
+                    f"SELFTEST: gate/{name} exited {got}, expected {want} "
+                    f"(vacuous={vac}, problems={probs})")
+            if vacuity_mentions and not any(vacuity_mentions in v for v in vac):
+                failures.append(
+                    f"SELFTEST: gate/{name} did not refuse for the control: "
+                    f"{vac}")
+            return summary
+
+        def mutant(name, edit):
+            g = {t: list(libs) for t, libs in base_graph.items()}
+            edit(g)
+            if g == base_graph:
+                failures.append(f"SELFTEST: gate/{name}: mutation did not apply")
+            return g
+
+        # The legal fixture passes, and its control fires FROM THE STUB with
+        # the data layer off -- the configuration that used to be vacuous.
+        summary = gate("legal-data-OFF", base_graph, "OFF", 0)
+        if not any(f"ok ({CONTROL_TARGET} -> {CONTROL_PROBE}" in ln
+                   for ln in summary):
+            failures.append("SELFTEST: gate/legal-data-OFF: positive control "
+                            "is not reported as ok from the stub")
+        expect = forbidden_links(base_graph, CONTROL_TARGET)
+        if not expect:
+            failures.append("SELFTEST: the control stub does not fire")
+
+        with_data = mutant("legal-data-ON", lambda g: g.update(
+            {"krn_data": ["krn_engine", "krn::arrow"]}))
+        gate("legal-data-ON", with_data, "ON", 0)
+
+        # The ticket's case: data layer off, no control -> must not exit 0.
+        no_ctl = mutant("data-OFF-no-control", lambda g: g.pop(CONTROL_TARGET))
+        gate("data-OFF-no-control", no_ctl, "OFF", 2, CONTROL_TARGET)
+        # krn_data alone is not a substitute: it leaves with data/.
+        data_no_ctl = dict(no_ctl, krn_data=["krn_engine", "krn::arrow"])
+        gate("data-ON-krn_data-only", data_no_ctl, "ON", 2, CONTROL_TARGET)
+        # A control row that matches nothing is no control.
+        silent = mutant("control-silent", lambda g: g.update(
+            {CONTROL_TARGET: ["Threads::Threads"]}))
+        gate("control-silent", silent, "OFF", 2, CONTROL_TARGET)
+
+        # Scanned, never linked: the stub or the control target in a real one.
+        gate("stub-in-krn_engine",
+             mutant("stub-in-krn_engine",
+                    lambda g: g["krn_engine"].append(CONTROL_PROBE)), "OFF", 1)
+        gate("control-in-krn_engine",
+             mutant("control-in-krn_engine",
+                    lambda g: g["krn_engine"].append(CONTROL_TARGET)), "OFF", 1)
+        # ...and in a target none of the checked roots reach, which only the
+        # control_reachers rule can see.
+        gate("control-in-unreached-target",
+             mutant("control-in-unreached-target",
+                    lambda g: g.update({"krn_other": [CONTROL_TARGET]})),
+             "OFF", 1)
+
+
 def selftest() -> int:
     """Each predicate, shown failing on an input that violates it.
 
@@ -1003,6 +1110,8 @@ def selftest() -> int:
         for falsy in ("OFF", "off", "0", "FALSE", "no", "", "NOTFOUND", "junk"):
             if cmake_true(falsy):
                 failures.append(f"SELFTEST: cmake_true({falsy!r}) is True")
+
+    selftest_gate(failures)
 
     if failures:
         for f in failures:
