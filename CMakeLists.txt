@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(GMA_V3 LANGUAGES CXX)
+project(KRN LANGUAGES CXX)
 
 # ---- Options ----
 option(KRN_BUILD_TESTS "Build unit tests in tests/" OFF)

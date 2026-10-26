@@ -1,4 +1,4 @@
-# GMA_V3
+# KRN
 
 **Version:** 3.0
 **Author:** Nicholas Randall
@@ -8,7 +8,7 @@
 
 ## Overview
 
-**GMA_V3** is a high-performance **C++20** WebSocket server and library for
+**KRN** is a high-performance **C++20** WebSocket server and library for
 real-time, atomic market-analysis computations over streaming data. Clients
 connect over WebSocket, submit JSON-encoded **request trees**, and the node
 pipeline runs nested statistical / technical-indicator math on the live feed,

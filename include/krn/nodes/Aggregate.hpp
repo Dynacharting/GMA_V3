@@ -27,7 +27,7 @@ namespace krn {
 // input had never fired once: measured, corpus_id 86 "Bid-ask spread for AAPL"
 // reported a spread of +-1.00 where the truth is 0.02. `Aggregate` keeps its
 // wire name (D6: forum emits it as the only join shape it can produce, and its
-// stored graphs are unmigratable from GMA_V3), so the semantics are corrected
+// stored graphs are unmigratable from KRN), so the semantics are corrected
 // in place. Turning a wrong answer into a right one under a stored graph is a
 // fix, not a compatibility break.
 //

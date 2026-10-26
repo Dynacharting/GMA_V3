@@ -1,8 +1,8 @@
-# GMA_V3 Engine / Connector Refactor
+# KRN Engine / Connector Refactor
 
 ## Goal
 
-Split GMA_V3 into a domain-agnostic **core engine** + pluggable **connectors**. The market-specific code (order book, technical indicators, market atomics, ITCH adapter) becomes one connector. New connectors must be addable with **zero (or near-zero) changes to the core**.
+Split KRN into a domain-agnostic **core engine** + pluggable **connectors**. The market-specific code (order book, technical indicators, market atomics, ITCH adapter) becomes one connector. New connectors must be addable with **zero (or near-zero) changes to the core**.
 
 **Invariant:** adding a connector should touch only (a) the new connector's own files and (b) a single registration line in the composition root.
 

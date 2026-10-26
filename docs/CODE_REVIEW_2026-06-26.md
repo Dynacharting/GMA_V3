@@ -1,4 +1,4 @@
-# GMA_V3 — Deep Code Review (2026-06-26)
+# KRN — Deep Code Review (2026-06-26)
 
 Full-repository adversarial review. The entire production tree (`src/`, `include/`,
 `connectors/`), the build system, the ~9.8k-line test suite, and all docs/specs were read
