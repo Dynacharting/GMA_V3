@@ -23,14 +23,14 @@
 // is `ClientSessionTest.BucketedPipelineStampsBucketStartMsOnTheWire`, which
 // drives a real WebSocketServer/ClientSession over a real socket.
 
-#include "gma/FunctionMap.hpp"
-#include "gma/FunctionRegistry.hpp"
-#include "gma/StreamValue.hpp"
-#include "gma/nodes/BucketTime.hpp"
-#include "gma/nodes/INode.hpp"
-#include "gma/nodes/TumblingWindow.hpp"
-#include "gma/nodes/VectorReducer.hpp"
-#include "gma/rt/ThreadPool.hpp"
+#include "krn/FunctionMap.hpp"
+#include "krn/FunctionRegistry.hpp"
+#include "krn/StreamValue.hpp"
+#include "krn/nodes/BucketTime.hpp"
+#include "krn/nodes/INode.hpp"
+#include "krn/nodes/TumblingWindow.hpp"
+#include "krn/nodes/VectorReducer.hpp"
+#include "krn/rt/ThreadPool.hpp"
 
 #include <gtest/gtest.h>
 

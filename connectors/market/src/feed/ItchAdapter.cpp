@@ -1,7 +1,7 @@
-#include "gma/feed/ItchAdapter.hpp"
+#include "krn/feed/ItchAdapter.hpp"
 
-#include "gma/util/Logger.hpp"
-#include "gma/util/Metrics.hpp"
+#include "krn/util/Logger.hpp"
+#include "krn/util/Metrics.hpp"
 
 #include <rapidjson/document.h>
 #include <rapidjson/writer.h>

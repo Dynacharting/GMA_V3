@@ -8,7 +8,7 @@
 // consumes its level exactly once — the property the C1 double-consume bug
 // (ENC-785, fixed in the WsFeedClient routing layer) violates end-to-end.
 
-#include "gma/book/OrderBook.hpp"
+#include "krn/book/OrderBook.hpp"
 
 #include <gtest/gtest.h>
 #include <string>

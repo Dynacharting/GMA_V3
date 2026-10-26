@@ -1,7 +1,7 @@
-#include "gma/AtomicFunctions.hpp"
-#include "gma/AtomicStore.hpp"
-#include "gma/SymbolHistory.hpp"
-#include "gma/util/Config.hpp"
+#include "krn/AtomicFunctions.hpp"
+#include "krn/AtomicStore.hpp"
+#include "krn/SymbolHistory.hpp"
+#include "krn/util/Config.hpp"
 #include <gtest/gtest.h>
 #include <string>
 #include <cmath>

@@ -2,7 +2,7 @@
 // ClickHouseHttp — see ClickHouseHttp.hpp.
 //
 
-#include "gma/data/ClickHouseHttp.hpp"
+#include "krn/data/ClickHouseHttp.hpp"
 
 #include <boost/asio/connect.hpp>
 #include <boost/asio/io_context.hpp>

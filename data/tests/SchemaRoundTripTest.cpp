@@ -12,9 +12,9 @@
 // is DISTINCT FROM THE FIELD'S DEFAULT, and `AllFixtureFieldsDifferFromDefault`
 // pins that property so the round-trip tests cannot go vacuous later.
 
-#include "gma/data/Record.hpp"
-#include "gma/data/Schema.hpp"
-#include "gma/data/SymbolTable.hpp"
+#include "krn/data/Record.hpp"
+#include "krn/data/Schema.hpp"
+#include "krn/data/SymbolTable.hpp"
 
 #include <arrow/array/array_base.h>
 #include <arrow/array/array_dict.h>

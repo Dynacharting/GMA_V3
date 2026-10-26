@@ -18,15 +18,15 @@
 // They fail on master: the flood closes the connection, so the "newest value"
 // read comes back as websocket::error::closed instead.
 
-#include "gma/AtomicStore.hpp"
-#include "gma/Dispatcher.hpp"
-#include "gma/ExecutionContext.hpp"
-#include "gma/FunctionRegistry.hpp"
-#include "gma/NodeRegistry.hpp"
-#include "gma/rt/ThreadPool.hpp"
-#include "gma/server/WebSocketServer.hpp"
-#include "gma/util/Logger.hpp"
-#include "gma/util/Metrics.hpp"
+#include "krn/AtomicStore.hpp"
+#include "krn/Dispatcher.hpp"
+#include "krn/ExecutionContext.hpp"
+#include "krn/FunctionRegistry.hpp"
+#include "krn/NodeRegistry.hpp"
+#include "krn/rt/ThreadPool.hpp"
+#include "krn/server/WebSocketServer.hpp"
+#include "krn/util/Logger.hpp"
+#include "krn/util/Metrics.hpp"
 
 #include <boost/asio/connect.hpp>
 #include <boost/asio/io_context.hpp>

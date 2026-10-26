@@ -25,7 +25,7 @@ External Feed (WebSocket/TCP)
 ```
 
 > **Paths moved (ENC-31/ENC-35).** Feed code is **connector-owned**: it lives
-> under `connectors/market/{include,src}/gma/...`, not at engine level. There is
+> under `connectors/market/{include,src}/krn/...`, not at engine level. There is
 > **no `MarketDispatcher`** — `WsFeedClient::dispatchEvent` writes order-book
 > events into `OrderBookManager` and tick events into the engine `Dispatcher`
 > (`Dispatcher::onTick`), which runs the `MarketTickComputer`.
@@ -46,12 +46,12 @@ Every adapter produces a sequence of these canonical events per raw message:
 | `ObTickSizeEvent` | Set tick size for a symbol | `symbol`, `tickSize` |
 | `ObResetEvent` | Reset/new epoch for a symbol's book | `symbol`, `epoch` |
 
-Defined in `connectors/market/include/gma/feed/FeedEvent.hpp`.
+Defined in `connectors/market/include/krn/feed/FeedEvent.hpp`.
 
 ## Field mapping (`MarketFieldMap`)
 
 `krn::market::MarketFieldMap` (in
-`connectors/market/include/gma/market/MarketFieldMap.hpp`) configures how the
+`connectors/market/include/krn/market/MarketFieldMap.hpp`) configures how the
 `MarketTickComputer` extracts price/volume/bid/ask/timestamp from tick payloads.
 Each field list is tried in order; the first match wins.
 
@@ -91,9 +91,9 @@ No code changes required — just config.
 Implement `IFeedAdapter::translate()`:
 
 ```cpp
-// connectors/market/include/gma/feed/CoinbaseAdapter.hpp
+// connectors/market/include/krn/feed/CoinbaseAdapter.hpp
 #pragma once
-#include "gma/feed/IFeedAdapter.hpp"
+#include "krn/feed/IFeedAdapter.hpp"
 
 namespace krn::feed {
 
@@ -109,7 +109,7 @@ private:
 
 ```cpp
 // connectors/market/src/feed/CoinbaseAdapter.cpp
-#include "gma/feed/CoinbaseAdapter.hpp"
+#include "krn/feed/CoinbaseAdapter.hpp"
 #include <rapidjson/document.h>
 
 namespace krn::feed {
@@ -194,12 +194,12 @@ This is GMA's own protocol — it's already source-agnostic. External vendor fee
 
 | File | Purpose |
 |------|---------|
-| `connectors/market/include/gma/feed/IFeedAdapter.hpp` | Adapter interface |
-| `connectors/market/include/gma/feed/FeedEvent.hpp` | Canonical event types |
-| `connectors/market/include/gma/feed/ItchAdapter.hpp` | ITCH adapter header |
+| `connectors/market/include/krn/feed/IFeedAdapter.hpp` | Adapter interface |
+| `connectors/market/include/krn/feed/FeedEvent.hpp` | Canonical event types |
+| `connectors/market/include/krn/feed/ItchAdapter.hpp` | ITCH adapter header |
 | `connectors/market/src/feed/ItchAdapter.cpp` | ITCH adapter implementation |
-| `connectors/market/include/gma/market/MarketFieldMap.hpp` | Configurable field mapping (replaces `SourceProfile`) |
-| `connectors/market/include/gma/ws/WsFeedClient.hpp` | WebSocket transport (adapter-agnostic) |
+| `connectors/market/include/krn/market/MarketFieldMap.hpp` | Configurable field mapping (replaces `SourceProfile`) |
+| `connectors/market/include/krn/ws/WsFeedClient.hpp` | WebSocket transport (adapter-agnostic) |
 | `connectors/market/src/ws/WsFeedClient.cpp` | Transport implementation + event dispatch |
 | `tests/feed/ItchAdapterTest.cpp` | ITCH adapter unit tests |
 | `tests/connectors/MarketFieldMapTest.cpp` | `MarketFieldMap` field-mapping tests |

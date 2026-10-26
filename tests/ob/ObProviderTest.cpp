@@ -1,5 +1,5 @@
-#include "gma/ob/ObProvider.hpp"
-#include "gma/ob/FunctionalSnapshotSource.hpp"
+#include "krn/ob/ObProvider.hpp"
+#include "krn/ob/FunctionalSnapshotSource.hpp"
 #include <gtest/gtest.h>
 #include <cmath>
 #include <limits>

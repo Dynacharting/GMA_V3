@@ -1,6 +1,6 @@
-#include "gma/ws/WSResponder.hpp"
-#include "gma/util/Logger.hpp"
-#include "gma/util/JsonUtil.hpp"
+#include "krn/ws/WSResponder.hpp"
+#include "krn/util/Logger.hpp"
+#include "krn/util/JsonUtil.hpp"
 
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>

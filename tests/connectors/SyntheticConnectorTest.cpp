@@ -2,17 +2,17 @@
 // second, completely independent connector can coexist with the market
 // connector without touching any engine code.
 
-#include "gma/AtomicStore.hpp"
-#include "gma/Dispatcher.hpp"
-#include "gma/Event.hpp"
-#include "gma/FunctionMap.hpp"
-#include "gma/atomic/AtomicProviderRegistry.hpp"
-#include "gma/engine/Registries.hpp"
-#include "gma/rt/ThreadPool.hpp"
-#include "gma/runtime/ShutdownCoordinator.hpp"
-#include "gma/synthetic/SyntheticConnector.hpp"
-#include "gma/util/Config.hpp"
-#include "gma/util/Logger.hpp"
+#include "krn/AtomicStore.hpp"
+#include "krn/Dispatcher.hpp"
+#include "krn/Event.hpp"
+#include "krn/FunctionMap.hpp"
+#include "krn/atomic/AtomicProviderRegistry.hpp"
+#include "krn/engine/Registries.hpp"
+#include "krn/rt/ThreadPool.hpp"
+#include "krn/runtime/ShutdownCoordinator.hpp"
+#include "krn/synthetic/SyntheticConnector.hpp"
+#include "krn/util/Config.hpp"
+#include "krn/util/Logger.hpp"
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/post.hpp>

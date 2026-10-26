@@ -1,5 +1,5 @@
 #include <benchmark/benchmark.h>
-#include "gma/rt/ThreadPool.hpp"
+#include "krn/rt/ThreadPool.hpp"
 #include <atomic>
 
 static void BM_ThreadPoolPost(benchmark::State& state) {

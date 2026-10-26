@@ -9,8 +9,8 @@
 // touching any of the production connectors (their behavior is covered by
 // MarketConnector / SyntheticConnector tests respectively).
 
-#include "gma/engine/IConnector.hpp"
-#include "gma/engine/Registries.hpp"
+#include "krn/engine/IConnector.hpp"
+#include "krn/engine/Registries.hpp"
 
 #include <gtest/gtest.h>
 #include <stdexcept>

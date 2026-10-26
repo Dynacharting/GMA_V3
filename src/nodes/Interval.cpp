@@ -1,5 +1,5 @@
-#include "gma/nodes/Interval.hpp"
-#include "gma/util/Logger.hpp"
+#include "krn/nodes/Interval.hpp"
+#include "krn/util/Logger.hpp"
 
 namespace krn {
 

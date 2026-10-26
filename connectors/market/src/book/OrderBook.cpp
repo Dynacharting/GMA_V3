@@ -1,5 +1,5 @@
-#include "gma/book/OrderBook.hpp"
-#include "gma/util/Logger.hpp"
+#include "krn/book/OrderBook.hpp"
+#include "krn/util/Logger.hpp"
 #include <algorithm>
 #include <cassert>
 #include <sstream>

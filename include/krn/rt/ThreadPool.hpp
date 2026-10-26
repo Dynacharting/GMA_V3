@@ -1,0 +1,58 @@
+// File: include/krn/rt/ThreadPool.hpp
+#pragma once
+
+#include <atomic>
+#include <condition_variable>
+#include <functional>
+#include <memory>
+#include <mutex>
+#include <queue>
+#include <thread>
+#include <vector>
+
+namespace krn::rt {
+
+class ThreadPool {
+public:
+  explicit ThreadPool(unsigned nThreads = std::thread::hardware_concurrency());
+  ~ThreadPool();
+
+  ThreadPool(const ThreadPool&)            = delete;
+  ThreadPool& operator=(const ThreadPool&) = delete;
+  ThreadPool(ThreadPool&&)                 = delete;
+  ThreadPool& operator=(ThreadPool&&)      = delete;
+
+  // Enqueue work. Returns FALSE when the task was NOT enqueued because the
+  // pool is stopping — the drop has always been silent, and `rt::Strand`
+  // (ENC-1005) is the first caller that cannot survive not knowing: it sets its
+  // single-drainer token before the kick, so a dropped kick left the token set
+  // and the strand permanently, silently wedged. Existing callers may keep
+  // ignoring the result; the drop semantics are unchanged.
+  bool post(std::function<void()> fn);
+
+  // Waits until queue is empty AND all in-flight tasks have completed.
+  void drain();
+
+  // Drain queue, then stop all workers and join threads.
+  // Safe to call multiple times. Destructor is a no-op after shutdown().
+  void shutdown();
+
+private:
+  void workerLoop();
+
+private:
+  std::vector<std::thread>           threads_;
+  std::mutex                        mx_;
+  std::condition_variable           cv_;
+  std::condition_variable           idleCv_;
+  std::queue<std::function<void()>> q_;
+  std::atomic<bool>                 stopping_{false};
+  std::atomic<int>                  inFlight_{0};
+};
+
+} // namespace krn::rt
+
+// Global pool (decl only). Define it in exactly ONE .cpp.
+namespace krn {
+  extern std::shared_ptr<krn::rt::ThreadPool> gThreadPool;
+}

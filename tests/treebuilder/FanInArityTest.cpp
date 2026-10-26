@@ -24,13 +24,13 @@
 // gained a mismatching entry — or lost the `Aggregate`s this measurement is
 // about — goes red rather than silently re-measuring zero out of nothing.
 
-#include "gma/AtomicStore.hpp"
-#include "gma/Dispatcher.hpp"
-#include "gma/Event.hpp"
-#include "gma/StreamValue.hpp"
-#include "gma/TreeBuilder.hpp"
-#include "gma/nodes/INode.hpp"
-#include "gma/rt/ThreadPool.hpp"
+#include "krn/AtomicStore.hpp"
+#include "krn/Dispatcher.hpp"
+#include "krn/Event.hpp"
+#include "krn/StreamValue.hpp"
+#include "krn/TreeBuilder.hpp"
+#include "krn/nodes/INode.hpp"
+#include "krn/rt/ThreadPool.hpp"
 
 #include "../support/CorpusPath.hpp"
 

@@ -3,15 +3,15 @@
 // real instances; this test wires every field with non-null pointers and
 // verifies they round-trip.
 
-#include "gma/AtomicStore.hpp"
-#include "gma/Dispatcher.hpp"
-#include "gma/FunctionMap.hpp"
-#include "gma/atomic/AtomicProviderRegistry.hpp"
-#include "gma/engine/Registries.hpp"
-#include "gma/rt/ThreadPool.hpp"
-#include "gma/runtime/ShutdownCoordinator.hpp"
-#include "gma/util/Config.hpp"
-#include "gma/util/Logger.hpp"
+#include "krn/AtomicStore.hpp"
+#include "krn/Dispatcher.hpp"
+#include "krn/FunctionMap.hpp"
+#include "krn/atomic/AtomicProviderRegistry.hpp"
+#include "krn/engine/Registries.hpp"
+#include "krn/rt/ThreadPool.hpp"
+#include "krn/runtime/ShutdownCoordinator.hpp"
+#include "krn/util/Config.hpp"
+#include "krn/util/Logger.hpp"
 
 #include <boost/asio/io_context.hpp>
 #include <gtest/gtest.h>

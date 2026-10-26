@@ -1,4 +1,4 @@
-#include "gma/util/Config.hpp"
+#include "krn/util/Config.hpp"
 #include <gtest/gtest.h>
 #include <fstream>
 #include <cstdio>
@@ -153,7 +153,7 @@ TEST(ConfigTest, AtomicKeyNamespaceByFieldStaysOffForAnythingElse) {
 }
 
 // ---------------------------------------------------------------------------
-// ENC-1331 — `gma_server <ws> <conf> <feed>` must BIND <feed>.
+// ENC-1331 — `krn_server <ws> <conf> <feed>` must BIND <feed>.
 //
 // The connector binds `ingress[].params["port"]`, not `cfg.feedPort`. Synthesis
 // used to run at the end of loadFromFile(), i.e. before the composition root
@@ -224,7 +224,7 @@ TEST(ConfigTest, SynthesizeIsANoOpAndReportsItWhenIngressIsExplicit) {
 }
 
 TEST(ConfigTest, SynthesizeWithoutAnyFileUsesCompiledFeedPort) {
-    Config cfg;  // no loadFromFile at all — the `./gma_server` path
+    Config cfg;  // no loadFromFile at all — the `./krn_server` path
     EXPECT_TRUE(cfg.synthesizeIngressFromLegacy());
     ASSERT_EQ(cfg.ingress.size(), 1u);
     EXPECT_EQ(cfg.ingress[0].kind, "market.feedserver");

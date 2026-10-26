@@ -1,6 +1,6 @@
-#include "gma/Dispatcher.hpp"
-#include "gma/engine/JsonFieldSource.hpp"
-#include "gma/util/Logger.hpp"
+#include "krn/Dispatcher.hpp"
+#include "krn/engine/JsonFieldSource.hpp"
+#include "krn/util/Logger.hpp"
 
 #include <algorithm>
 #include <mutex>
@@ -83,7 +83,7 @@ Dispatcher::listenersFor(const std::string& symbol,
 // Everything this method used to do below `if (tick.symbol.empty())` now lives
 // in `ingest`, verbatim, with each JSON read replaced by the equivalent
 // `FieldSource` call. See `Dispatcher::onRecord` (src/core/DispatcherRecord.cpp)
-// for the other adapter and `include/gma/Dispatcher.hpp` for why there is only
+// for the other adapter and `include/krn/Dispatcher.hpp` for why there is only
 // one body.
 void Dispatcher::onTick(const Event& tick) {
   if (tick.symbol.empty() || !tick.payload) return;

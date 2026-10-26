@@ -1,5 +1,5 @@
 #include <benchmark/benchmark.h>
-#include "gma/AtomicStore.hpp"
+#include "krn/AtomicStore.hpp"
 #include <string>
 #include <thread>
 #include <vector>

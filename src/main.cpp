@@ -9,29 +9,29 @@
 #include <boost/asio/signal_set.hpp>
 #include <boost/system/system_error.hpp>
 
-#include "gma/engine/IConnector.hpp"
+#include "krn/engine/IConnector.hpp"
 
 // -------- Engine --------
-#include "gma/AtomicStore.hpp"
-#include "gma/ExecutionContext.hpp"
-#include "gma/FunctionMap.hpp"
-#include "gma/FunctionRegistry.hpp"
-#include "gma/Dispatcher.hpp"
-#include "gma/NodeRegistry.hpp"
-#include "gma/atomic/AtomicProviderRegistry.hpp"
-#include "gma/engine/Registries.hpp"
-#include "gma/rt/ThreadPool.hpp"
-#include "gma/runtime/ShutdownCoordinator.hpp"
-#include "gma/server/WebSocketServer.hpp"
-#include "gma/util/Config.hpp"
-#include "gma/util/Logger.hpp"
-#include "gma/util/Metrics.hpp"
+#include "krn/AtomicStore.hpp"
+#include "krn/ExecutionContext.hpp"
+#include "krn/FunctionMap.hpp"
+#include "krn/FunctionRegistry.hpp"
+#include "krn/Dispatcher.hpp"
+#include "krn/NodeRegistry.hpp"
+#include "krn/atomic/AtomicProviderRegistry.hpp"
+#include "krn/engine/Registries.hpp"
+#include "krn/rt/ThreadPool.hpp"
+#include "krn/runtime/ShutdownCoordinator.hpp"
+#include "krn/server/WebSocketServer.hpp"
+#include "krn/util/Config.hpp"
+#include "krn/util/Logger.hpp"
+#include "krn/util/Metrics.hpp"
 
 // -------- Connectors --------
-#include "gma/market/MarketConnector.hpp"
+#include "krn/market/MarketConnector.hpp"
 
 // -------- Forum-driven ingress --------
-#include "gma/forum/ConnectorsClient.hpp"
+#include "krn/forum/ConnectorsClient.hpp"
 
 static unsigned short parsePort(const char* str, unsigned short fallback) {
   try {
@@ -151,7 +151,7 @@ static int runServer(int argc, char* argv[]) {
   } catch (const boost::system::system_error& ex) {
     std::cerr << "[fatal] cannot start WebSocket server on port " << wsPort
               << ": " << ex.what() << "\n"
-              << "        (is another gma_server already listening there? "
+              << "        (is another krn_server already listening there? "
                  "pass a different wsPort as argv[1])\n";
     shutdown.stop();
     return EXIT_FAILURE;
@@ -299,7 +299,7 @@ static int runServer(int argc, char* argv[]) {
       krn::util::logger().log(krn::util::LogLevel::Error, "ingress.start_failed",
                               {{"kind", kind}, {"err", ex.what()}});
       std::cerr << "[fatal] cannot start ingress '" << kind << "': " << ex.what() << "\n"
-                << "        (is another gma_server already listening there? "
+                << "        (is another krn_server already listening there? "
                    "pass a different feedPort as argv[3] / ingress.N.port)\n";
       // Stop the ingresses that did come up, then unwind cleanly.
       for (std::size_t j = i; j-- > 0;) {
@@ -363,7 +363,7 @@ int main(int argc, char* argv[]) {
   try {
     return runServer(argc, argv);
   } catch (const std::exception& ex) {
-    std::cerr << "[fatal] gma_server: " << ex.what() << "\n";
+    std::cerr << "[fatal] krn_server: " << ex.what() << "\n";
     return EXIT_FAILURE;
   }
 }

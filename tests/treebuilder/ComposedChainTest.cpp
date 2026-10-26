@@ -58,16 +58,16 @@
 // whose pinned values are the DEFECT, recorded so the next ticket inherits a
 // measurement instead of a guess (SPEC §5 Q5, open; ENC-1291/ENC-1005 own it).
 
-#include "gma/AtomicStore.hpp"
-#include "gma/Dispatcher.hpp"
-#include "gma/Event.hpp"
-#include "gma/StreamValue.hpp"
-#include "gma/TreeBuilder.hpp"
-#include "gma/nodes/Aggregate.hpp"
-#include "gma/nodes/BucketTime.hpp"
-#include "gma/nodes/INode.hpp"
-#include "gma/nodes/Interval.hpp"
-#include "gma/rt/ThreadPool.hpp"
+#include "krn/AtomicStore.hpp"
+#include "krn/Dispatcher.hpp"
+#include "krn/Event.hpp"
+#include "krn/StreamValue.hpp"
+#include "krn/TreeBuilder.hpp"
+#include "krn/nodes/Aggregate.hpp"
+#include "krn/nodes/BucketTime.hpp"
+#include "krn/nodes/INode.hpp"
+#include "krn/nodes/Interval.hpp"
+#include "krn/rt/ThreadPool.hpp"
 
 #include "../support/CorpusPath.hpp"
 

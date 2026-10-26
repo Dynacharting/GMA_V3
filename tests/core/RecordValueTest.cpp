@@ -1,5 +1,5 @@
-#include "gma/StreamValue.hpp"
-#include "gma/util/JsonUtil.hpp"
+#include "krn/StreamValue.hpp"
+#include "krn/util/JsonUtil.hpp"
 
 #include <gtest/gtest.h>
 #include <rapidjson/document.h>

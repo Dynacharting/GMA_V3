@@ -31,12 +31,12 @@
 // path NAMES, which is the regression that actually threatens it: someone
 // "unifying" the paths by synthesizing an `Event` inside `onRecord`.
 
-#include "gma/Dispatcher.hpp"
+#include "krn/Dispatcher.hpp"
 
-#include "gma/data/Record.hpp"
-#include "gma/data/SymbolTable.hpp"
-#include "gma/engine/RecordFieldSource.hpp"
-#include "gma/util/Logger.hpp"
+#include "krn/data/Record.hpp"
+#include "krn/data/SymbolTable.hpp"
+#include "krn/engine/RecordFieldSource.hpp"
+#include "krn/util/Logger.hpp"
 
 #include <atomic>
 #include <string>
@@ -139,7 +139,7 @@ void Dispatcher::onRecord(const data::TickRecord& rec) {
   }
 
   // Fields resolved by the normalizer — no DOM, no per-field allocation, no
-  // name lookup by string hash. See include/gma/engine/RecordFieldSource.hpp
+  // name lookup by string hash. See include/krn/engine/RecordFieldSource.hpp
   // for the mapping table, which also *defines* "the equivalent tick" the
   // parity test drives down the JSON path.
   const engine::RecordFieldSource fields(rec);

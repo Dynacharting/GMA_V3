@@ -1,4 +1,4 @@
-#include "gma/synthetic/SyntheticConnector.hpp"
+#include "krn/synthetic/SyntheticConnector.hpp"
 
 #include <chrono>
 #include <cmath>
@@ -10,10 +10,10 @@
 #include <boost/asio/steady_timer.hpp>
 #include <rapidjson/document.h>
 
-#include "gma/AtomicStore.hpp"
-#include "gma/Dispatcher.hpp"
-#include "gma/Event.hpp"
-#include "gma/engine/EventComputerRegistry.hpp"
+#include "krn/AtomicStore.hpp"
+#include "krn/Dispatcher.hpp"
+#include "krn/Event.hpp"
+#include "krn/engine/EventComputerRegistry.hpp"
 
 namespace krn::synthetic {
 

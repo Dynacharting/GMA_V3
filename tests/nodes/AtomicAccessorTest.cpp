@@ -1,6 +1,6 @@
-#include "gma/nodes/AtomicAccessor.hpp"
-#include "gma/AtomicStore.hpp"
-#include "gma/StreamValue.hpp"
+#include "krn/nodes/AtomicAccessor.hpp"
+#include "krn/AtomicStore.hpp"
+#include "krn/StreamValue.hpp"
 #include <gtest/gtest.h>
 #include <memory>
 #include <vector>

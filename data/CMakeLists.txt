@@ -11,7 +11,7 @@
 # AND THE CLICKHOUSE CLIENT MUST NEVER BECOME ENGINE DEPENDENCIES (SPEC D14,
 # docs/data-layer.md §4 rule 6). That is not style. D14's client profile is
 # "live-only OR reads a central L1 over the wire with no local store" — two
-# variants: the LIVE-ONLY one omits this library entirely, so `gma_server` must
+# variants: the LIVE-ONLY one omits this library entirely, so `krn_server` must
 # link and run with KRN_BUILD_DATA=OFF and nothing missing, while the
 # over-the-wire one needs Arrow IPC and therefore does ship krn_data. The
 # invariant holds for both because it constrains krn_engine, not the product.
@@ -20,11 +20,11 @@
 # runs as the ctest case `krn_engine_isolation` and fails the build if an Arrow
 # or ClickHouse include appears in engine code, if a `data/` header becomes
 # reachable from the engine's include path, or if krn_data / Arrow appears
-# anywhere in krn_engine's or gma_server's TRANSITIVE link closure (the
+# anywhere in krn_engine's or krn_server's TRANSITIVE link closure (the
 # umbrella `krn` target is where a one-level check was blind).
 #
 # The engine-facing PODs are deliberately NOT here — they live in
-# `include/gma/data/Record.hpp`, inside krn_engine, because ENC-1486's
+# `include/krn/data/Record.hpp`, inside krn_engine, because ENC-1486's
 # `Dispatcher::onRecord` is engine code and has to name the type. The split is
 # explained at the top of that header.
 # ===========================================================================
@@ -34,28 +34,28 @@ include(KrnDataArrow)
 
 add_library(krn_data STATIC
   "${CMAKE_CURRENT_SOURCE_DIR}/src/Schema.cpp"
-  "${CMAKE_CURRENT_SOURCE_DIR}/include/gma/data/Schema.hpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/include/krn/data/Schema.hpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/src/DatabentoAdapter.cpp"
-  "${CMAKE_CURRENT_SOURCE_DIR}/include/gma/data/DatabentoAdapter.hpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/include/krn/data/DatabentoAdapter.hpp"
   # Promoted out of DatabentoAdapterTest.cpp (ENC-1483, begun under the
   # cancelled ENC-1498). The byte-for-byte gate against the five real vendor
   # fixtures still compares THIS code, so the non-circularity argument is
   # unchanged -- see DbnEncoder.hpp.
   "${CMAKE_CURRENT_SOURCE_DIR}/src/DbnEncoder.cpp"
-  "${CMAKE_CURRENT_SOURCE_DIR}/include/gma/data/DbnEncoder.hpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/include/krn/data/DbnEncoder.hpp"
   # ENC-1483: the ingest job.
   # Verdict first, because everything below classifies its refusals through it:
   # a finding (exit 1) is not an inability to run (exit 2).
   "${CMAKE_CURRENT_SOURCE_DIR}/src/Verdict.cpp"
-  "${CMAKE_CURRENT_SOURCE_DIR}/include/gma/data/Verdict.hpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/include/krn/data/Verdict.hpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/src/DatabentoCsv.cpp"
-  "${CMAKE_CURRENT_SOURCE_DIR}/include/gma/data/DatabentoCsv.hpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/include/krn/data/DatabentoCsv.hpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/src/ClickHouseHttp.cpp"
-  "${CMAKE_CURRENT_SOURCE_DIR}/include/gma/data/ClickHouseHttp.hpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/include/krn/data/ClickHouseHttp.hpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/src/IngestWindows.cpp"
-  "${CMAKE_CURRENT_SOURCE_DIR}/include/gma/data/IngestWindows.hpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/include/krn/data/IngestWindows.hpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/src/IngestJob.cpp"
-  "${CMAKE_CURRENT_SOURCE_DIR}/include/gma/data/IngestJob.hpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/include/krn/data/IngestJob.hpp"
 )
 
 # PUBLIC: a consumer of krn_data sees the L1 schema headers.

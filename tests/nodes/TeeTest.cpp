@@ -1,6 +1,6 @@
-#include "gma/nodes/Tee.hpp"
-#include "gma/StreamValue.hpp"
-#include "gma/nodes/INode.hpp"
+#include "krn/nodes/Tee.hpp"
+#include "krn/StreamValue.hpp"
+#include "krn/nodes/INode.hpp"
 #include <gtest/gtest.h>
 #include <atomic>
 #include <memory>

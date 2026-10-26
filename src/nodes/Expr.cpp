@@ -1,6 +1,6 @@
-#include "gma/nodes/Expr.hpp"
-#include "gma/nodes/NodeEnv.hpp"
-#include "gma/util/Logger.hpp"
+#include "krn/nodes/Expr.hpp"
+#include "krn/nodes/NodeEnv.hpp"
+#include "krn/util/Logger.hpp"
 
 #include <exception>
 

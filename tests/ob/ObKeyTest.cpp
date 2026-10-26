@@ -1,4 +1,4 @@
-#include "gma/ob/ObKey.hpp"
+#include "krn/ob/ObKey.hpp"
 #include <gtest/gtest.h>
 #include <string>
 

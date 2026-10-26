@@ -6,9 +6,9 @@
 // These tests use shorter periods (10–100 ms) to keep runtime tight
 // while still exercising the alignment math.
 
-#include "gma/nodes/BucketTime.hpp"
-#include "gma/rt/ThreadPool.hpp"
-#include "gma/nodes/INode.hpp"
+#include "krn/nodes/BucketTime.hpp"
+#include "krn/rt/ThreadPool.hpp"
+#include "krn/nodes/INode.hpp"
 #include <gtest/gtest.h>
 #include <atomic>
 #include <chrono>

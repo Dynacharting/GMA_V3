@@ -1,5 +1,5 @@
-#include "gma/TreeBuilder.hpp"
-#include "gma/NodeRegistry.hpp"
+#include "krn/TreeBuilder.hpp"
+#include "krn/NodeRegistry.hpp"
 
 #include <functional>
 #include <algorithm>
@@ -11,30 +11,30 @@
 #include <limits>
 
 // Node types
-#include "gma/nodes/Listener.hpp"
-#include "gma/nodes/Aggregate.hpp"
-#include "gma/nodes/GroupSplit.hpp"
-#include "gma/nodes/Worker.hpp"
-#include "gma/nodes/AtomicAccessor.hpp"
-#include "gma/nodes/Interval.hpp"
-#include "gma/nodes/BucketTime.hpp"
-#include "gma/nodes/TumblingWindow.hpp"
-#include "gma/nodes/VectorReducer.hpp"
-#include "gma/nodes/Tee.hpp"
-#include "gma/nodes/InputPort.hpp"
-#include "gma/nodes/JoinBy.hpp"
-#include "gma/nodes/Pack.hpp"
-#include "gma/nodes/Field.hpp"
-#include "gma/nodes/Expr.hpp"
-#include "gma/nodes/Filter.hpp"
-#include "gma/nodes/Switch.hpp"
+#include "krn/nodes/Listener.hpp"
+#include "krn/nodes/Aggregate.hpp"
+#include "krn/nodes/GroupSplit.hpp"
+#include "krn/nodes/Worker.hpp"
+#include "krn/nodes/AtomicAccessor.hpp"
+#include "krn/nodes/Interval.hpp"
+#include "krn/nodes/BucketTime.hpp"
+#include "krn/nodes/TumblingWindow.hpp"
+#include "krn/nodes/VectorReducer.hpp"
+#include "krn/nodes/Tee.hpp"
+#include "krn/nodes/InputPort.hpp"
+#include "krn/nodes/JoinBy.hpp"
+#include "krn/nodes/Pack.hpp"
+#include "krn/nodes/Field.hpp"
+#include "krn/nodes/Expr.hpp"
+#include "krn/nodes/Filter.hpp"
+#include "krn/nodes/Switch.hpp"
 
 // Runtime deps
-#include "gma/AtomicStore.hpp"
-#include "gma/rt/ThreadPool.hpp"
-#include "gma/Dispatcher.hpp"
-#include "gma/FunctionMap.hpp"
-#include "gma/engine/NodeTypeRegistry.hpp"
+#include "krn/AtomicStore.hpp"
+#include "krn/rt/ThreadPool.hpp"
+#include "krn/Dispatcher.hpp"
+#include "krn/FunctionMap.hpp"
+#include "krn/engine/NodeTypeRegistry.hpp"
 
 
 //
@@ -86,7 +86,7 @@ inline bool has(const rapidjson::Value& v, const char* k) {
 // that never looks at a key, so `by:"streamkey"`, `by:"origin"` and `by:12`
 // would all reach this point, take the default, and return a plausible WRONG
 // NUMBER with no diagnostic in either repo. Every one of them is refused, by
-// name where the name matters. See include/gma/nodes/JoinBy.hpp.
+// name where the name matters. See include/krn/nodes/JoinBy.hpp.
 //
 // The empty-`outStreamKey` check is Q6's: a `by:"none"` join ignores the symbol
 // and therefore has no output identity unless it is given one.
@@ -155,7 +155,7 @@ inline krn::JoinBy joinByFor(const rapidjson::Value& v,
 // Record-valued update instead of dropping it.
 //
 // WHY IT EXISTS. `Pack` emits a `krn::Record`; `util::writeArgTypeJson`
-// (include/gma/util/JsonUtil.hpp) serializes a Record as a JSON **object** onto
+// (include/krn/util/JsonUtil.hpp) serializes a Record as a JSON **object** onto
 // the live update frame (`src/server/ClientSession.cpp`'s `sendFn`). embassy's
 // inbound path is scalar-only: `asFloat32` (embassy/internal/gma/types.go)
 // decodes `number | string | boolean` and returns false for an object, and its
@@ -1717,7 +1717,7 @@ void registerBuiltinNodeTypes() {
       // group's symbol inside a GroupSplit, which is the same question asked
       // one level down). It is the join's output identity under `by:"none"`
       // and is ignored under the default — SPEC section 5 Q6 and
-      // include/gma/nodes/JoinBy.hpp.
+      // include/krn/nodes/JoinBy.hpp.
       auto agg = std::make_shared<Aggregate>(arity, downstream, by,
                                              defaultStreamKey);
 
@@ -1734,7 +1734,7 @@ void registerBuiltinNodeTypes() {
         // ENC-1291 / SPEC D2: each declared input terminates in its OWN
         // indexed port, so the join knows which input a value came from
         // without anything being added to StreamValue. `agg` owns the port;
-        // the port holds only a weak_ptr back (include/gma/nodes/InputPort.hpp
+        // the port holds only a weak_ptr back (include/krn/nodes/InputPort.hpp
         // documents why that direction is forced).
         auto port = std::make_shared<InputPort>(std::weak_ptr<IFanIn>(agg), idx++);
         agg->addPort(port);

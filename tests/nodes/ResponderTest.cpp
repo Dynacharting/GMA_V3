@@ -1,6 +1,6 @@
-#include "gma/nodes/Responder.hpp"
-#include "gma/server/RequestKey.hpp"
-#include "gma/StreamValue.hpp"
+#include "krn/nodes/Responder.hpp"
+#include "krn/server/RequestKey.hpp"
+#include "krn/StreamValue.hpp"
 #include <gtest/gtest.h>
 #include <stdexcept>
 #include <variant>

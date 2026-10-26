@@ -70,7 +70,7 @@ The (test-only) `WsBridge` does this correctly (`src/ws/WsBridge.cpp:267-271, 30
 `node->shutdown()` on each, mirroring `WsBridge`.
 
 ### H3 — Two different classes share the FQN `krn::util::MetricRegistry` — ODR violation (UB) — CONFIRMED
-`include/gma/Metrics.hpp:20-123` vs `include/gma/util/Metrics.hpp:24-49`
+`include/krn/Metrics.hpp:20-123` vs `include/krn/util/Metrics.hpp:24-49`
 Both headers define `krn::util::MetricRegistry` with **completely different** members and
 APIs. `src/util/Metrics.cpp` compiles the first; `main.cpp` includes only the second and
 calls `MetricRegistry::instance().startReporter(...)`. Two distinct definitions with the same
@@ -96,7 +96,7 @@ range/at/meta.
 
 ### H5 (build) — `-march=native` baked into the shipped Docker image — CONFIRMED
 `CMakeLists.txt:211-212` adds `-O3 -march=native` for Release; the `Dockerfile` builds
-Release. The container's `gma_server` is compiled for the **build machine's exact CPU** and
+Release. The container's `krn_server` is compiled for the **build machine's exact CPU** and
 can `SIGILL` on a different/older deploy host or CI builder.
 **Fix:** use `-march=x86-64-v2/v3`, or make `-march=native` opt-in for non-portable artifacts.
 
@@ -135,7 +135,7 @@ symbol into `AtomicStore`, growing it unboundedly despite the cap.
 **Fix:** apply the symbol-count gate before writing any per-symbol atomics.
 
 ### M4 — `ItchAdapter::orders_` grows unbounded — CONFIRMED
-`connectors/market/include/gma/feed/ItchAdapter.hpp:55`; `ItchAdapter.cpp:123, 239`
+`connectors/market/include/krn/feed/ItchAdapter.hpp:55`; `ItchAdapter.cpp:123, 239`
 `orders_` is inserted on every add/replace and erased only on delete/full-execute/full-cancel.
 A long session, or a feed of orders never subsequently deleted, grows the map without bound
 (feed-controlled).
@@ -260,7 +260,7 @@ at all**.
 ## LOW
 
 ### L1 — `JsonValidator::requireMember` rejects valid `false` booleans — CONFIRMED (latent)
-`include/gma/JsonValidator.hpp:14-23` — compares against a single `expectedType`, but RapidJSON
+`include/krn/JsonValidator.hpp:14-23` — compares against a single `expectedType`, but RapidJSON
 uses distinct `kTrueType`/`kFalseType`, so `requireMember(..., kTrueType)` throws on `false`.
 Only the number case is exercised by tests, so latent.
 
@@ -290,7 +290,7 @@ price, so `ema_N`/`macd_*` depend on `taHistoryMax` and aren't a true carried EM
 `maxHistory ≫ period`, wrong when comparable. Consider stateful incremental EMA (`ema_next`).
 
 ### L7 — `std::hash<RequestKey>` uses `idx<<32` (UB on 32-bit; no salt for ints) — CONFIRMED (latent)
-`include/gma/server/RequestKey.hpp:113-119` — `idx<<32` is UB where `size_t` is 32-bit
+`include/krn/server/RequestKey.hpp:113-119` — `idx<<32` is UB where `size_t` is 32-bit
 (platform is x86_64, so latent); the int branch effectively has no variant salt.
 
 ### L8 — Aggregated L2 ladders are written but never read — CONFIRMED (latent)
@@ -314,12 +314,12 @@ loops ~2e9 times. Only reachable if `eval()` is wired into the provider (current
 H4), hence latent. Add a clamp.
 
 ### L12 (build) — `-Wall -Wextra` applied to only 2 of 6 targets — CONFIRMED
-Warning flags cover `krn_engine` and `krn_connector_market`, **not** `gma_server` (main.cpp),
+Warning flags cover `krn_engine` and `krn_connector_market`, **not** `krn_server` (main.cpp),
 `krn_connector_synthetic`, `krn_tests`, or benchmarks. Warnings in the composition root and
 test code are invisible. Also: no CI, so `KRN_WARNINGS_AS_ERRORS` (default OFF) never runs.
 
 ### L13 (build) — `[-Wreorder]` member-init order mismatch in `FeedServer` — CONFIRMED
-`connectors/market/include/gma/server/FeedServer.hpp:52` vs ctor init list at
+`connectors/market/include/krn/server/FeedServer.hpp:52` vs ctor init list at
 `src/server/FeedServer.cpp:341` — harmless today (no inter-member dependency) but should match
 declaration order.
 
@@ -377,15 +377,15 @@ treated as defects, not cosmetics.
 - **D3 — `docs/ARCHITECTURE.md:278-291` contradicts ENC-50.** Documents subscribe as
   `{"key":1,"symbol":"AAPL"}` ("symbol kept deliberately"); the live protocol requires
   `streamKey` with no `symbol` fallback (`ClientSession.cpp:363-405`). The unused
-  `include/gma/ws/JsonSchema.hpp:16,22` still mandates `required:["id","symbol"]` (dead code,
+  `include/krn/ws/JsonSchema.hpp:16,22` still mandates `required:["id","symbol"]` (dead code,
   also contradicts the wire format).
 - **D4 — Default `wsPort` mismatch.** Docs say 4000; the compiled default is **8080**
-  (`include/gma/util/Config.hpp:67`). 4000 applies only because `src/util/gma.conf` sets it, so
-  `./gma_server` with no config listens on 8080.
+  (`include/krn/util/Config.hpp:67`). 4000 applies only because `src/util/krn.conf` sets it, so
+  `./krn_server` with no config listens on 8080.
 - **D5 — `CLAUDE.md` SMA/EMA defaults contradict the file it cites.** Lists SMA{5,20}/EMA{12,26};
-  `gma.conf:22-23` ships `taSMA=5,10,20,50` / `taEMA=9,21,50`.
+  `krn.conf:22-23` ships `taSMA=5,10,20,50` / `taEMA=9,21,50`.
 - **D6 — Adapter docs use pre-ENC-31 paths.** `docs/feed-adapters.md`/`writing-adapters.md`
-  cite engine-level `include/gma/feed/...` and `src/feed/...` paths that moved into the
+  cite engine-level `include/krn/feed/...` and `src/feed/...` paths that moved into the
   connector, reference the deleted `MarketDispatcher`, and show `main.cpp` adapter wiring (now
   ingress-factory-driven).
 - **D7 — `SourceProfile.hpp` no longer exists** but is referenced by `CLAUDE.md:63` and

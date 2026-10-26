@@ -26,10 +26,10 @@
 //      getting either direction wrong leaks or dangles
 //   4. the plain pipeline edge — a value arriving there is NOT a join member
 
-#include "gma/nodes/Aggregate.hpp"
-#include "gma/nodes/InputPort.hpp"
-#include "gma/StreamValue.hpp"
-#include "gma/nodes/INode.hpp"
+#include "krn/nodes/Aggregate.hpp"
+#include "krn/nodes/InputPort.hpp"
+#include "krn/StreamValue.hpp"
+#include "krn/nodes/INode.hpp"
 #include <gtest/gtest.h>
 #include <stdexcept>
 #include <atomic>

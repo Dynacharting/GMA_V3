@@ -17,9 +17,9 @@ by the validator's depth cap (`MAX_TREE_DEPTH = 32`).
 
 A pipeline edge carries an `ArgType` — a scalar (`bool`/`int`/`double`/string),
 a vector, or a **`Record`**: an insertion-ordered set of named fields
-(`include/gma/StreamValue.hpp`). A record lets one pipeline carry e.g. an OHLC
+(`include/krn/StreamValue.hpp`). A record lets one pipeline carry e.g. an OHLC
 candle instead of N parallel scalar pipelines. Records serialize to JSON objects
-(`include/gma/util/JsonUtil.hpp`).
+(`include/krn/util/JsonUtil.hpp`).
 
 ### `Pack` — assemble a record (fan-in, combineLatest)
 

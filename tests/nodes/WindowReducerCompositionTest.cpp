@@ -7,15 +7,15 @@
 // config — proving the pipeline-stage wiring (no `input` key — flat
 // `pipeline:[...]` array, reverse-iterated) resolves both new node types.
 
-#include "gma/nodes/TumblingWindow.hpp"
-#include "gma/nodes/VectorReducer.hpp"
-#include "gma/FunctionMap.hpp"
-#include "gma/TreeBuilder.hpp"
-#include "gma/AtomicStore.hpp"
-#include "gma/Dispatcher.hpp"
-#include "gma/rt/ThreadPool.hpp"
-#include "gma/nodes/INode.hpp"
-#include "gma/StreamValue.hpp"
+#include "krn/nodes/TumblingWindow.hpp"
+#include "krn/nodes/VectorReducer.hpp"
+#include "krn/FunctionMap.hpp"
+#include "krn/TreeBuilder.hpp"
+#include "krn/AtomicStore.hpp"
+#include "krn/Dispatcher.hpp"
+#include "krn/rt/ThreadPool.hpp"
+#include "krn/nodes/INode.hpp"
+#include "krn/StreamValue.hpp"
 #include <gtest/gtest.h>
 #include <rapidjson/document.h>
 #include <chrono>

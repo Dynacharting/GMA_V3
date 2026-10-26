@@ -1,6 +1,6 @@
-#include "gma/ob/ObProvider.hpp"
-#include "gma/ob/ObMaterializer.hpp"  // eval(Snapshot, ObKey)
-#include "gma/ob/ObKey.hpp"           // parseObKey, ObKey, Metric, Mode
+#include "krn/ob/ObProvider.hpp"
+#include "krn/ob/ObMaterializer.hpp"  // eval(Snapshot, ObKey)
+#include "krn/ob/ObKey.hpp"           // parseObKey, ObKey, Metric, Mode
 
 #include <algorithm>
 #include <limits>

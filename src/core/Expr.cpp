@@ -1,5 +1,5 @@
-#include "gma/Expr.hpp"
-#include "gma/FunctionMap.hpp"
+#include "krn/Expr.hpp"
+#include "krn/FunctionMap.hpp"
 
 #include <algorithm>
 #include <cmath>

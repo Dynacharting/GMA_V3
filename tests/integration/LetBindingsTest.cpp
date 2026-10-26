@@ -1,10 +1,10 @@
 // End-to-end tests for let-bindings + Ref (ENC-647): a named binding's producer
 // is built ONCE and fanned (via Tee) to every Ref consumer — the reuse DAG.
-#include "gma/TreeBuilder.hpp"
-#include "gma/Dispatcher.hpp"
-#include "gma/AtomicStore.hpp"
-#include "gma/rt/ThreadPool.hpp"
-#include "gma/nodes/INode.hpp"
+#include "krn/TreeBuilder.hpp"
+#include "krn/Dispatcher.hpp"
+#include "krn/AtomicStore.hpp"
+#include "krn/rt/ThreadPool.hpp"
+#include "krn/nodes/INode.hpp"
 
 #include <gtest/gtest.h>
 #include <rapidjson/document.h>

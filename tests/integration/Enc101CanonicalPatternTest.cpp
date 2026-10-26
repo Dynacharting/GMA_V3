@@ -18,13 +18,13 @@
 // Closes AC #6 of the SPEC at
 // gma_v3/specs/2026-05-06-ob-keys-pipeline-only/.
 
-#include "gma/AtomicStore.hpp"
-#include "gma/Dispatcher.hpp"
-#include "gma/StreamValue.hpp"
-#include "gma/nodes/AtomicAccessor.hpp"
-#include "gma/nodes/INode.hpp"
-#include "gma/nodes/Listener.hpp"
-#include "gma/rt/ThreadPool.hpp"
+#include "krn/AtomicStore.hpp"
+#include "krn/Dispatcher.hpp"
+#include "krn/StreamValue.hpp"
+#include "krn/nodes/AtomicAccessor.hpp"
+#include "krn/nodes/INode.hpp"
+#include "krn/nodes/Listener.hpp"
+#include "krn/rt/ThreadPool.hpp"
 
 #include <gtest/gtest.h>
 
