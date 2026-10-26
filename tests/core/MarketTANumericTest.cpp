@@ -15,15 +15,15 @@
 // RSI is a simple-average, NOT Wilder; all-flat RSI degenerates to 0, see L5).
 // A wrong production formula now fails a test.
 
-#include "gma/MarketTA.hpp"
-#include "gma/AtomicStore.hpp"
-#include "gma/SymbolHistory.hpp"
-#include "gma/Dispatcher.hpp"
-#include "gma/Event.hpp"
-#include "gma/FunctionRegistry.hpp"
-#include "gma/engine/IEventComputer.hpp"
-#include "gma/rt/ThreadPool.hpp"
-#include "gma/util/Config.hpp"
+#include "krn/MarketTA.hpp"
+#include "krn/AtomicStore.hpp"
+#include "krn/SymbolHistory.hpp"
+#include "krn/Dispatcher.hpp"
+#include "krn/Event.hpp"
+#include "krn/FunctionRegistry.hpp"
+#include "krn/engine/IEventComputer.hpp"
+#include "krn/rt/ThreadPool.hpp"
+#include "krn/util/Config.hpp"
 
 #include <gtest/gtest.h>
 #include <rapidjson/document.h>

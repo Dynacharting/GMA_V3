@@ -16,25 +16,25 @@ Three labels: **ENGINE** (generic, stays in core), **CONNECTOR** (market-specifi
 
 | Component | Path | Status |
 |---|---|---|
-| Node base interface | `include/gma/nodes/INode.hpp` | ENGINE — pure virtual, domain-free |
-| Pipeline nodes | `include/gma/nodes/{Worker,Aggregate,Interval,Responder,AtomicAccessor}.hpp`, `SymbolSplit.hpp`, `Listener.hpp` | ENGINE, but see violations below |
-| Atomic store | `include/gma/AtomicStore.hpp`, `src/core/AtomicStore.cpp` | ENGINE — keyed by `(string, string)`, domain-free |
-| Function registry | `include/gma/FunctionMap.hpp`, `src/core/FunctionMap.cpp` | ENGINE — generic `double(vector<double>)` registry |
-| Atomic provider registry | `include/gma/atomic/AtomicProviderRegistry.hpp` | ENGINE — namespace-prefix dispatch, already neutral |
-| Tree builder | `include/gma/TreeBuilder.hpp`, `src/core/TreeBuilder.cpp` | ENGINE with violations |
-| JSON validator | `include/gma/JsonValidator.hpp`, `src/core/JsonValidator.cpp` | ENGINE with violations |
-| Thread pool / shutdown / logger / metrics / config base | `include/gma/rt/`, `include/gma/runtime/`, `include/gma/util/` | ENGINE |
-| WS accept & session plumbing (Beast) | `include/gma/server/WebSocketServer.hpp`, `src/server/WebSocketServer.cpp` | ENGINE (transport) |
-| Execution context | `include/gma/ExecutionContext.hpp` | ENGINE |
+| Node base interface | `include/krn/nodes/INode.hpp` | ENGINE — pure virtual, domain-free |
+| Pipeline nodes | `include/krn/nodes/{Worker,Aggregate,Interval,Responder,AtomicAccessor}.hpp`, `SymbolSplit.hpp`, `Listener.hpp` | ENGINE, but see violations below |
+| Atomic store | `include/krn/AtomicStore.hpp`, `src/core/AtomicStore.cpp` | ENGINE — keyed by `(string, string)`, domain-free |
+| Function registry | `include/krn/FunctionMap.hpp`, `src/core/FunctionMap.cpp` | ENGINE — generic `double(vector<double>)` registry |
+| Atomic provider registry | `include/krn/atomic/AtomicProviderRegistry.hpp` | ENGINE — namespace-prefix dispatch, already neutral |
+| Tree builder | `include/krn/TreeBuilder.hpp`, `src/core/TreeBuilder.cpp` | ENGINE with violations |
+| JSON validator | `include/krn/JsonValidator.hpp`, `src/core/JsonValidator.cpp` | ENGINE with violations |
+| Thread pool / shutdown / logger / metrics / config base | `include/krn/rt/`, `include/krn/runtime/`, `include/krn/util/` | ENGINE |
+| WS accept & session plumbing (Beast) | `include/krn/server/WebSocketServer.hpp`, `src/server/WebSocketServer.cpp` | ENGINE (transport) |
+| Execution context | `include/krn/ExecutionContext.hpp` | ENGINE |
 | Worker functions in `registerBuiltinFunctions` | `src/core/AtomicFunctions.cpp:262-585` | ENGINE — generic stats/math |
 
 ### Connector (market) — becomes `libkrn_connector_market`
 
 | Component | Path |
 |---|---|
-| Order book engine | `include/gma/book/*`, `src/book/*`, `include/gma/ob/*`, `src/ob/*` |
-| TA indicator suite | `include/gma/ta/*`, `computeAllAtomicValues` + helpers in `src/core/AtomicFunctions.cpp:16-260` |
-| ITCH feed adapter | `include/gma/feed/ItchAdapter.hpp`, `src/feed/ItchAdapter.cpp` |
+| Order book engine | `include/krn/book/*`, `src/book/*`, `include/krn/ob/*`, `src/ob/*` |
+| TA indicator suite | `include/krn/ta/*`, `computeAllAtomicValues` + helpers in `src/core/AtomicFunctions.cpp:16-260` |
+| ITCH feed adapter | `include/krn/feed/ItchAdapter.hpp`, `src/feed/ItchAdapter.cpp` |
 | TCP `FeedServer` message schema (ob/control routing) | `src/server/FeedServer.cpp:131-305` |
 | OB provider registration for `"ob"` namespace | `src/main.cpp:184-189` |
 | `OrderBookManager` snapshot source wiring | `src/main.cpp:143-179` |
@@ -46,23 +46,23 @@ Three labels: **ENGINE** (generic, stays in core), **CONNECTOR** (market-specifi
 | V1 | `src/core/MarketDispatcher.cpp:38-42` | Hard-coded market field names `"lastPrice"/"openPrice"/"highPrice"/"lowPrice"/"prevClose"/"vwap"/"volume"/"obv"/"volatility_rank"/"mean"/"median"` in the `_skipFields` initializer |
 | V2 | `src/core/MarketDispatcher.cpp:147-290` | `updateSymbolHistory` runs full TA suite inline: extracts price/volume/bid/ask, calls `computeAllAtomicValues`, writes `bid/ask/spread/timestamp` atomics |
 | V3 | `src/core/MarketDispatcher.cpp:222-240` | `_profile.taEnabled` lightweight fallback computes `openPrice/highPrice/lowPrice` directly |
-| V4 | `include/gma/MarketDispatcher.hpp:75` | Holds `unordered_map<string, SymbolHistory>` where `SymbolHistory = deque<TickEntry{price, volume, bid, ask, ts}>` |
-| V5 | `include/gma/SymbolHistory.hpp:9-15` | `TickEntry` is a market record living in a core-namespace header |
-| V6 | `include/gma/SourceProfile.hpp:17-34` | Engine-named but market-flavored: `priceFields`, `volumeFields`, `bidFields`, `askFields`, `taEnabled` |
+| V4 | `include/krn/MarketDispatcher.hpp:75` | Holds `unordered_map<string, SymbolHistory>` where `SymbolHistory = deque<TickEntry{price, volume, bid, ask, ts}>` |
+| V5 | `include/krn/SymbolHistory.hpp:9-15` | `TickEntry` is a market record living in a core-namespace header |
+| V6 | `include/krn/SourceProfile.hpp:17-34` | Engine-named but market-flavored: `priceFields`, `volumeFields`, `bidFields`, `askFields`, `taEnabled` |
 | V7 | `src/core/AtomicFunctions.cpp:42-260` | `computeAllAtomicValues` is market TA in a file whose second half is pure engine |
-| V8 | `include/gma/AtomicFunctions.hpp:7-27` | Engine-looking header exposes market entry point and includes `SymbolHistory.hpp` |
+| V8 | `include/krn/AtomicFunctions.hpp:7-27` | Engine-looking header exposes market entry point and includes `SymbolHistory.hpp` |
 | V9 | `src/core/TreeBuilder.cpp:121-258` | `fnFromName` hard-codes a short list before delegating to `FunctionMap` — duplicates what's already registered |
 | V10 | `src/core/TreeBuilder.cpp:280-299`, `476-487`, `326-344` | Requires `"symbol"` as a top-level spec field; dispatcher keys on `(symbol, field)` |
-| V11 | `include/gma/TreeBuilder.hpp:26` | `Deps` hard-codes `MarketDispatcher*` — engine builder depends on a market class |
-| V12 | `include/gma/nodes/Listener.hpp:13,26,48`, `include/gma/nodes/SymbolSplit.hpp` | `Listener` is wired to `MarketDispatcher*` specifically |
-| V13 | `include/gma/SymbolValue.hpp:39-41`, `include/gma/SymbolTick.hpp:8-11` | Named `Symbol*` but the shape is fully generic |
-| V14 | `include/gma/nodes/SymbolSplit.hpp:13` | Node named `SymbolSplit` — domain leak only |
+| V11 | `include/krn/TreeBuilder.hpp:26` | `Deps` hard-codes `MarketDispatcher*` — engine builder depends on a market class |
+| V12 | `include/krn/nodes/Listener.hpp:13,26,48`, `include/krn/nodes/SymbolSplit.hpp` | `Listener` is wired to `MarketDispatcher*` specifically |
+| V13 | `include/krn/SymbolValue.hpp:39-41`, `include/krn/SymbolTick.hpp:8-11` | Named `Symbol*` but the shape is fully generic |
+| V14 | `include/krn/nodes/SymbolSplit.hpp:13` | Node named `SymbolSplit` — domain leak only |
 | V15 | `src/core/JsonValidator.cpp:11-14, 80` | `KNOWN_NODE_TYPES` is a hard-coded closed list; `stringFields[]` includes `"symbol"`, `"field"`, `"function"`, `"fn"` as fixed vocabulary |
 | V16 | `src/server/ClientSession.cpp:326-513` | WS subscribe handler demands `"symbol"` and `"field"`, echoes them back in every update |
 | V17 | `src/server/FeedServer.cpp:131-305` | TCP feed routing hard-codes `type=="ob"` / `type=="control"` with book-specific actions |
 | V18 | `src/main.cpp:34-40, 143-189, 200, 238-245` | Composition root news-up `OrderBookManager`, registers `"ob"` namespace, constructs `ItchAdapter`, wires specific market globals |
-| V19 | `include/gma/util/Config.hpp:22-93` | One flat struct with TA/feed/OB/server fields mixed |
-| V20 | `include/gma/feed/FeedEvent.hpp:24-67` | Canonical `FeedEvent` variant bakes in `ObAddEvent`, `ObTradeEvent`, `ObTickSizeEvent`, `ObResetEvent` |
+| V19 | `include/krn/util/Config.hpp:22-93` | One flat struct with TA/feed/OB/server fields mixed |
+| V20 | `include/krn/feed/FeedEvent.hpp:24-67` | Canonical `FeedEvent` variant bakes in `ObAddEvent`, `ObTradeEvent`, `ObTickSizeEvent`, `ObResetEvent` |
 
 ---
 
@@ -105,7 +105,7 @@ libkrn_connector_market
 ├── types/                        TickEntry, MarketFieldMap (née SourceProfile)
 └── MarketConnector.cpp           registration entry point
 
-gma_server                        composition root
+krn_server                        composition root
 └── main.cpp                      instantiates engine; calls MarketConnector::registerWith(...)
 ```
 
@@ -310,7 +310,7 @@ Each step independently buildable + testable. `ctest --output-on-failure` must s
 - **Tests:** all existing pass unchanged.
 
 ### Step 2 — introduce engine registries as empty scaffolding
-- Add `EventTypeRegistry`, `EventComputerRegistry`, `NodeTypeRegistry`, `IngressRegistry`, `ConfigNamespaceRegistry` headers+cpp under `include/gma/engine/` + `src/engine/`.
+- Add `EventTypeRegistry`, `EventComputerRegistry`, `NodeTypeRegistry`, `IngressRegistry`, `ConfigNamespaceRegistry` headers+cpp under `include/krn/engine/` + `src/engine/`.
 - Wire nothing to them yet.
 - **Tests:** add `tests/engine/RegistriesTest.cpp`.
 
@@ -336,8 +336,8 @@ Each step independently buildable + testable. `ctest --output-on-failure` must s
 - **Tests:** `tests/dispatch/DispatchTest.cpp` + add `tests/engine/DispatcherIsolationTest.cpp`.
 
 ### Step 7 — carve out `libkrn_connector_market` as a separate CMake target
-- Three targets: `krn_engine`, `krn_connector_market`, `gma_server`.
-- Move `include/gma/book/*`, `include/gma/ob/*`, `src/book/*`, `src/ob/*`, `src/feed/ItchAdapter.cpp`, `include/gma/feed/ItchAdapter.hpp`, `include/gma/feed/FeedEvent.hpp`, `src/core/MarketTA.cpp`, `src/core/MarketTickComputer.cpp`, `include/gma/SymbolHistory.hpp`, `include/gma/SourceProfile.hpp` (renamed) into `connectors/market/`.
+- Three targets: `krn_engine`, `krn_connector_market`, `krn_server`.
+- Move `include/krn/book/*`, `include/krn/ob/*`, `src/book/*`, `src/ob/*`, `src/feed/ItchAdapter.cpp`, `include/krn/feed/ItchAdapter.hpp`, `include/krn/feed/FeedEvent.hpp`, `src/core/MarketTA.cpp`, `src/core/MarketTickComputer.cpp`, `include/krn/SymbolHistory.hpp`, `include/krn/SourceProfile.hpp` (renamed) into `connectors/market/`.
 - CMake check: engine target cannot include connector headers.
 - **Tests:** existing pass.
 
@@ -359,7 +359,7 @@ Each step independently buildable + testable. `ctest --output-on-failure` must s
 
 ### Step 11 — cleanup
 - Drop backward-compat aliases from step 1 once clients are migrated.
-- Delete `include/gma/MarketDispatcher.hpp`.
+- Delete `include/krn/MarketDispatcher.hpp`.
 - Update `CLAUDE.md`.
 
 ---
@@ -390,6 +390,6 @@ Each step independently buildable + testable. `ctest --output-on-failure` must s
 
 ## Appendix A — Stale-memory corrections discovered during audit
 
-- Runtime config file is `src/util/gma.conf` (INI), not `gma.json` (the latter only a conceptual schema).
-- `src/ta/` directory is empty on disk. Live TA code is in `src/core/AtomicFunctions.cpp:16-260`. `include/gma/ta/Indicators.hpp` + `AtomicNames.hpp` are header-only helpers not called anywhere in the runtime path.
-- Default SMA is `{5,20}` per `Config.hpp:29-30`, not `{5,10,20,50}`. The large set only applies if `taSMA` is explicitly set in `gma.conf`.
+- Runtime config file is `src/util/krn.conf` (INI), not `gma.json` (the latter only a conceptual schema).
+- `src/ta/` directory is empty on disk. Live TA code is in `src/core/AtomicFunctions.cpp:16-260`. `include/krn/ta/Indicators.hpp` + `AtomicNames.hpp` are header-only helpers not called anywhere in the runtime path.
+- Default SMA is `{5,20}` per `Config.hpp:29-30`, not `{5,10,20,50}`. The large set only applies if `taSMA` is explicitly set in `krn.conf`.

@@ -1,4 +1,4 @@
-#include "gma/JsonValidator.hpp"
+#include "krn/JsonValidator.hpp"
 #include <gtest/gtest.h>
 #include <rapidjson/document.h>
 #include <string>

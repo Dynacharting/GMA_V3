@@ -1,4 +1,4 @@
-#include "gma/nodes/Tee.hpp"
+#include "krn/nodes/Tee.hpp"
 
 namespace krn {
 

@@ -6,7 +6,7 @@
 --
 -- RELATIONSHIP TO THE C++ PODs, STATED EXACTLY, BECAUSE IT IS NOT ONE-FOR-ONE.
 -- The engine-facing PODs in `namespace krn::data` (today
--- data/include/gma/data/Schema.hpp; moving to include/gma/data/Record.hpp with
+-- data/include/krn/data/Schema.hpp; moving to include/krn/data/Record.hpp with
 -- ENC-1481) are a SUBSET of these columns, not a mirror of them:
 --
 --   * every POD field has a column here, with the same name in snake_case and a

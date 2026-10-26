@@ -1,4 +1,4 @@
-#include "gma/feed/IFeedAdapter.hpp"
+#include "krn/feed/IFeedAdapter.hpp"
 
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>

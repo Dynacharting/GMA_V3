@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ENC-1331 regression test: `gma_server <ws> <conf> <feed>` must BIND <feed>.
+"""ENC-1331 regression test: `krn_server <ws> <conf> <feed>` must BIND <feed>.
 
 argv[3] was accepted, logged, and then ignored by the thing that opens the
 socket. `Config::loadFromFile()` ended with `synthesizeIngressFromLegacy()`,
@@ -12,7 +12,7 @@ This test therefore asserts the *bind*: it connects to the overridden port and
 proves the file's port is NOT listening. Run against the real binary, because
 the defect lived in the composition root's ordering, not in Config alone.
 
-Usage: feed_port_override_test.py <path-to-gma_server>
+Usage: feed_port_override_test.py <path-to-krn_server>
 """
 
 import os
@@ -42,7 +42,7 @@ def can_connect(port, timeout=0.4):
 
 def main():
     if len(sys.argv) != 2:
-        print("usage: feed_port_override_test.py <gma_server>", file=sys.stderr)
+        print("usage: feed_port_override_test.py <krn_server>", file=sys.stderr)
         return 2
     server = sys.argv[1]
 

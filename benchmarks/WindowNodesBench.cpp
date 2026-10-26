@@ -3,13 +3,13 @@
 // TumblingWindow.onValue: per-symbol scalar push into the accumulator.
 
 #include <benchmark/benchmark.h>
-#include "gma/FunctionMap.hpp"
-#include "gma/FunctionRegistry.hpp"
-#include "gma/nodes/INode.hpp"
-#include "gma/nodes/TumblingWindow.hpp"
-#include "gma/nodes/VectorReducer.hpp"
-#include "gma/rt/ThreadPool.hpp"
-#include "gma/StreamValue.hpp"
+#include "krn/FunctionMap.hpp"
+#include "krn/FunctionRegistry.hpp"
+#include "krn/nodes/INode.hpp"
+#include "krn/nodes/TumblingWindow.hpp"
+#include "krn/nodes/VectorReducer.hpp"
+#include "krn/rt/ThreadPool.hpp"
+#include "krn/StreamValue.hpp"
 #include <atomic>
 #include <chrono>
 #include <memory>

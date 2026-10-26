@@ -1,4 +1,4 @@
-#include "gma/AtomicStore.hpp"
+#include "krn/AtomicStore.hpp"
 #include <gtest/gtest.h>
 #include <thread>
 #include <string>

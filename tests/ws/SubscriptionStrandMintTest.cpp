@@ -88,14 +88,14 @@
 #include <boost/beast/websocket.hpp>
 #include <rapidjson/document.h>
 
-#include "gma/AtomicStore.hpp"
-#include "gma/Dispatcher.hpp"
-#include "gma/ExecutionContext.hpp"
-#include "gma/nodes/Listener.hpp"
-#include "gma/rt/Strand.hpp"
-#include "gma/rt/ThreadPool.hpp"
-#include "gma/server/ClientSession.hpp"
-#include "gma/server/WebSocketServer.hpp"
+#include "krn/AtomicStore.hpp"
+#include "krn/Dispatcher.hpp"
+#include "krn/ExecutionContext.hpp"
+#include "krn/nodes/Listener.hpp"
+#include "krn/rt/Strand.hpp"
+#include "krn/rt/ThreadPool.hpp"
+#include "krn/server/ClientSession.hpp"
+#include "krn/server/WebSocketServer.hpp"
 
 namespace beast = boost::beast;
 namespace asio  = boost::asio;

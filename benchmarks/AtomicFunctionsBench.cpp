@@ -1,7 +1,7 @@
 #include <benchmark/benchmark.h>
-#include "gma/AtomicFunctions.hpp"
-#include "gma/AtomicStore.hpp"
-#include "gma/SymbolHistory.hpp"
+#include "krn/AtomicFunctions.hpp"
+#include "krn/AtomicStore.hpp"
+#include "krn/SymbolHistory.hpp"
 #include <cmath>
 
 static std::vector<krn::TickEntry> makeHistory(size_t n) {

@@ -1,6 +1,6 @@
 // Generic, domain-free worker functions for FunctionMap. Stays in the engine.
-#include "gma/FunctionRegistry.hpp"
-#include "gma/FunctionMap.hpp"
+#include "krn/FunctionRegistry.hpp"
+#include "krn/FunctionMap.hpp"
 
 #include <algorithm>
 #include <cmath>

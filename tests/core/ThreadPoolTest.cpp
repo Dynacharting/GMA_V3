@@ -1,4 +1,4 @@
-#include "gma/rt/ThreadPool.hpp"
+#include "krn/rt/ThreadPool.hpp"
 #include <gtest/gtest.h>
 #include <atomic>
 #include <thread>

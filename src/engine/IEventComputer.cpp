@@ -1,7 +1,7 @@
-#include "gma/engine/IEventComputer.hpp"
+#include "krn/engine/IEventComputer.hpp"
 
-#include "gma/Event.hpp"
-#include "gma/engine/JsonFieldSource.hpp"
+#include "krn/Event.hpp"
+#include "krn/engine/JsonFieldSource.hpp"
 
 namespace krn::engine {
 

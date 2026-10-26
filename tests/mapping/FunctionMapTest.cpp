@@ -1,4 +1,4 @@
-#include "gma/FunctionMap.hpp"
+#include "krn/FunctionMap.hpp"
 #include <gtest/gtest.h>
 #include <numeric>
 #include <vector>

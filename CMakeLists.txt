@@ -23,7 +23,7 @@ option(KRN_WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
 #     firewall, where before this library existed it fetched nothing at all
 #     (googletest sits behind KRN_BUILD_TESTS=OFF too).
 #   * KRN_BUILD_DATA=OFF is SPEC D14's live-only CLIENT VARIANT: no local store,
-#     no Arrow. `gma_server` must build, link and run identically with it off,
+#     no Arrow. `krn_server` must build, link and run identically with it off,
 #     which is the whole reason the library is separately linkable. (D14's other
 #     client variant reads a central L1 over the wire — that one needs Arrow IPC,
 #     i.e. it needs this library. The invariant is about krn_engine, not about
@@ -249,7 +249,7 @@ message(STATUS "RapidJSON include dir: ${RAPIDJSON_INCLUDE_DIR}")
 #   krn_engine             — domain-agnostic core (all src/**/*.cpp, minus main)
 #   krn_connector_market   — market-specific code (connectors/market/**)
 #   krn                    — INTERFACE alias linking both (legacy consumer target)
-#   gma_server             — composition root, picks up main.cpp + both libs
+#   krn_server             — composition root, picks up main.cpp + both libs
 # The split is enforced by include-directory scoping: krn_engine's PUBLIC
 # include paths contain *only* the engine headers, so engine code that
 # accidentally references a connector header fails to compile.
@@ -325,7 +325,7 @@ target_link_libraries(krn_connector_synthetic PUBLIC krn_engine)
 
 # Warnings — apply to every first-party target (ENC-806 / L12). Previously only
 # krn_engine + krn_connector_market got -Wall/-Wextra; krn_connector_synthetic,
-# gma_server, krn_tests and the benchmarks were silent. gma_server/krn_tests/
+# krn_server, krn_tests and the benchmarks were silent. krn_server/krn_tests/
 # benchmarks are wired at their definition sites below.
 krn_apply_warnings(krn_engine)
 krn_apply_warnings(krn_connector_market)
@@ -366,10 +366,10 @@ if (CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDeb
   if (ipo_supported)
     set_property(TARGET krn_engine           PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
     set_property(TARGET krn_connector_market PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-    if (TARGET gma_server)
-      set_property(TARGET gma_server PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+    if (TARGET krn_server)
+      set_property(TARGET krn_server PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
     endif()
-    message(STATUS "LTO enabled for krn_engine + krn_connector_market + gma_server")
+    message(STATUS "LTO enabled for krn_engine + krn_connector_market + krn_server")
   else()
     message(STATUS "LTO not supported: ${ipo_output}")
   endif()
@@ -377,14 +377,14 @@ endif()
 
 # App executable (if src/main.cpp exists)
 if (EXISTS "${MAIN_SRC}")
-  add_executable(gma_server "${MAIN_SRC}")
-  target_include_directories(gma_server PRIVATE "${CMAKE_SOURCE_DIR}/include")
+  add_executable(krn_server "${MAIN_SRC}")
+  target_include_directories(krn_server PRIVATE "${CMAKE_SOURCE_DIR}/include")
   if (Boost_FOUND)
-    target_include_directories(gma_server PRIVATE ${Boost_INCLUDE_DIRS})
-    target_link_libraries(gma_server PRIVATE krn Boost::system)
+    target_include_directories(krn_server PRIVATE ${Boost_INCLUDE_DIRS})
+    target_link_libraries(krn_server PRIVATE krn Boost::system)
   else()
-    target_link_libraries(gma_server PRIVATE krn Boost::system)
-    target_compile_definitions(gma_server PRIVATE
+    target_link_libraries(krn_server PRIVATE krn Boost::system)
+    target_compile_definitions(krn_server PRIVATE
       BOOST_ALL_NO_LIB
       BOOST_ERROR_CODE_HEADER_ONLY
       BOOST_SYSTEM_NO_DEPRECATED
@@ -392,8 +392,8 @@ if (EXISTS "${MAIN_SRC}")
       BOOST_BEAST_USE_STD_STRING_VIEW
     )
   endif()
-  target_link_libraries(gma_server PRIVATE Threads::Threads RapidJSON::rapidjson)
-  krn_apply_warnings(gma_server)
+  target_link_libraries(krn_server PRIVATE Threads::Threads RapidJSON::rapidjson)
+  krn_apply_warnings(krn_server)
 endif()
 
 # Tests (opt-in)
@@ -491,23 +491,23 @@ if (KRN_BUILD_TESTS)
     WORKING_DIRECTORY "$<TARGET_FILE_DIR:krn_tests>")
 
   # ENC-1006: an occupied wsPort/feedPort must produce a clean non-zero exit,
-  # not std::terminate. This drives the real gma_server binary, so it lives as
+  # not std::terminate. This drives the real krn_server binary, so it lives as
   # a script test rather than a gtest case.
   find_package(Python3 COMPONENTS Interpreter QUIET)
-  if (TARGET gma_server AND Python3_Interpreter_FOUND)
+  if (TARGET krn_server AND Python3_Interpreter_FOUND)
     add_test(NAME krn_port_conflict
       COMMAND "${Python3_EXECUTABLE}"
               "${CMAKE_SOURCE_DIR}/tests/scripts/port_conflict_test.py"
-              "$<TARGET_FILE:gma_server>")
+              "$<TARGET_FILE:krn_server>")
     set_tests_properties(krn_port_conflict PROPERTIES TIMEOUT 120)
 
-    # ENC-1331: `gma_server <ws> <conf> <feed>` must BIND <feed>. Asserted
+    # ENC-1331: `krn_server <ws> <conf> <feed>` must BIND <feed>. Asserted
     # against the live acceptor rather than the boot log, because the log
     # already printed the right number while the socket used the file's.
     add_test(NAME krn_feed_port_override
       COMMAND "${Python3_EXECUTABLE}"
               "${CMAKE_SOURCE_DIR}/tests/scripts/feed_port_override_test.py"
-              "$<TARGET_FILE:gma_server>")
+              "$<TARGET_FILE:krn_server>")
     set_tests_properties(krn_feed_port_override PROPERTIES TIMEOUT 120)
   elseif (NOT Python3_Interpreter_FOUND)
     message(STATUS "krn_port_conflict / krn_feed_port_override tests skipped: no Python3 interpreter")
@@ -597,18 +597,18 @@ endif()
 # line would make the live-only variant impossible and nothing would say so.
 #
 # ONE ROW PER FIRST-PARTY TARGET, BECAUSE THE CHECK WALKS THE CLOSURE.
-# gma_server links the `krn` umbrella and nothing else, so reading only
-# krn_engine's and gma_server's own LINK_LIBRARIES is blind to exactly the line
+# krn_server links the `krn` umbrella and nothing else, so reading only
+# krn_engine's and krn_server's own LINK_LIBRARIES is blind to exactly the line
 # that breaks the invariant: `target_link_libraries(krn INTERFACE krn_data)`,
 # or `krn::arrow` on a connector `krn` pulls in. Both leave the two roots'
 # properties unchanged and both make KRN_BUILD_DATA=OFF unlinkable. The
 # checker therefore reads a link GRAPH — `link.<target>` /
 # `interface_link.<target>` — and walks it transitively from krn_engine and
-# gma_server. Add a first-party library target here when you add one; a target
+# krn_server. Add a first-party library target here when you add one; a target
 # with no row is treated as a leaf and only pattern-matched, which is correct
 # for system and imported libraries and wrong for ours.
 #
-# THE CHECKED ROOTS are krn_engine, gma_server and krn_tests. krn_tests is
+# THE CHECKED ROOTS are krn_engine, krn_server and krn_tests. krn_tests is
 # there because data/CMakeLists.txt names "the engine test suite is built
 # against an Arrow-free include path" as the thing being protected, and a
 # prose claim with no check behind it is what finding 1 was about.
@@ -635,7 +635,7 @@ endif()
 # command line because the properties are generator expressions, and because a
 # resolved list on an add_test COMMAND would be split into separate arguments
 # at every semicolon.
-if (KRN_BUILD_TESTS AND TARGET gma_server)
+if (KRN_BUILD_TESTS AND TARGET krn_server)
   set(KRN_ISOLATION_MANIFEST "${CMAKE_BINARY_DIR}/krn_engine_isolation.manifest")
 
   # THE TARGET LIST IS ENUMERATED FROM CMAKE, NOT HAND-WRITTEN. A hand-written
@@ -708,7 +708,7 @@ ${_krn_iso_link_rows}")
   endif()
 elseif (KRN_BUILD_TESTS)
   message(WARNING
-    "krn_engine_isolation test SKIPPED: no gma_server target (src/main.cpp is "
+    "krn_engine_isolation test SKIPPED: no krn_server target (src/main.cpp is "
     "absent), so check D cannot read its link libraries. The SPEC D14 "
     "engine-isolation invariant is NOT being checked in this build.")
 endif()

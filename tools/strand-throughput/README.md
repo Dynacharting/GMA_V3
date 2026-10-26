@@ -85,7 +85,7 @@ Three things this says, and one it does not.
    measured, and it is **not** offered as a vindication of that figure, whose
    own provenance remains unrecoverable.
 3. **Fan-out is where production lives** (`ClientSession` permits 256
-   concurrent subscriptions, `include/gma/server/ClientSession.hpp:233`), and
+   concurrent subscriptions, `include/krn/server/ClientSession.hpp:233`), and
    both fan-out profiles are flat-to-better.
 
 **What it does not say:** nothing here re-opens Q2. The ruling is structural and

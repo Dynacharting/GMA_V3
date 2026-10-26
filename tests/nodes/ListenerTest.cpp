@@ -1,9 +1,9 @@
-#include "gma/nodes/Listener.hpp"
-#include "gma/Dispatcher.hpp"
-#include "gma/rt/ThreadPool.hpp"
-#include "gma/AtomicStore.hpp"
-#include "gma/StreamValue.hpp"
-#include "gma/nodes/INode.hpp"
+#include "krn/nodes/Listener.hpp"
+#include "krn/Dispatcher.hpp"
+#include "krn/rt/ThreadPool.hpp"
+#include "krn/AtomicStore.hpp"
+#include "krn/StreamValue.hpp"
+#include "krn/nodes/INode.hpp"
 #include <gtest/gtest.h>
 #include <memory>
 #include <vector>

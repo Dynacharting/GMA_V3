@@ -19,7 +19,7 @@
 // one the DDL named and left to the reader.
 //
 
-#include "gma/data/IngestWindows.hpp"
+#include "krn/data/IngestWindows.hpp"
 
 #include <gtest/gtest.h>
 

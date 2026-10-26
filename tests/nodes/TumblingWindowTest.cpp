@@ -1,6 +1,6 @@
 // Tests for krn::TumblingWindow — per-symbol scalar accumulator with
 // wall-clock-aligned tumbling-window emit semantics. See
-// include/gma/nodes/TumblingWindow.hpp.
+// include/krn/nodes/TumblingWindow.hpp.
 //
 // Timing notes: TumblingWindow aligns its boundary to wall-clock multiples
 // of `period`, so a test that starts mid-period may have to wait < period
@@ -10,10 +10,10 @@
 // fragile. Emit dispatch is async on the ThreadPool, so tests also tolerate
 // a small post-boundary settle delay before reading the recorder.
 
-#include "gma/nodes/TumblingWindow.hpp"
-#include "gma/rt/ThreadPool.hpp"
-#include "gma/nodes/INode.hpp"
-#include "gma/StreamValue.hpp"
+#include "krn/nodes/TumblingWindow.hpp"
+#include "krn/rt/ThreadPool.hpp"
+#include "krn/nodes/INode.hpp"
+#include "krn/StreamValue.hpp"
 #include <gtest/gtest.h>
 #include <atomic>
 #include <chrono>

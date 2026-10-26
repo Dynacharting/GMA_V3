@@ -1,5 +1,5 @@
-#include "gma/nodes/AtomicAccessor.hpp"
-#include "gma/atomic/AtomicProviderRegistry.hpp"
+#include "krn/nodes/AtomicAccessor.hpp"
+#include "krn/atomic/AtomicProviderRegistry.hpp"
 
 #include <utility>
 

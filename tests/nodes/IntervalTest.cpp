@@ -1,6 +1,6 @@
-#include "gma/nodes/Interval.hpp"
-#include "gma/rt/ThreadPool.hpp"
-#include "gma/nodes/INode.hpp"
+#include "krn/nodes/Interval.hpp"
+#include "krn/rt/ThreadPool.hpp"
+#include "krn/nodes/INode.hpp"
 #include <gtest/gtest.h>
 #include <memory>
 #include <atomic>

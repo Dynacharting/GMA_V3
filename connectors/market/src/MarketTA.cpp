@@ -1,11 +1,11 @@
 // Market technical-analysis computations. Moves into
 // libkrn_connector_market in Step 7.
-#include "gma/MarketTA.hpp"
-#include "gma/FunctionMap.hpp"
-#include "gma/Dispatcher.hpp"
-#include "gma/Event.hpp"
-#include "gma/rt/ThreadPool.hpp"
-#include "gma/util/Logger.hpp"
+#include "krn/MarketTA.hpp"
+#include "krn/FunctionMap.hpp"
+#include "krn/Dispatcher.hpp"
+#include "krn/Event.hpp"
+#include "krn/rt/ThreadPool.hpp"
+#include "krn/util/Logger.hpp"
 
 #include <algorithm>
 #include <cmath>

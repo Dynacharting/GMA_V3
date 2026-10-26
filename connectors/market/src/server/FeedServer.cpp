@@ -1,4 +1,4 @@
-#include "gma/server/FeedServer.hpp"
+#include "krn/server/FeedServer.hpp"
 
 #include <boost/asio/strand.hpp>
 #include <boost/asio/buffer.hpp>
@@ -11,11 +11,11 @@
 #include <utility>
 
 // Project headers (adjust paths if needed)
-#include "gma/Dispatcher.hpp"
-#include "gma/Event.hpp"
-#include "gma/book/OrderBookManager.hpp"
-#include "gma/util/Logger.hpp"
-#include "gma/util/Metrics.hpp"
+#include "krn/Dispatcher.hpp"
+#include "krn/Event.hpp"
+#include "krn/book/OrderBookManager.hpp"
+#include "krn/util/Logger.hpp"
+#include "krn/util/Metrics.hpp"
 
 #include <rapidjson/document.h>
 

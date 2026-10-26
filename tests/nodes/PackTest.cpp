@@ -1,6 +1,6 @@
-#include "gma/nodes/Pack.hpp"
-#include "gma/StreamValue.hpp"
-#include "gma/nodes/INode.hpp"
+#include "krn/nodes/Pack.hpp"
+#include "krn/StreamValue.hpp"
+#include "krn/nodes/INode.hpp"
 #include <gtest/gtest.h>
 #include <stdexcept>
 #include <memory>

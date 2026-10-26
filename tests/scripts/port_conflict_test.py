@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ENC-1006 regression test: gma_server must fail *cleanly* on an occupied port.
+"""ENC-1006 regression test: krn_server must fail *cleanly* on an occupied port.
 
 Before the fix, an EADDRINUSE on either listening socket escaped main() as an
 uncaught boost::system::system_error, so the process died with
@@ -10,10 +10,10 @@ Two cases are covered, because the server binds two independent sockets:
   * wsPort   -> krn::WebSocketServer's acceptor (opened in its constructor)
   * feedPort -> the market.feedserver ingress (opened in FeedServer::run)
 
-For each: occupy the port from this process, launch gma_server, and assert it
+For each: occupy the port from this process, launch krn_server, and assert it
 exits non-zero, without "terminate called", and names the port + the OS error.
 
-Usage: port_conflict_test.py <path-to-gma_server>
+Usage: port_conflict_test.py <path-to-krn_server>
 """
 
 import os
@@ -83,7 +83,7 @@ def check(name, rc, out):
 
 def main():
     if len(sys.argv) != 2:
-        print("usage: port_conflict_test.py <gma_server>", file=sys.stderr)
+        print("usage: port_conflict_test.py <krn_server>", file=sys.stderr)
         return 2
     server = sys.argv[1]
 

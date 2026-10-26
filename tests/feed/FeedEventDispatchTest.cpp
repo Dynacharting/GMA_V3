@@ -1,4 +1,4 @@
-#include "gma/feed/FeedEvent.hpp"
+#include "krn/feed/FeedEvent.hpp"
 
 #include <gtest/gtest.h>
 #include <rapidjson/document.h>

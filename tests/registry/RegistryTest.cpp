@@ -1,5 +1,5 @@
-#include "gma/RequestRegistry.hpp"
-#include "gma/nodes/INode.hpp"
+#include "krn/RequestRegistry.hpp"
+#include "krn/nodes/INode.hpp"
 #include <gtest/gtest.h>
 #include <atomic>
 #include <memory>

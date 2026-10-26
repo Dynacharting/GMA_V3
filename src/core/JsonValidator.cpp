@@ -1,6 +1,6 @@
-#include "gma/JsonValidator.hpp"
-#include "gma/engine/NodeTypeRegistry.hpp"
-#include "gma/util/Logger.hpp"
+#include "krn/JsonValidator.hpp"
+#include "krn/engine/NodeTypeRegistry.hpp"
+#include "krn/util/Logger.hpp"
 
 #include <cstring>
 #include <stdexcept>

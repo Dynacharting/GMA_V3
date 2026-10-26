@@ -1,6 +1,6 @@
-#include "gma/nodes/Worker.hpp"
-#include "gma/StreamValue.hpp"
-#include "gma/nodes/INode.hpp"
+#include "krn/nodes/Worker.hpp"
+#include "krn/StreamValue.hpp"
+#include "krn/nodes/INode.hpp"
 #include <gtest/gtest.h>
 #include <memory>
 #include <vector>

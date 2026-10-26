@@ -1,4 +1,4 @@
-#include "gma/util/Config.hpp"
+#include "krn/util/Config.hpp"
 
 #include <cctype>
 #include <cstdio>
@@ -9,8 +9,8 @@
 #include <sstream>
 #include <algorithm>
 
-#include "gma/engine/ConfigNamespaceRegistry.hpp"
-#include "gma/util/Logger.hpp"
+#include "krn/engine/ConfigNamespaceRegistry.hpp"
+#include "krn/util/Logger.hpp"
 
 #ifdef _WIN32
   #define NOMINMAX

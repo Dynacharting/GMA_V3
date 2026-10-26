@@ -1,0 +1,162 @@
+#pragma once
+
+#include <string>
+#include <unordered_map>
+#include <vector>
+#include <cstdint>
+
+namespace krn {
+namespace util {
+
+class Config {
+public:
+  // Construct with sensible defaults.
+  Config() = default;
+
+  // Load from a simple "key=value" file. Engine-known keys are parsed
+  // directly; everything else is parked in a pending list and forwarded
+  // to ConfigNamespaceRegistry on dispatchPendingKeys() (called after
+  // connectors register their readers in registerWith).
+  // Returns true if the file was read successfully (even if some keys
+  // are unknown to both the engine and any registered namespace).
+  bool loadFromFile(const std::string& path);
+
+  // Replay every key parked during loadFromFile through
+  // ConfigNamespaceRegistry::dispatch(). Called by the composition root
+  // after each IConnector::registerWith() has had a chance to register
+  // its namespaces. Returns the number of keys that found a reader; the
+  // remainder are silently dropped (forward-compat for stray keys).
+  std::size_t dispatchPendingKeys();
+
+  // ENC-31: when no `ingress.*` entries were parsed, synthesize equivalent
+  // ones from the legacy keys (feedPort default + feedUrl + feeds.N.*).
+  // Idempotent — once `ingress` is non-empty, this is a no-op.
+  //
+  // ENC-1331: called ONLY by the composition root, and only once the config is
+  // settled — loadFromFile() must not call it. The synthesized
+  // `market.feedserver` entry copies `feedPort` into its params, and those
+  // params are what the connector binds; synthesizing before the CLI overrides
+  // (argv[3]) were applied made `krn_server <ws> <conf> <feed>` bind the file's
+  // feedPort while logging the argument's. Anything that reads `ingress` after
+  // a loadFromFile() must therefore call this first.
+  //
+  // Returns true if it synthesized entries, false if it was a no-op because
+  // `ingress` was already populated (explicit `ingress.N.*` keys) — callers
+  // use that to tell the user their legacy feedPort override went nowhere.
+  bool synthesizeIngressFromLegacy();
+
+  // --- Public fields (referenced elsewhere in your code) ---
+  // TA params (now actually members so those C2039 errors go away)
+  int    taMACD_fast  = 12;   // fast EMA period
+  int    taMACD_slow  = 26;   // slow EMA period
+  int    taBBands_n   = 20;   // lookback
+  double taBBands_stdK = 2.0; // width in standard deviations
+
+  // SMA periods (default: 5, 20)
+  std::vector<int> taSMA = {5, 20};
+
+  // EMA periods (default: 12, 26)
+  std::vector<int> taEMA = {12, 26};
+
+  // RSI period (default: 14)
+  int taRSI = 14;
+
+  // ATR period (default: 14)
+  int taATR = 14;
+
+  // Momentum/ROC period (default: 10)
+  int taMomentum = 10;
+
+  // MACD signal EMA period (default: 9)
+  int taMACD_signal = 9;
+
+  // Volume average period (default: 20)
+  int taVolAvg = 20;
+
+  // Server ports
+  int wsPort   = 8080;
+  int feedPort = 9001;
+
+  // Thread pool size (0 = use hardware_concurrency)
+  int threadPoolSize = 0;
+
+  // History cap for Dispatcher (per symbol+field pair)
+  int taHistoryMax = 1000;
+
+  // Maximum distinct symbols tracked before rejecting new ones.
+  int maxSymbols = 10000;
+
+  // Maximum distinct fields per symbol in per-field histories.
+  int maxFieldsPerSymbol = 200;
+
+  // ENC-1008 — namespace derived builtin atomics by their source field.
+  //
+  // OFF (default, and today's behaviour): FunctionMap builtins are stored in a
+  // FLAT per-symbol namespace keyed by bare function name, so two fields of one
+  // symbol that both drive `mean` overwrite each other in the AtomicStore
+  // (last field wins, ordered by the listener map). See the ATOMIC-KEY CONTRACT
+  // on Dispatcher::computeAndStoreAtomics and docs/atomic-keys.md.
+  //
+  // ON: builtins are stored as `<field>.<fn>` (e.g. `price.mean`), so each
+  // source field keeps its own derived values. This CHANGES a client-visible
+  // key: `field` in a WS subscribe is exactly this string (TreeBuilder reads it
+  // for both Listener and AtomicAccessor), so flipping it breaks any
+  // AtomicAccessor bound to a bare builtin name. Listener push is unaffected —
+  // bare-name subscribers still fire — so the migration is store-readers only.
+  // Default OFF because there is no wire-level version negotiation for it.
+  bool atomicKeyNamespaceByField = false;
+
+  // Metrics reporter
+  bool metricsEnabled = false;
+  int  metricsIntervalSec = 15;
+
+  // Logging
+  std::string logLevel = "info";
+
+  // External WebSocket feed URL (empty = disabled)
+  // e.g. "wss://feed-sim.v3m.xyz/feed" or "ws://localhost:8100/feed"
+  std::string feedUrl;
+
+  // Symbols to subscribe to on the feed (empty or ["*"] = all)
+  std::vector<std::string> feedSymbols = {"*"};
+
+  // Allow negative prices in order book (for bonds with negative yields, spreads, etc.)
+  bool allowNegativePrices = false;
+
+  // Per-feed configuration for external WebSocket feeds.
+  struct FeedConfig {
+      std::string url;
+      std::string adapter = "itch";       // "itch" or "generic"
+      std::vector<std::string> symbols = {"*"};
+  };
+  std::vector<FeedConfig> feeds;
+
+  // ENC-31: engine-driven ingress entries (`ingress.N.kind = ..., ingress.N.X = ...`).
+  // The engine reads this list after connectors register their factories,
+  // looks each kind up in IngressRegistry, and drives start/stop centrally.
+  struct Ingress {
+      std::string kind;
+      std::unordered_map<std::string, std::string> params;
+  };
+  std::vector<Ingress> ingress;
+
+  // forum-driven ingress (feed-sim-connector phase 2).
+  // When forumUrl is non-empty the composition root replaces the static
+  // `ingress[]` with the result of `krn::forum::ConnectorsClient::
+  // fetchIngresses(forumUrl, forumTenantId, forumAuthToken)` after the
+  // INI is loaded but before connectors start. Empty values disable
+  // the pull (legacy INI ingress remains authoritative).
+  std::string forumUrl;
+  std::string forumTenantId;
+  std::string forumAuthToken;
+
+private:
+  static bool parseLineKV(const std::string& line, std::string& k, std::string& v);
+  static std::string trim(const std::string& s);
+
+  // Parked unknown-to-engine keys awaiting dispatchPendingKeys().
+  std::vector<std::pair<std::string, std::string>> _pendingKeys;
+};
+
+} // namespace util
+} // namespace krn

@@ -33,14 +33,14 @@
 //   3. the corpus: all 23 cross-streamKey `Aggregate` requests, before and
 //      after, measured rather than asserted
 
-#include "gma/AtomicStore.hpp"
-#include "gma/Dispatcher.hpp"
-#include "gma/Event.hpp"
-#include "gma/StreamValue.hpp"
-#include "gma/TreeBuilder.hpp"
-#include "gma/nodes/INode.hpp"
-#include "gma/nodes/JoinBy.hpp"
-#include "gma/rt/ThreadPool.hpp"
+#include "krn/AtomicStore.hpp"
+#include "krn/Dispatcher.hpp"
+#include "krn/Event.hpp"
+#include "krn/StreamValue.hpp"
+#include "krn/TreeBuilder.hpp"
+#include "krn/nodes/INode.hpp"
+#include "krn/nodes/JoinBy.hpp"
+#include "krn/rt/ThreadPool.hpp"
 
 #include "../support/CorpusPath.hpp"
 
@@ -755,7 +755,7 @@ TEST_F(FanInJoinKey, EveryCrossStreamKeyCorpusRequestJoinsUnderByNone) {
 //
 // Every test in this block corresponds to a request that was ACCEPTED at
 // `GMA_V3@e2266e4` and produced a plausible wrong answer, or to a claim in
-// include/gma/nodes/JoinBy.hpp that nothing checked. None came from review;
+// include/krn/nodes/JoinBy.hpp that nothing checked. None came from review;
 // all came from an agent told to assume the change was wrong.
 
 // `by` was meaningful only where `joinByFor` is called — the two fan-in

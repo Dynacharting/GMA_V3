@@ -8,7 +8,7 @@
 // subscription with numerically-identical content coexist. The salt on
 // the variant index guards against that.
 
-#include "gma/server/RequestKey.hpp"
+#include "krn/server/RequestKey.hpp"
 
 #include <gtest/gtest.h>
 

@@ -1,4 +1,4 @@
-#include "gma/data/Schema.hpp"
+#include "krn/data/Schema.hpp"
 
 #include <arrow/array/array_dict.h>
 #include <arrow/array/array_primitive.h>

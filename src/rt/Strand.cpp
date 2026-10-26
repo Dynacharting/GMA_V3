@@ -1,6 +1,6 @@
-#include "gma/rt/Strand.hpp"
+#include "krn/rt/Strand.hpp"
 
-#include "gma/util/Logger.hpp"
+#include "krn/util/Logger.hpp"
 
 namespace krn::rt {
 

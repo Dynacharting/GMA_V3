@@ -290,7 +290,7 @@ request is a protocol error, as is mixing `keys:[int,...]` and
 Internal routing — Dispatcher, AtomicStore, TreeBuilder, Listener —
 stays key-type-agnostic: subscribers route on `(streamKey, field)`,
 not on the request id. The variant lives at the wire boundary
-(`krn::server::RequestKey` in `include/gma/server/RequestKey.hpp`).
+(`krn::server::RequestKey` in `include/krn/server/RequestKey.hpp`).
 
 ```jsonc
 // int-keyed subscribe (smoke.js, int-native consumers)
@@ -344,7 +344,7 @@ All bare keys are **Listener-subscribable**.
 
 Top-of-book and book-derived metrics from `ob::Provider`. Canonical
 list (transcribed from
-`connectors/market/include/gma/ob/ObKeysCatalog.hpp`):
+`connectors/market/include/krn/ob/ObKeysCatalog.hpp`):
 
 - `ob.best.bid.price`, `ob.best.bid.size`
 - `ob.best.ask.price`, `ob.best.ask.size`
@@ -367,7 +367,7 @@ field whose first three characters are `o`, `b`, `.`.
 ## Example: PoC against `feed-sim.v3m.xyz`
 
 ```ini
-# gma.conf — ITCH source, so use the canonical pattern for ob.*
+# krn.conf — ITCH source, so use the canonical pattern for ob.*
 ingress.0.kind = market.feedserver
 ingress.0.port = 9001
 ingress.1.kind = market.wsclient
@@ -456,8 +456,8 @@ the same scope was **0**.
 ### Live feed-sim run (optional)
 
 When feed-sim is reachable, the same pattern works end-to-end on a
-real WebSocket connection. Stand up `gma_server` configured for the
-ITCH ingress (see `gma.conf` example near the top of this doc),
+real WebSocket connection. Stand up `krn_server` configured for the
+ITCH ingress (see `krn.conf` example near the top of this doc),
 then a small WS client posts the canonical request:
 
 ```python

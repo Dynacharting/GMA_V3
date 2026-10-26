@@ -8,13 +8,13 @@
 // between tests; we never call EventComputerRegistry::clear() (which would
 // wipe the test-bootstrap's "tick" factory and break unrelated tests).
 
-#include "gma/AtomicStore.hpp"
-#include "gma/Dispatcher.hpp"
-#include "gma/Event.hpp"
-#include "gma/engine/EventComputerRegistry.hpp"
-#include "gma/engine/IEventComputer.hpp"
-#include "gma/rt/ThreadPool.hpp"
-#include "gma/util/Config.hpp"
+#include "krn/AtomicStore.hpp"
+#include "krn/Dispatcher.hpp"
+#include "krn/Event.hpp"
+#include "krn/engine/EventComputerRegistry.hpp"
+#include "krn/engine/IEventComputer.hpp"
+#include "krn/rt/ThreadPool.hpp"
+#include "krn/util/Config.hpp"
 
 #include <gtest/gtest.h>
 #include <atomic>

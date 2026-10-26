@@ -1,11 +1,11 @@
-#include "gma/engine/ConfigNamespaceRegistry.hpp"
-#include "gma/engine/EventComputerRegistry.hpp"
-#include "gma/engine/EventTypeRegistry.hpp"
-#include "gma/engine/IEventComputer.hpp"
-#include "gma/engine/IngressRegistry.hpp"
-#include "gma/engine/NodeTypeRegistry.hpp"
-#include "gma/nodes/INode.hpp"
-#include "gma/Event.hpp"
+#include "krn/engine/ConfigNamespaceRegistry.hpp"
+#include "krn/engine/EventComputerRegistry.hpp"
+#include "krn/engine/EventTypeRegistry.hpp"
+#include "krn/engine/IEventComputer.hpp"
+#include "krn/engine/IngressRegistry.hpp"
+#include "krn/engine/NodeTypeRegistry.hpp"
+#include "krn/nodes/INode.hpp"
+#include "krn/Event.hpp"
 
 #include <gtest/gtest.h>
 #include <atomic>

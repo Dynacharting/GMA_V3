@@ -1,11 +1,11 @@
 // Capstone (ENC-651): the expression-language vocabulary composing end-to-end
 // through the real engine — record (Pack/Field), Expr, Filter, and let-bindings
 // together. Proves the pieces interoperate, not just in isolation.
-#include "gma/TreeBuilder.hpp"
-#include "gma/Dispatcher.hpp"
-#include "gma/AtomicStore.hpp"
-#include "gma/rt/ThreadPool.hpp"
-#include "gma/nodes/INode.hpp"
+#include "krn/TreeBuilder.hpp"
+#include "krn/Dispatcher.hpp"
+#include "krn/AtomicStore.hpp"
+#include "krn/rt/ThreadPool.hpp"
+#include "krn/nodes/INode.hpp"
 
 #include <gtest/gtest.h>
 #include <rapidjson/document.h>

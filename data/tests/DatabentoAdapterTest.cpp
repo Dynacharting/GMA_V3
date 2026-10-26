@@ -32,8 +32,8 @@
 // now-legal value, which is the bug ENC-1481 shipped and fixed.
 //
 
-#include "gma/data/DatabentoAdapter.hpp"
-#include "gma/data/DbnEncoder.hpp"
+#include "krn/data/DatabentoAdapter.hpp"
+#include "krn/data/DbnEncoder.hpp"
 
 #include <arrow/array.h>
 #include <arrow/record_batch.h>
@@ -59,7 +59,7 @@ namespace {
 // feeds the adapter DBN re-encoded from a real Databento CSV sample, and must
 // not hand-roll DBN bytes (that would make every format conclusion in this repo
 // circular again), so the encoder moved to
-// `data/include/gma/data/DbnEncoder.hpp` + `data/src/DbnEncoder.cpp` where the
+// `data/include/krn/data/DbnEncoder.hpp` + `data/src/DbnEncoder.cpp` where the
 // ingest path can link it. (The move was begun under ENC-1498, for a synthetic
 // corpus; that ticket is cancelled and the reasoning does not depend on it.)
 //

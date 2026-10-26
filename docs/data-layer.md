@@ -100,7 +100,7 @@ wss:// ──▶ WsFeedClient ──▶ IFeedAdapter│         │
                    └──▶ OrderBookManager (book mutations, seq/epoch)
 ```
 
-- **`engine::IIngressSource`** (`include/gma/engine/IngressRegistry.hpp`) — `start()` /
+- **`engine::IIngressSource`** (`include/krn/engine/IngressRegistry.hpp`) — `start()` /
   `stop() noexcept`, factories on `IngressRegistry` instantiated from `cfg.ingress[]` by
   the composition root (ENC-31). The right seam; reused as-is.
 - **`ItchAdapter` already routes the MBO vocabulary.** `connectors/market/src/feed/
@@ -414,16 +414,16 @@ One column-wise function producing `TickRecord` / `BookRecord`. Two details:
   in per-tick work versus the shipped JSON ingress.
 
 **Where the two halves live — settled by ENC-1481.** The PODs are in
-`include/gma/data/Record.hpp`, i.e. inside **`krn_engine`**, not under `data/`. C2's
+`include/krn/data/Record.hpp`, i.e. inside **`krn_engine`**, not under `data/`. C2's
 `Dispatcher::onRecord(const data::TickRecord&)` is engine code and has to be able to name
 the type, so a POD reachable only from `krn_data` would make C2 unimplementable without
 breaking §4 rule 6. The PODs are Arrow-free and dependency-free; the `arrow::Schema`s and
-this decode stay in `data/include/gma/data/Schema.hpp`, which is where Arrow stops. Same
+this decode stay in `data/include/krn/data/Schema.hpp`, which is where Arrow stops. Same
 namespace (`krn::data`), one definition per type — the library boundary is a *dependency*
 boundary, not a naming one. `SymbolTable` sits beside the PODs for the same reason:
 interning happens in decode, but resolving an id back to a ticker happens at an output
 boundary, and every output boundary is engine code (`StreamValue` carries a `std::string`).
-So the invariant to enforce is not "no `gma/data` header reaches the engine" but **"Arrow,
+So the invariant to enforce is not "no `krn/data` header reaches the engine" but **"Arrow,
 the ClickHouse client and `krn_data` are not engine dependencies"** —
 `tools/check_engine_isolation.py`, ctest case `krn_engine_isolation`.
 
@@ -496,7 +496,7 @@ When it lands:
 
 ## 8. Canonical schema — L1 only
 
-`data/include/gma/data/Schema.hpp`; DDL in `data/schema/clickhouse.sql`.
+`data/include/krn/data/Schema.hpp`; DDL in `data/schema/clickhouse.sql`.
 
 ### 8.1 There are no derived layers
 
@@ -634,7 +634,7 @@ Uniqueness is not what makes the table readable and never was — **the read rul
 out in full beside `CREATE TABLE gma.ingest_windows` in `data/schema/clickhouse.sql`:
 *newest row by `updated_at` per recorded `(symbol, kind, from_ts, to_ts)`, require
 `state = 1`, then test **coverage** of the request.* It is implemented once, in
-`data/include/gma/data/IngestWindows.hpp`, and it is correct whether or not a re-ingest reuses
+`data/include/krn/data/IngestWindows.hpp`, and it is correct whether or not a re-ingest reuses
 its session.
 
 **It does, and `session_id` is the retained DBN file's own identity** —
@@ -695,7 +695,7 @@ should do about it is reference data and out of scope.
 **~~Unverified~~ — now measured, in two passes (T4/ENC-1482 and T5/ENC-1483).** The exact DBN field names
 and the whole record/metadata layout were established against real vendor DBN bytes committed
 at `data/tests/fixtures/dbn/`; they are written down in `dbn::` in
-`data/include/gma/data/DatabentoAdapter.hpp` and in SPEC §5 under Q14, and the names there are
+`data/include/krn/data/DatabentoAdapter.hpp` and in SPEC §5 under Q14, and the names there are
 the vendor's own spellings — `instrument_id` included, so this section's field name is right.
 **Whether `instrument_id` is stable within a dataset-day is STILL OPEN, and T5 narrowed it
 rather than closing it**: on the real `XNAS.ITCH`/`MSFT` sample `instrument_id` is constant at
@@ -953,7 +953,7 @@ live-only variant links no Arrow at all).
 the acceptance command and every gate configuration — builds `krn_data` and runs both
 engine-isolation cases plus `krn_data_tests`, so nothing is silently skipped where tests
 run. A bare `cmake -B build -DCMAKE_BUILD_TYPE=Release` fetches **nothing** and still
-builds `gma_server`, which is what the documented quickstart needs offline (before this
+builds `krn_server`, which is what the documented quickstart needs offline (before this
 library existed, a default configure fetched nothing at all — googletest sits behind
 `KRN_BUILD_TESTS=OFF` too — and a fixed `KRN_BUILD_DATA=ON` had made that configure
 hard-fail at the download behind a firewall). An explicit `-DKRN_BUILD_DATA=ON|OFF` always

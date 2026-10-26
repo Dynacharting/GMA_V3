@@ -24,11 +24,11 @@ cmake --build . -j$(nproc)
 ./tools/compile.sh
 
 # Run server
-./build/gma_server                 # compiled defaults (wsPort=8080, feedPort=9001)
-./build/gma_server 9002            # custom wsPort
-./build/gma_server 9002 gma.conf   # custom wsPort + INI config (gma.conf sets wsPort=4000,
+./build/krn_server                 # compiled defaults (wsPort=8080, feedPort=9001)
+./build/krn_server 9002            # custom wsPort
+./build/krn_server 9002 krn.conf   # custom wsPort + INI config (krn.conf sets wsPort=4000,
                                    #   but argv[1]=9002 wins over the file)
-./build/gma_server 9002 gma.conf 9005  # also override feedPort
+./build/krn_server 9002 krn.conf 9005  # also override feedPort
 
 # Run tests
 cd build && ctest --output-on-failure
@@ -37,7 +37,7 @@ cd build && ctest --output-on-failure
 ## Project Structure
 
 ```
-include/gma/              # Engine public headers (libkrn_engine)
+include/krn/              # Engine public headers (libkrn_engine)
   engine/                 # Engine-side contracts & registries
                           #   IConnector, EngineRegistries, IEventComputer,
                           #   EventTypeRegistry, EventComputerRegistry,
@@ -63,13 +63,13 @@ include/gma/              # Engine public headers (libkrn_engine)
   TreeBuilder.hpp         # JSON → node DAG
   # (NOTE: there is no engine-level SourceProfile.hpp — field-alias mapping
   #  moved into the market connector as krn::market::MarketFieldMap (ENC-35);
-  #  see connectors/market/include/gma/market/MarketFieldMap.hpp)
+  #  see connectors/market/include/krn/market/MarketFieldMap.hpp)
 
 src/                      # Engine implementations (mirrors include/ layout)
   main.cpp                # Composition root — boots engine, wires connectors
 
 connectors/market/        # libkrn_connector_market (depends on krn_engine)
-  include/gma/
+  include/krn/
     market/MarketConnector.hpp
     book/ ob/ ta/         # OB engine, TA indicator suite
     feed/                 # IFeedAdapter, ItchAdapter, FeedEvent
@@ -81,12 +81,12 @@ connectors/market/        # libkrn_connector_market (depends on krn_engine)
   src/                    # Implementations mirrored
 
 connectors/synthetic/     # libkrn_connector_synthetic (demo; linked only into tests)
-  include/gma/synthetic/SyntheticConnector.hpp
+  include/krn/synthetic/SyntheticConnector.hpp
   src/SyntheticConnector.cpp
 
 data/                     # libkrn_data — L1 data/query layer (ENC-1481; see data/README.md)
-  include/gma/data/Schema.hpp   # the three L1 arrow::Schemas + the column-wise codec
-  src/Schema.cpp                #   (the rest of include/gma/data/ is still a design sketch)
+  include/krn/data/Schema.hpp   # the three L1 arrow::Schemas + the column-wise codec
+  src/Schema.cpp                #   (the rest of include/krn/data/ is still a design sketch)
   cmake/KrnDataArrow.cmake      # find_package(Arrow) else FetchContent, trimmed hard
   schema/clickhouse.sql         # L1 DDL
   tests/                        # krn_data_tests — a SEPARATE binary from krn_tests
@@ -114,14 +114,14 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full picture including 
 ## Tech Stack
 
 - **C++20** (`-DCMAKE_CXX_STANDARD=20`)
-- **CMake 3.20+** — produces `libkrn_engine.a`, `libkrn_connector_market.a`, `libkrn_connector_synthetic.a`, `libkrn_data.a`, `gma_server`, `krn_tests`, `krn_data_tests`
+- **CMake 3.20+** — produces `libkrn_engine.a`, `libkrn_connector_market.a`, `libkrn_connector_synthetic.a`, `libkrn_data.a`, `krn_server`, `krn_tests`, `krn_data_tests`
 - **Apache Arrow** (`krn_data` only) — found with `find_package(Arrow CONFIG)`, else built
   from source by `data/cmake/KrnDataArrow.cmake`. A cold configure downloads a 17 MB
   archive (2m33s on this link) and the build costs 45s Debug / 63s Release on 16 cores;
   measured numbers and the full `ARROW_*=OFF` rationale are in `docs/data-layer.md` §15.1.
   **`KRN_BUILD_DATA` defaults to `KRN_BUILD_TESTS`**, so a bare
   `cmake -B build -DCMAKE_BUILD_TYPE=Release` fetches no Arrow at all and still builds
-  `gma_server`, while `-DKRN_BUILD_TESTS=ON` builds and tests the data layer. An explicit
+  `krn_server`, while `-DKRN_BUILD_TESTS=ON` builds and tests the data layer. An explicit
   `-DKRN_BUILD_DATA=ON|OFF` always wins and the configure says which way it resolved.
   `-DKRN_DATA_ARROW_FORCE_FETCH=ON` skips `find_package` when an installed Arrow is
   present but unusable — **it only exists when the data layer is in the build**, because it
@@ -139,7 +139,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full picture including 
 
 ## Code Conventions
 
-- Engine code under `include/gma/` + `src/`; connector code under `connectors/<name>/`;
+- Engine code under `include/krn/` + `src/`; connector code under `connectors/<name>/`;
   data-layer code under `data/`
 - Engine CMake target (`krn_engine`) must not depend on any connector headers
 - **`krn_engine` must not depend on Arrow, the ClickHouse client, or `krn_data` (ENC-1481).**
@@ -147,31 +147,31 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full picture including 
   taste — and the constraint is about **`krn_engine`**, not about the product. The
   data-layer SPEC's D14 client profile reads *"live-only **or** reads a central L1 over the
   wire with no local store"*: the **live-only** variant omits the library, so
-  `cmake -DKRN_BUILD_DATA=OFF` must build and link `gma_server` with no Arrow anywhere,
+  `cmake -DKRN_BUILD_DATA=OFF` must build and link `krn_server` with no Arrow anywhere,
   while the over-the-wire variant needs Arrow IPC and therefore does ship `krn_data`. Don't
   shorten that to "the client profile omits the library" — that is true of one variant.
   **The engine-facing PODs are the one thing that crosses**, and they cross deliberately:
-  `include/gma/data/Record.hpp` and `include/gma/data/SymbolTable.hpp` are in `krn_engine`,
+  `include/krn/data/Record.hpp` and `include/krn/data/SymbolTable.hpp` are in `krn_engine`,
   Arrow-free, because `Dispatcher::onRecord` is engine code and has to name a record. Every
   way of breaking the invariant still compiles and still passes every other test, so it is
   asserted by `tools/check_engine_isolation.py` as the ctest cases `krn_engine_isolation`
   (four checks, refuses to pass on vacuous input) and `krn_engine_isolation_selftest` (runs
   each predicate against an input that violates it). Run them before claiming a layering
   change is safe; `--selftest` needs no build. **Checks C and D walk the transitive link
-  closure**, because `gma_server` links only the `krn` umbrella: one
+  closure**, because `krn_server` links only the `krn` umbrella: one
   `target_link_libraries(krn INTERFACE krn_data)` breaks the live-only build while both
   roots' own link properties stay clean. CMake emits a `link.<target>` manifest row per
   first-party target — add one when you add a library target.
 - Namespace: `krn::` for public types, `krn::engine::` for engine contracts, `krn::market::` / `krn::synthetic::` for connector code
 - Globals: `krn::gThreadPool` (shared_ptr<ThreadPool>, set up in main.cpp)
-- Runtime config: INI-style key=value files (see `src/util/gma.conf`)
+- Runtime config: INI-style key=value files (see `src/util/krn.conf`)
 - Prefer lock-free / fine-grained locking (shared_mutex, SPSCQueue)
 - Test files named `<Component>Test.cpp` under `tests/<category>/`; the gtest binary is a single `krn_tests` executable
 - **A test that writes to a process-global registry must derive its key per invocation (ENC-1102).** `FunctionMap`, `NodeTypeRegistry`, `EventComputerRegistry`, `EventTypeRegistry`, `IngressRegistry`, `AtomicProviderRegistry` and `ConfigNamespaceRegistry` are process-wide singletons with no per-entry removal, and `--gtest_repeat` re-runs every test body in the **same process**. A test that registers a *fixed* name therefore meets, on iteration 2, a registry its own iteration-1 run already populated — `registerNodeType` returns false, `EventComputerRegistry` reports double the factories, `FunctionMap::getAll()` does not grow. Five tests failed exactly this way. Build the name from a file-local `static std::atomic` counter (`uniqueKey()` in `tests/engine/RegistriesTest.cpp`, `uniqueType()` in `tests/engine/EventComputerCacheTest.cpp`) instead. This is a test-lifecycle fix only — the registries' production duplicate semantics (first-wins for node/event/ingress types, append for event computers, replace for functions/providers) are deliberate and unchanged.
 - **`--gtest_repeat` must be run against the FULL unsharded binary**, never with `--gtest_filter`. ENC-1065 requires the full binary because cross-suite corruption surfaces dozens of suites later; filtering a repeat run is what hid ENC-1102 for months, since every repeat check in the project happened to be filtered.
 - Connectors implement the strict `IConnector` lifecycle: `registerWith()` allocates and registers (no live sockets/timers), `start()` brings sources online, `stop()` noexcept tears down in reverse order. The composition root drives all three; never wire your own `ShutdownCoordinator` step from inside a connector.
 - **Ingress sources are engine-owned (ENC-31).** Connectors register named factories on `reg.ingress` (e.g. `market.feedserver`, `market.wsclient`); the composition root reads `cfg.ingress[]` and instantiates them. Adding a new ingress kind is a factory registration + INI edit, not a `main.cpp` change. Legacy `feedPort` / `feedUrl` / `feeds.N.*` keys are auto-translated into `cfg.ingress[]` entries with a one-release deprecation warn.
-- **WS request keys — int vs string (`RequestKey`).** The subscribe / cancel / value-emit code paths in `ClientSession` and `Responder` use `krn::server::RequestKey = std::variant<int, std::string>` (header at `include/gma/server/RequestKey.hpp`). Inbound subscribe accepts `{key:<int>}`, `{id:<int>}` (legacy), or `{id:"<string>"}`; outbound frames render `"key":<int>` or `"requestId":"<string>"` to mirror. Engine internals (Dispatcher, AtomicStore, TreeBuilder, Listener) stay key-type-agnostic — they route on `(streamKey, field)`, not on the request id. See [`docs/atomic-keys.md`](docs/atomic-keys.md) §"Subscribe request key — int vs string".
+- **WS request keys — int vs string (`RequestKey`).** The subscribe / cancel / value-emit code paths in `ClientSession` and `Responder` use `krn::server::RequestKey = std::variant<int, std::string>` (header at `include/krn/server/RequestKey.hpp`). Inbound subscribe accepts `{key:<int>}`, `{id:<int>}` (legacy), or `{id:"<string>"}`; outbound frames render `"key":<int>` or `"requestId":"<string>"` to mirror. Engine internals (Dispatcher, AtomicStore, TreeBuilder, Listener) stay key-type-agnostic — they route on `(streamKey, field)`, not on the request id. See [`docs/atomic-keys.md`](docs/atomic-keys.md) §"Subscribe request key — int vs string".
 - **Atomic-key namespaces — bare vs `ob.*` (ENC-94, ENC-101).** Two distinct namespaces by source: bare (`bid`, `ask`, `lastPrice`, sma_N, ...) is written by `MarketTickComputer` only when the tick payload carries the field directly (pre-aggregated tick connectors). `ob.*` (`ob.best.bid.price`, `ob.spread`, ...) is computed from `OrderBookManager` state — used for L2/L3 sources (ITCH, FIX). **Listeners may bind only to bare keys; `ob.*` is pipeline-only** — `ob::Provider` never calls `Dispatcher::notifyListeners`, so a `Listener` bound to an `ob.*` field would silently never fire. The reject lives in `nodes::Listener::Create` (the static factory; the public constructor is kept for unit-test fixtures only) and surfaces as a `{"type":"error","where":"build","message":"listener: field '...' is pipeline-only — see docs/atomic-keys.md..."}` WS frame. Canonical pattern for surfacing `ob.*` into a chart: `Listener(<bare-key clock>) → AtomicAccessor(ob.*) → ...` — see [`docs/atomic-keys.md`](docs/atomic-keys.md) for the worked NEXO example.
 - **A timer node posts; it does not call. Drain the pool before you sample (ENC-1340).**
   `BucketTime` and `Interval` hand each tick to the `ThreadPool` with `post()`. `shutdown()`
@@ -217,7 +217,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full picture including 
   record (`StreamValue` still carries `std::string symbol`); do not remove it without
   ENC-1487's numbers, which measure it as a separate step. **(3)** No event time:
   `header.tsEventNs` is not exposed as a field and the clock nodes are untouched (SPEC D9).
-  Mapping table and the reason for each omission: `include/gma/engine/RecordFieldSource.hpp`.
+  Mapping table and the reason for each omission: `include/krn/engine/RecordFieldSource.hpp`.
   Pinned by `tests/dispatch/RecordIngressParityTest.cpp`, which compares deliveries **in
   order** and store contents across the two paths, carries its own negative controls, and
   separately pins the record→field mapping absolutely — the parity half cannot see a bug
@@ -228,12 +228,12 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full picture including 
 
 Two layers, and they intentionally differ — keep them straight:
 
-1. **Compiled-in defaults** (`include/gma/util/Config.hpp`) — what
-   `./gma_server` uses when **no** config file is passed.
-2. **Shipped INI** (`src/util/gma.conf`) — an example config; it overrides some
+1. **Compiled-in defaults** (`include/krn/util/Config.hpp`) — what
+   `./krn_server` uses when **no** config file is passed.
+2. **Shipped INI** (`src/util/krn.conf`) — an example config; it overrides some
    compiled defaults when you actually pass it as `argv[2]`.
 
-| Key | Compiled default (`Config.hpp`) | `gma.conf` value |
+| Key | Compiled default (`Config.hpp`) | `krn.conf` value |
 |---|---|---|
 | `wsPort` | **8080** | 4000 |
 | `feedPort` | 9001 | 9001 |
@@ -251,7 +251,7 @@ Two layers, and they intentionally differ — keep them straight:
 | `logLevel` | `info` | `info` |
 
 > ⚠️ The compiled SMA/EMA periods (`{5,20}` / `{12,26}`) are **not** what
-> `gma.conf` ships (`5,10,20,50` / `9,21,50`). Whichever you load wins; don't
+> `krn.conf` ships (`5,10,20,50` / `9,21,50`). Whichever you load wins; don't
 > assume one from the other.
 
 Other engine keys parsed by `src/util/Config.cpp` (defaults from `Config.hpp`):
@@ -308,5 +308,5 @@ ENC-1164, ENC-1163, ENC-1155 and ENC-1152 — one per bullet, in the order they 
 - **`specs/2026-09-14-local-data-plane/SPEC.md` — §2 D3–D9, §3** (ENC-1166). Seven of its ten decisions govern this repo and **none of the work is written yet**; §3's GMA_V3 row is the owed-work list. D3 the first crypto source is Bitcoin on-chain metrics through a local `bitcoind` shim, no exchange price feed and Hyperliquid deferred — so **V1 ships with no price data of any kind** · D4 do not emit canonical JSON-ITCH (ENC-1016 superseded); GMA gets a small on-chain adapter instead, which promotes a real adapter selector (`connectors/market/src/MarketConnector.cpp:213-214`, ENC-1022) to a hard prerequisite · D5 the local wsserver is architecturally required, not a convenience, and the GMA-side `translate()` is a thin JSON→`TickEvent` map — the existing `market.wsclient` ingress suffices, so ENC-1009 (`external.push`) is explicitly **not** needed · D6 embassy compiles but **GMA carries** the DynaCharting records (~50 lines of route-table consumer, zero scene knowledge; GMA packing natively was rejected) · D7 transport is WSS with Caddy terminating TLS **in front of** this server, which is plaintext and text-framed today · D8 a forum-minted session ticket and **no JWT verification in C++**, plus a second, browser-facing port that must refuse `pipeline` / `stages` / `node` · D9 seeding is GMA-served history-then-live on subscribe with client-side resume-from-last-offset, which makes historical replay load-bearing. Read D8 with §5 **Q4**: its V1 half shipped with Ed25519 verification, expiry handling and a redeemed-`jti` set **in C++** — the thing D8 existed to prevent.
 - **`specs/2026-09-14-gma-flow-control-replay/SPEC.md` — §2 D1–D10 (D4 **overturned**, see that document's `## Corrections` C1), §3, §5** (ENC-1164). The other single-repo record — all 18 tickets are `[GMA_V3]` — and the reason its §2 *cites* `docs/ARCHITECTURE.md` §8, `docs/atomic-keys.md` and **lines 124–125 of this file** rather than restating them. D1 outbound flow control is coalesce-latest above a 256-frame watermark keyed `(subscription instance id, streamKey)`; credit-based was rejected · D2 at the hard 4,096 bound a value frame displaces the **oldest** queued value, so drops are stale-first at every depth (residual shed-newest is counted as `ws.outbox_shed_newest`) · D3 a single stream can never reach `MAX_OUTBOX_SIZE` — lossless protocol traffic behind a stalled socket is what fills it, which is why the covering test drives the bound with batched `canceled` acks · ~~D4~~ **overturned 2026-09-20**: cross-tick ordering is no longer "not a guarantee", it is one `asio::strand` per request DAG — see `specs/2026-09-20-gma-join-correctness/SPEC.md` D3/D4 · D5 injected values are raw-written to the `AtomicStore` rather than gated on a registered `Listener`, bounded by a separate ledger against the same `maxSymbols` / `maxFieldsPerSymbol` budget · D6 derived atomics namespace as `<field>.<fn>` behind `atomicKeyNamespaceByField`, **defaulting off**, because the key is an inbound client contract stored unmigratably in forum · D7 a timer thread must never own its node (`Interval`, `TumblingWindow`, `BucketTime`) · D8 the two verification rules written at lines 124–125 above · D9 a stale run log is deleted, not regenerated · D10 (ruled, unshipped) do not call the build plan's §8.1 values "atomics". All of §5 is GMA_V3-scoped — **note the extra `Q1b` inside the Q1–Q6 range** — and Q6 records that `argv[3]` (feedPort) is silently ignored when a config file is passed, contradicting the CLI override order documented at the end of *Configuration* above.
 - **`specs/2026-09-14-observability-spend-control/SPEC.md` — §3 (the GMA_V3 row) and §5 Q5; it holds *no* §2 decision for this repo** (ENC-1163). D1–D10 are all forum, embassy or workspace `infra/`. What it records here is two **verified absences**, both owned by ENC-931: this server has **no health endpoint of any kind** — it is WebSocket-only, and the stack orchestrator encodes that as an empty `[gma]=` entry, so `stack.sh status` renders a *blank* HEALTH column that reads like "not checked yet" rather than "cannot be checked"; and **`logLevel` is parsed and never applied** — `Logger::setLevel`, `setFile` and `setFormatJson` have zero call sites outside `Logger.cpp`, so GMA is permanently Info-level plaintext stdout with no override. Read that against the `logLevel` row in *Configuration* above, which documents the key as though setting it did something.
-- **`specs/2026-09-14-connector-schema-discovery/SPEC.md` — §2 D6, §3, §5 Q3** (ENC-1155). D6 sequences ENC-1022 before ENC-1023 — the adapter selector must become real **before** the connector protocol whitelist widens — and rules that the adapter registry **errors on an unknown adapter name rather than defaulting**; today both branches at `connectors/market/src/MarketConnector.cpp:213-214` build an `ItchAdapter`, and `src/util/Config.cpp:240` lets a `gma.conf` entry bypass the whitelist at `src/forum/ConnectorsClient.cpp:222` altogether. D6 is the only decision whose change site is this repo, but **D4** (decided in customer-layer) lands a consequence here: custom connectors are a self-host / fork path, which makes `docs/writing-adapters.md` the officially-supported extension path and raises the stakes on D6's throw. §3 also carries ENC-1026 (the bridge into `MarketFieldMap`) and ENC-1028, which implement no `D` and are reachable only through that row. §5 **Q3** is the live trap: `bid`, `ask`, `spread` and `timestamp` are never populated on the only working protocol (`connectors/market/src/feed/ItchAdapter.cpp:71-85`), so the mapping layer in `connectors/market/src/MarketTA.cpp:352-368` is structurally unreachable. Do not let ENC-1031's `[GMA_V3]` title pull it in — that SPEC's §6 records it as entirely a treaty change.
+- **`specs/2026-09-14-connector-schema-discovery/SPEC.md` — §2 D6, §3, §5 Q3** (ENC-1155). D6 sequences ENC-1022 before ENC-1023 — the adapter selector must become real **before** the connector protocol whitelist widens — and rules that the adapter registry **errors on an unknown adapter name rather than defaulting**; today both branches at `connectors/market/src/MarketConnector.cpp:213-214` build an `ItchAdapter`, and `src/util/Config.cpp:240` lets a `krn.conf` entry bypass the whitelist at `src/forum/ConnectorsClient.cpp:222` altogether. D6 is the only decision whose change site is this repo, but **D4** (decided in customer-layer) lands a consequence here: custom connectors are a self-host / fork path, which makes `docs/writing-adapters.md` the officially-supported extension path and raises the stakes on D6's throw. §3 also carries ENC-1026 (the bridge into `MarketFieldMap`) and ENC-1028, which implement no `D` and are reachable only through that row. §5 **Q3** is the live trap: `bid`, `ask`, `spread` and `timestamp` are never populated on the only working protocol (`connectors/market/src/feed/ItchAdapter.cpp:71-85`), so the mapping layer in `connectors/market/src/MarketTA.cpp:352-368` is structurally unreachable. Do not let ENC-1031's `[GMA_V3]` title pull it in — that SPEC's §6 records it as entirely a treaty change.
 - **`specs/2026-09-14-deployability/SPEC.md` — §2 D7, D8, §3** (ENC-1152). D8 (locked) is **no server-side CI in any repo, ever**; the local pre-push gate — `ctest` here — is the mechanism, and this repo is where D8 was *executed*: `c80ddad` (ENC-1069) deleted the last working CI in the workspace, so GMA_V3's **zero `.github` files are D8's tree evidence**, a proof that lives in an absence and therefore rots silently. D7 is the only change still owed: build identity from `git describe --tags --always --dirty`, one line per repo, retiring hardcoded phase strings (ENC-916, filed as `forum + embassy + GMA_V3`) — and it is blocked on §5 **Q1**, which measures zero git tags in every repo including this one, so there is nothing for `git describe` to describe. Note the limits: D1/D2 (single-box `m7i.xlarge` EC2 + Caddy + `docker compose`, us-east-2) cite GMA only as *rationale* — a C++ engine computing indicators continuously is sustained CPU by design, which is why burstable `t3` was rejected — and D5's container work is scoped to forum's and embassy's Dockerfiles, so **no decision in this record reaches this repo's root `Dockerfile`**.

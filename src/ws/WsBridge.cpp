@@ -1,8 +1,8 @@
-#include "gma/ws/WsBridge.hpp"
-#include "gma/TreeBuilder.hpp"
-#include "gma/JsonValidator.hpp"
-#include "gma/ws/WSResponder.hpp"
-#include "gma/util/Logger.hpp"
+#include "krn/ws/WsBridge.hpp"
+#include "krn/TreeBuilder.hpp"
+#include "krn/JsonValidator.hpp"
+#include "krn/ws/WSResponder.hpp"
+#include "krn/util/Logger.hpp"
 
 #include <rapidjson/document.h>
 #include <rapidjson/stringbuffer.h>

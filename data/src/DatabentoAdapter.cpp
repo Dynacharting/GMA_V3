@@ -1,4 +1,4 @@
-#include "gma/data/DatabentoAdapter.hpp"
+#include "krn/data/DatabentoAdapter.hpp"
 
 #include <arrow/record_batch.h>
 

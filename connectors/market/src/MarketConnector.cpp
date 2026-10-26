@@ -1,4 +1,4 @@
-#include "gma/market/MarketConnector.hpp"
+#include "krn/market/MarketConnector.hpp"
 
 #include <cstdlib>
 #include <limits>
@@ -13,26 +13,26 @@
 #include <string>
 #include <string_view>
 
-#include "gma/AtomicStore.hpp"
-#include "gma/Dispatcher.hpp"
-#include "gma/MarketTA.hpp"
-#include "gma/atomic/AtomicProviderRegistry.hpp"
-#include "gma/book/OrderBookManager.hpp"
-#include "gma/engine/ConfigNamespaceRegistry.hpp"
-#include "gma/engine/EngineRegistries.hpp"
-#include "gma/engine/EventComputerRegistry.hpp"
-#include "gma/engine/IEventComputer.hpp"
-#include "gma/engine/IngressRegistry.hpp"
-#include "gma/market/MarketIngress.hpp"
-#include "gma/feed/IFeedAdapter.hpp"
-#include "gma/feed/ItchAdapter.hpp"
-#include "gma/ob/FunctionalSnapshotSource.hpp"
-#include "gma/ob/ObMaterializer.hpp"
-#include "gma/ob/ObProvider.hpp"
-#include "gma/server/FeedServer.hpp"
-#include "gma/util/Config.hpp"
-#include "gma/util/Logger.hpp"
-#include "gma/ws/WsFeedClient.hpp"
+#include "krn/AtomicStore.hpp"
+#include "krn/Dispatcher.hpp"
+#include "krn/MarketTA.hpp"
+#include "krn/atomic/AtomicProviderRegistry.hpp"
+#include "krn/book/OrderBookManager.hpp"
+#include "krn/engine/ConfigNamespaceRegistry.hpp"
+#include "krn/engine/EngineRegistries.hpp"
+#include "krn/engine/EventComputerRegistry.hpp"
+#include "krn/engine/IEventComputer.hpp"
+#include "krn/engine/IngressRegistry.hpp"
+#include "krn/market/MarketIngress.hpp"
+#include "krn/feed/IFeedAdapter.hpp"
+#include "krn/feed/ItchAdapter.hpp"
+#include "krn/ob/FunctionalSnapshotSource.hpp"
+#include "krn/ob/ObMaterializer.hpp"
+#include "krn/ob/ObProvider.hpp"
+#include "krn/server/FeedServer.hpp"
+#include "krn/util/Config.hpp"
+#include "krn/util/Logger.hpp"
+#include "krn/ws/WsFeedClient.hpp"
 
 namespace krn::market {
 

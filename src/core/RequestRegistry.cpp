@@ -1,6 +1,6 @@
-#include "gma/RequestRegistry.hpp"
+#include "krn/RequestRegistry.hpp"
 
-#include "gma/util/Logger.hpp"
+#include "krn/util/Logger.hpp"
 
 #include <utility>   // std::move
 #include <string>

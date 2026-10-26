@@ -54,7 +54,7 @@ cd ~/Github/feed-simulator/go-feed && go run ./cmd/feedsim -port 8100
 
 # Terminal 2 — GMA server
 cd ~/Github/GMA_V3
-GMA_FEED_URL=ws://localhost:8100/feed ./build/gma_server 8080
+GMA_FEED_URL=ws://localhost:8100/feed ./build/krn_server 8080
 
 # Terminal 3 — smoke test
 cd ~/Github/GMA_V3/tools/smoke-test
@@ -64,7 +64,7 @@ node smoke.js --url ws://localhost:8080 --duration 30 --verbose
 ### Option B: Public feed
 
 ```bash
-GMA_FEED_URL=wss://feed-sim.v3m.xyz/feed ./build/gma_server 8080
+GMA_FEED_URL=wss://feed-sim.v3m.xyz/feed ./build/krn_server 8080
 node tools/smoke-test/smoke.js --url ws://localhost:8080 --duration 30
 ```
 

@@ -81,14 +81,14 @@
 //  6. `NoCorpusEntryEmitsADifferentSequenceUnderLiveIngress` — the same
 //     comparison driven across all 272 entries.
 
-#include "gma/AtomicStore.hpp"
-#include "gma/Dispatcher.hpp"
-#include "gma/Event.hpp"
-#include "gma/StreamValue.hpp"
-#include "gma/TreeBuilder.hpp"
-#include "gma/nodes/AtomicAccessor.hpp"
-#include "gma/nodes/INode.hpp"
-#include "gma/rt/ThreadPool.hpp"
+#include "krn/AtomicStore.hpp"
+#include "krn/Dispatcher.hpp"
+#include "krn/Event.hpp"
+#include "krn/StreamValue.hpp"
+#include "krn/TreeBuilder.hpp"
+#include "krn/nodes/AtomicAccessor.hpp"
+#include "krn/nodes/INode.hpp"
+#include "krn/rt/ThreadPool.hpp"
 
 #include "../support/CorpusPath.hpp"
 
@@ -582,7 +582,7 @@ TEST(ClockCoherentPull, EveryCorpusAtomicAccessorSitsAtAClockHop) {
   ASSERT_TRUE(doc.IsArray());
   EXPECT_EQ(doc.Size(), 272u)
       << "the corpus size moved; re-measure the 95-of-95 census quoted in "
-         "include/gma/nodes/INode.hpp rather than editing this number";
+         "include/krn/nodes/INode.hpp rather than editing this number";
 
   std::map<Placement, int> census;
   std::vector<std::string> deeper;

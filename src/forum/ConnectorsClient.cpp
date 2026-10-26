@@ -1,6 +1,6 @@
-#include "gma/forum/ConnectorsClient.hpp"
+#include "krn/forum/ConnectorsClient.hpp"
 
-#include "gma/util/Logger.hpp"
+#include "krn/util/Logger.hpp"
 
 #include <chrono>
 #include <regex>
@@ -228,7 +228,7 @@ ConnectorsClient::parseConnectorsJson(const std::string& body) {
     }
 
     // Symbols → comma-joined string param (matches the existing
-    // gma.conf shape `ingress.1.symbols = NEXO,VALT,...` consumed
+    // krn.conf shape `ingress.1.symbols = NEXO,VALT,...` consumed
     // by IngressFactoryRegistry's market.wsclient.
     std::string symbolsCsv;
     if (row.HasMember("symbols") && row["symbols"].IsArray()) {
