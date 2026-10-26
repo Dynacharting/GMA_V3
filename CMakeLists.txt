@@ -640,8 +640,8 @@ if (KRN_BUILD_TESTS AND TARGET krn_server)
   set(KRN_ISOLATION_MANIFEST "${CMAKE_BINARY_DIR}/krn_engine_isolation.manifest")
 
   # The gate's positive control. Scanned, never linked: the checker fails if
-  # any other target's closure reaches it. The IMPORTED stub has no file
-  # behind it, so linking it into a real target would also break that link.
+  # any other target's closure reaches it. The stub carries no library, so a
+  # link to it would compile silently -- which is why that is checked.
   add_library(arrow::arrow_control_probe INTERFACE IMPORTED)
   add_library(krn_isolation_control INTERFACE)
   target_link_libraries(krn_isolation_control
