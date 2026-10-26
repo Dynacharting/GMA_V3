@@ -128,8 +128,8 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full picture including 
   is declared in `data/cmake/KrnDataArrow.cmake`, so pass it with `-DKRN_BUILD_DATA=ON` or
   alongside `-DKRN_BUILD_TESTS=ON`. On its own with tests off it is an unused-variable
   warning and nothing else. Conversely, `KRN_BUILD_DATA=OFF` while `KRN_BUILD_TESTS=ON`
-  now emits a `CMake Warning`: `krn_data_tests` is absent and the isolation gate's Arrow
-  positive control cannot run, so a green `ctest` there excludes the data layer. That is
+  now emits a `CMake Warning`: `krn_data_tests` is absent, so a green `ctest` there
+  excludes the data layer. (The isolation gate still has its control; see below.) That is
   intended for D14's live-only variant and is a stale cache otherwise — `option()` writes
   `KRN_BUILD_DATA` on a build dir's first configure and a later `-DKRN_BUILD_TESTS=ON`
   does not move it.
@@ -161,7 +161,11 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full picture including 
   closure**, because `krn_server` links only the `krn` umbrella: one
   `target_link_libraries(krn INTERFACE krn_data)` breaks the live-only build while both
   roots' own link properties stay clean. CMake emits a `link.<target>` manifest row per
-  first-party target — add one when you add a library target.
+  first-party target — add one when you add a library target. **The positive control is
+  `krn_isolation_control`** (ENC-1507), a scan-only target in the root `CMakeLists.txt` that
+  exists in every configuration, `KRN_BUILD_DATA=OFF` included. The gate exits 0 pass,
+  1 violation, 2 could not run, and a missing or silent control is 2. Never link the control
+  into a real target; the gate fails if anything does.
 - Namespace: `krn::` for public types, `krn::engine::` for engine contracts, `krn::market::` / `krn::synthetic::` for connector code
 - Globals: `krn::gThreadPool` (shared_ptr<ThreadPool>, set up in main.cpp)
 - Runtime config: INI-style key=value files (see `src/util/krn.conf`)
