@@ -107,13 +107,21 @@ it.  CMake emits one row per first-party target (`link.<target>` /
 pattern-matched.  The selftest pins both the umbrella case and, as a labelled
 contrast, the fact that a one-level read would have passed it.
 
-POSITIVE CONTROL.  When krn_data is in the build, the closure from krn_data
-MUST trip a forbidden pattern -- it links `krn::arrow` by construction.  If it
-does not, the patterns match nothing in this build and a clean verdict about
-krn_engine is a verdict about a search that cannot find anything.  (The
-workspace-root grep that reaches none of the seven repos is the same bug.)
-With KRN_BUILD_DATA=OFF there is no krn_data target and no control available;
-that is stated in the summary rather than passed over.
+POSITIVE CONTROL.  (ENC-1507, purity SPEC Q7.)  The root CMakeLists declares
+`krn_isolation_control`, an INTERFACE target linking an IMPORTED stub spelled
+CONTROL_PROBE below, which the existing `arrow` pattern matches.  It has a
+manifest row like any first-party target, and its closure MUST trip a
+forbidden pattern and reach the stub.  If it does not, the patterns match
+nothing in this build and a clean verdict about krn_engine is a verdict from a
+search that cannot find anything.  It is declared in this repo, not in data/,
+so it exists with KRN_BUILD_DATA=OFF and survives data/ leaving the repo.  It
+is scanned, never linked: any other target whose closure reaches it is a
+violation.  krn_data's closure is a second control when krn_data is built.
+
+EXIT CODES.  0 verified pass; 1 a violation was found; 2 could not run --
+including vacuous input and a missing or silent control.  "Could not check"
+and "checked and clean" are never the same exit code.  A violation outranks
+vacuity: a found violation is a finding whatever else is missing.
 
 `src/main.cpp` IS NOT ENGINE CODE and is checked by a weaker rule.  The root
 CMakeLists removes it from krn_engine's sources and compiles it into
@@ -169,6 +177,10 @@ FORBIDDEN_LINK_PATTERNS = (
     re.compile(r"clickhouse", re.IGNORECASE),
     re.compile(r"duckdb", re.IGNORECASE),
 )
+
+# The positive control (ENC-1507).  Must match root CMakeLists.txt.
+CONTROL_TARGET = "krn_isolation_control"
+CONTROL_PROBE = "arrow::arrow_control_probe"
 
 INCLUDE_RE = re.compile(r'^\s*#\s*include\s*[<"]([^>"]+)[>"]')
 
@@ -642,6 +654,27 @@ def forbidden_links(graph: dict[str, list[str]], root: str) -> list[str]:
                 f"CMakeLists.txt (an ALIAS belongs there under its real "
                 f"target's name), or if it is genuinely third-party, rename "
                 f"it so it does not read as ours")
+    return problems
+
+
+def control_reachers(graph: dict[str, list[str]]) -> list[str]:
+    """Every graphed target other than the control that reaches the control.
+
+    The control is scanned, never linked.  Read off the real link graph, over
+    EVERY row rather than only the checked roots, so a target the roots do not
+    reach cannot quietly pick it up either.
+    """
+    problems: list[str] = []
+    for target in sorted(graph):
+        if target == CONTROL_TARGET:
+            continue
+        for _name, cands, chain in link_closure(graph, target):
+            if CONTROL_TARGET in cands or CONTROL_PROBE in cands:
+                problems.append(
+                    f"{target} links the isolation control via "
+                    f"{' -> '.join(chain)} -- {CONTROL_TARGET} exists only to be "
+                    f"scanned and must never be linked into a real target")
+                break
     return problems
 
 
