@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Assert krn_engine has not acquired a data-layer dependency.  (ENC-1481)
 
-Design: specs/2026-10-14-gma-data-layer/SPEC.md D14;
+Design: specs/2026-10-14-krn-data-layer/SPEC.md D14;
         docs/data-layer.md §4 rule 6.
 
 THE INVARIANT, in the wording that actually matters:

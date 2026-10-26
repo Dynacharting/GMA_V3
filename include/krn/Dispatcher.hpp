@@ -139,7 +139,7 @@ public:
 
   // ENC-1486 — RECORD INGRESS. The same ingress, with the JSON DOM removed.
   //
-  // Design: specs/2026-10-14-gma-data-layer/SPEC.md D1, D3, D13;
+  // Design: specs/2026-10-14-krn-data-layer/SPEC.md D1, D3, D13;
   //         docs/data-layer.md §C2, §C6, §6.
   //
   // WHY A SECOND ENTRY POINT. `onTick`'s unit of work is a
@@ -217,7 +217,7 @@ private:
   // `onTick` and `onRecord` are adapters over this and add nothing of their
   // own, which is what makes "a graph cannot tell which entry point fed it" a
   // structural property instead of a hope (SPEC
-  // specs/2026-10-14-gma-data-layer/SPEC.md D1).
+  // specs/2026-10-14-krn-data-layer/SPEC.md D1).
   //
   // `eventType` selects the computer sets, exactly as `Event::type` did.
   void ingest(const std::string& symbol,
@@ -350,7 +350,7 @@ private:
   // a misconfigured `SymbolTable` in a harness would not merely spam a log: it
   // would DOMINATE the measurement, and ENC-1487 would report a plausible,
   // wrong, unattributable rows/sec for step 2 and compare it against B1. SPEC
-  // specs/2026-10-14-gma-data-layer/SPEC.md D13 makes that number the one the
+  // specs/2026-10-14-krn-data-layer/SPEC.md D13 makes that number the one the
   // whole project is sized by, so making B2 accidentally measure logging is
   // precisely the failure class this slice exists to avoid.
   //

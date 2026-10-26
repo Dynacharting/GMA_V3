@@ -1,6 +1,6 @@
 # SPEC: GMA windowing primitives — TumblingWindow + VectorReducer
 
-**Slug:** gma-window-nodes
+**Slug:** krn-window-nodes
 **Date:** 2026-05-12
 **Status:** Draft
 **Author:** ndrandal

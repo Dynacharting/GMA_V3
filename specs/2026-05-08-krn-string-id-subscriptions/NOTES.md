@@ -1,4 +1,4 @@
-# NOTES — gma-string-id-subscriptions discovery
+# NOTES — krn-string-id-subscriptions discovery
 
 ## Trigger
 

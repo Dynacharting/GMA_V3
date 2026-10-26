@@ -3,7 +3,7 @@
 // RecordFieldSource — the Arrow-free, DOM-free adapter from a
 // `krn::data::TickRecord` to the engine's field view (ENC-1486).
 //
-// Design: specs/2026-10-14-gma-data-layer/SPEC.md D1, D3, D9;
+// Design: specs/2026-10-14-krn-data-layer/SPEC.md D1, D3, D9;
 //         docs/data-layer.md §C2, §C6, §6, §8.3.
 //
 // THIS HEADER NAMES NO JSON TYPE, AND THAT IS CHECKED.

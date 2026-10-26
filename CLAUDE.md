@@ -204,7 +204,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full picture including 
   `ingest(symbol, eventType, const engine::FieldSource&)`. The raw-admission ledger, the
   history buffers, `computeAndStoreAtomics`, the `AtomicStore` keys, the computer sets and
   `deliver()`'s ordering are therefore **one** implementation reached two ways — SPEC
-  `specs/2026-10-14-gma-data-layer/SPEC.md` D1, and the reason **a graph cannot tell which
+  `specs/2026-10-14-krn-data-layer/SPEC.md` D1, and the reason **a graph cannot tell which
   entry point fed it** is structural rather than asserted. Three things follow and each has
   a sharp edge: **(1)** `IEventComputer::compute` takes a `const engine::FieldSource&`, not
   an `Event` — a record overload would be a second copy of every connector's field

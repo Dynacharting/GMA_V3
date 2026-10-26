@@ -1,4 +1,4 @@
-# Linear sync record — 2026-05-12-gma-window-nodes
+# Linear sync record — 2026-05-12-krn-window-nodes
 
 project_id: 1a76adb1-650d-4aa5-be45-3bc21871dda6
 project_url: https://linear.app/encultured/project/2026-05-12-gma-window-nodes-cdf5f86ba01b

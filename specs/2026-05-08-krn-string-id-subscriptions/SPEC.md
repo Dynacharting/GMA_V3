@@ -1,6 +1,6 @@
 # SPEC: gma_v3 — string IDs on the WS subscribe protocol
 
-**Slug:** gma-string-id-subscriptions
+**Slug:** krn-string-id-subscriptions
 **Date:** 2026-05-08
 **Status:** Draft
 **Author:** ndrandal

@@ -2,7 +2,7 @@
 //
 // Databento DBN -> canonical records (ENC-1482).
 //
-// Design: specs/2026-10-14-gma-data-layer/SPEC.md D1, D6, D7, D8, D12, Q14;
+// Design: specs/2026-10-14-krn-data-layer/SPEC.md D1, D6, D7, D8, D12, Q14;
 //         docs/data-layer.md §2.1, §5.3, §8.3, §8.4, §8.9, C13.
 //
 // WHAT THIS IS

@@ -2,7 +2,7 @@
 //
 // A minimal ClickHouse HTTP client for the ingest job (ENC-1483).
 //
-// Design: specs/2026-10-14-gma-data-layer/SPEC.md D2, D11, D14;
+// Design: specs/2026-10-14-krn-data-layer/SPEC.md D2, D11, D14;
 //         docs/data-layer.md §5.2, §8.8.
 //
 // WHY HTTP AND WHY HAND-ROLLED

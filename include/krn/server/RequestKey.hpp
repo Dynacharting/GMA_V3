@@ -15,7 +15,7 @@
 // AtomicStore, TreeBuilder, and Listener stay key-type-agnostic
 // (they route on (streamKey, field), not on the request id).
 //
-// See gma_v3/specs/2026-05-08-gma-string-id-subscriptions/SPEC.md
+// See gma_v3/specs/2026-05-08-krn-string-id-subscriptions/SPEC.md
 // and customer-layer/specs/2026-05-08-embassy-saved-scene-dispatch/
 // DECISIONS.md ADR-001 for the rationale.
 

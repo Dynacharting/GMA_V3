@@ -2,7 +2,7 @@
 //
 // Databento CSV -> the vendor's own PODs -> real DBN bytes (ENC-1483).
 //
-// Design: specs/2026-10-14-gma-data-layer/SPEC.md D1, D6, D7, D8;
+// Design: specs/2026-10-14-krn-data-layer/SPEC.md D1, D6, D7, D8;
 //         docs/data-layer.md §8.6, §8.7, §8.8.
 //
 // WHY THIS STOPS AT `dbn::MboMsg` / `dbn::TradeMsg` AND NOT AT A `BookRecord`

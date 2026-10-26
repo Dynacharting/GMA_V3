@@ -2,7 +2,7 @@
 //
 // Canonical engine-facing market-data records (ENC-1481).
 //
-// Design: specs/2026-10-14-gma-data-layer/SPEC.md D3, D8;
+// Design: specs/2026-10-14-krn-data-layer/SPEC.md D3, D8;
 //         docs/data-layer.md §5.3, §8.3.
 //
 // WHY THIS FILE IS UNDER include/ AND NOT UNDER data/

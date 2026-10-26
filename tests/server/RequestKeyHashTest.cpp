@@ -1,4 +1,4 @@
-// gma-string-id-subscriptions phase 2 task 2 (ENC-388):
+// krn-string-id-subscriptions phase 2 task 2 (ENC-388):
 // std::hash<RequestKey> specialization unit tests.
 //
 // The variant carries either int or std::string. A naive hash that just
