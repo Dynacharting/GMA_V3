@@ -107,13 +107,21 @@ it.  CMake emits one row per first-party target (`link.<target>` /
 pattern-matched.  The selftest pins both the umbrella case and, as a labelled
 contrast, the fact that a one-level read would have passed it.
 
-POSITIVE CONTROL.  When krn_data is in the build, the closure from krn_data
-MUST trip a forbidden pattern -- it links `krn::arrow` by construction.  If it
-does not, the patterns match nothing in this build and a clean verdict about
-krn_engine is a verdict about a search that cannot find anything.  (The
-workspace-root grep that reaches none of the seven repos is the same bug.)
-With KRN_BUILD_DATA=OFF there is no krn_data target and no control available;
-that is stated in the summary rather than passed over.
+POSITIVE CONTROL.  (ENC-1507, purity SPEC Q7.)  The root CMakeLists declares
+`krn_isolation_control`, an INTERFACE target linking an IMPORTED stub spelled
+CONTROL_PROBE below, which the existing `arrow` pattern matches.  It has a
+manifest row like any first-party target, and its closure MUST trip a
+forbidden pattern and reach the stub.  If it does not, the patterns match
+nothing in this build and a clean verdict about krn_engine is a verdict from a
+search that cannot find anything.  It is declared in this repo, not in data/,
+so it exists with KRN_BUILD_DATA=OFF and survives data/ leaving the repo.  It
+is scanned, never linked: any other target whose closure reaches it is a
+violation.  krn_data's closure is a second control when krn_data is built.
+
+EXIT CODES.  0 verified pass; 1 a violation was found; 2 could not run --
+including vacuous input and a missing or silent control.  "Could not check"
+and "checked and clean" are never the same exit code.  A violation outranks
+vacuity: a found violation is a finding whatever else is missing.
 
 `src/main.cpp` IS NOT ENGINE CODE and is checked by a weaker rule.  The root
 CMakeLists removes it from krn_engine's sources and compiles it into
@@ -169,6 +177,10 @@ FORBIDDEN_LINK_PATTERNS = (
     re.compile(r"clickhouse", re.IGNORECASE),
     re.compile(r"duckdb", re.IGNORECASE),
 )
+
+# The positive control (ENC-1507).  Must match root CMakeLists.txt.
+CONTROL_TARGET = "krn_isolation_control"
+CONTROL_PROBE = "arrow::arrow_control_probe"
 
 INCLUDE_RE = re.compile(r'^\s*#\s*include\s*[<"]([^>"]+)[>"]')
 
@@ -645,6 +657,137 @@ def forbidden_links(graph: dict[str, list[str]], root: str) -> list[str]:
     return problems
 
 
+def control_reachers(graph: dict[str, list[str]]) -> list[str]:
+    """Every graphed target other than the control that reaches the control.
+
+    The control is scanned, never linked.  Read off the real link graph, over
+    EVERY row rather than only the checked roots, so a target the roots do not
+    reach cannot quietly pick it up either.
+    """
+    problems: list[str] = []
+    for target in sorted(graph):
+        if target == CONTROL_TARGET:
+            continue
+        for _name, cands, chain in link_closure(graph, target):
+            if CONTROL_TARGET in cands or CONTROL_PROBE in cands:
+                problems.append(
+                    f"{target} links the isolation control via "
+                    f"{' -> '.join(chain)} -- {CONTROL_TARGET} exists only to be "
+                    f"scanned and must never be linked into a real target")
+                break
+    return problems
+
+
+def selftest_gate(failures: list[str]) -> int:
+    """The whole gate, exit code included, on a fixture manifest.  (ENC-1507)
+
+    The fixture clears every anti-vacuity floor, and the legal case is asserted
+    to exit 0 first, so each refusal below is caused by its own mutation and
+    not by the fixture being thin.  Each mutant also asserts it changed the
+    manifest before its verdict is judged.
+    """
+    import tempfile
+
+    ran: list[str] = []
+    with tempfile.TemporaryDirectory(prefix="enc1507-gate-") as fx:
+        os.makedirs(os.path.join(fx, "include", "krn"))
+        os.makedirs(os.path.join(fx, "src", "core"))
+        os.makedirs(os.path.join(fx, "data", "include"))
+        sources = []
+        for i in range(MIN_ENGINE_FILES + 5):
+            path = os.path.join(fx, "src", "core", f"E{i}.cpp")
+            open(path, "w").close()
+            sources.append(path)
+        open(os.path.join(fx, COMPOSITION_ROOT), "w").close()
+        inc = os.path.join(fx, "include")
+
+        base_graph = {
+            "krn_engine": ["Threads::Threads"],
+            "krn": ["krn_engine", "krn_connector_market"],
+            "krn_connector_market": ["krn_engine"],
+            "krn_server": ["krn", "Threads::Threads"],
+            "krn_tests": ["krn", "GTest::gtest_main"],
+            CONTROL_TARGET: [CONTROL_PROBE],
+        }
+
+        def manifest(graph: dict[str, list[str]], data: str) -> dict[str, str]:
+            m = {"root": fx, "engine_include_dirs": inc,
+                 "engine_interface_include_dirs": inc,
+                 "engine_cmake_sources": "|".join(sources),
+                 "krn_data_enabled": data,
+                 "rapidjson_include_dir": "/usr/include"}
+            for t, libs in graph.items():
+                m[f"link.{t}"] = "|".join(libs)
+            return m
+
+        def gate(name, graph, data, want, vacuity_mentions=None):
+            # Through the file, so read_manifest is exercised too.
+            path = os.path.join(fx, f"{len(os.listdir(fx))}.manifest")
+            with open(path, "w", encoding="utf-8") as fh:
+                for k, v in manifest(graph, data).items():
+                    fh.write(f"{k}={v}\n")
+            vac, probs, summary = evaluate(read_manifest(path))
+            got = exit_code(vac, probs)
+            ran.append(f"{name}={got}")
+            if got != want:
+                failures.append(
+                    f"SELFTEST: gate/{name} exited {got}, expected {want} "
+                    f"(vacuous={vac}, problems={probs})")
+            if vacuity_mentions and not any(vacuity_mentions in v for v in vac):
+                failures.append(
+                    f"SELFTEST: gate/{name} did not refuse for the control: "
+                    f"{vac}")
+            return summary
+
+        def mutant(name, edit):
+            g = {t: list(libs) for t, libs in base_graph.items()}
+            edit(g)
+            if g == base_graph:
+                failures.append(f"SELFTEST: gate/{name}: mutation did not apply")
+            return g
+
+        # The legal fixture passes, and its control fires FROM THE STUB with
+        # the data layer off -- the configuration that used to be vacuous.
+        summary = gate("legal-data-OFF", base_graph, "OFF", 0)
+        if not any(f"ok ({CONTROL_TARGET} -> {CONTROL_PROBE}" in ln
+                   for ln in summary):
+            failures.append("SELFTEST: gate/legal-data-OFF: positive control "
+                            "is not reported as ok from the stub")
+        expect = forbidden_links(base_graph, CONTROL_TARGET)
+        if not expect:
+            failures.append("SELFTEST: the control stub does not fire")
+
+        with_data = mutant("legal-data-ON", lambda g: g.update(
+            {"krn_data": ["krn_engine", "krn::arrow"]}))
+        gate("legal-data-ON", with_data, "ON", 0)
+
+        # The ticket's case: data layer off, no control -> must not exit 0.
+        no_ctl = mutant("data-OFF-no-control", lambda g: g.pop(CONTROL_TARGET))
+        gate("data-OFF-no-control", no_ctl, "OFF", 2, CONTROL_TARGET)
+        # krn_data alone is not a substitute: it leaves with data/.
+        data_no_ctl = dict(no_ctl, krn_data=["krn_engine", "krn::arrow"])
+        gate("data-ON-krn_data-only", data_no_ctl, "ON", 2, CONTROL_TARGET)
+        # A control row that matches nothing is no control.
+        silent = mutant("control-silent", lambda g: g.update(
+            {CONTROL_TARGET: ["Threads::Threads"]}))
+        gate("control-silent", silent, "OFF", 2, CONTROL_TARGET)
+
+        # Scanned, never linked: the stub or the control target in a real one.
+        gate("stub-in-krn_engine",
+             mutant("stub-in-krn_engine",
+                    lambda g: g["krn_engine"].append(CONTROL_PROBE)), "OFF", 1)
+        gate("control-in-krn_engine",
+             mutant("control-in-krn_engine",
+                    lambda g: g["krn_engine"].append(CONTROL_TARGET)), "OFF", 1)
+        # ...and in a target none of the checked roots reach, which only the
+        # control_reachers rule can see.
+        gate("control-in-unreached-target",
+             mutant("control-in-unreached-target",
+                    lambda g: g.update({"krn_other": [CONTROL_TARGET]})),
+             "OFF", 1)
+    return len(ran)
+
+
 def selftest() -> int:
     """Each predicate, shown failing on an input that violates it.
 
@@ -971,42 +1114,31 @@ def selftest() -> int:
             if cmake_true(falsy):
                 failures.append(f"SELFTEST: cmake_true({falsy!r}) is True")
 
+    gate_cases = selftest_gate(failures)
+
     if failures:
         for f in failures:
             print(f, file=sys.stderr)
         print(f"\nSELFTEST FAILED: {len(failures)} predicate(s) are not gating.",
               file=sys.stderr)
         return 1
-    print("selftest: all predicates detect their violation and pass legal input")
+    print("selftest: all predicates detect their violation and pass legal input "
+          f"({gate_cases} whole-gate exit-code cases)")
     return 0
 
 
-def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__,
-                                 formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--manifest",
-                    help="key=value file generated by CMake with krn_engine's "
-                         "resolved include dirs and sources, plus one "
-                         "link.<target> / interface_link.<target> row per "
-                         "first-party target (the link graph checks C and D "
-                         "walk)")
-    ap.add_argument("--selftest", action="store_true",
-                    help="verify each predicate flags a violating input")
-    args = ap.parse_args()
+def evaluate(manifest: dict[str, str]
+             ) -> tuple[list[str], list[str], list[str]]:
+    """(vacuous, problems, summary) for one manifest.  Pure: prints nothing.
 
-    if args.selftest:
-        return selftest()
-
-    if not args.manifest:
-        print("error: --manifest is required (or pass --selftest)", file=sys.stderr)
-        return 2
-
-    manifest = read_manifest(args.manifest)
+    Split out of main() so the selftest can drive the whole gate, verdict and
+    exit code included, against a fixture manifest (ENC-1507).
+    """
+    summary: list[str] = []
     root = manifest.get("root", "")
     if not root or not os.path.isdir(root):
-        print(f"error: manifest 'root' is missing or not a directory: {root!r}",
-              file=sys.stderr)
-        return 2
+        return ([f"manifest 'root' is missing or not a directory: {root!r}"],
+                [], summary)
 
     include_dirs = dedupe(
         split_list(manifest.get("engine_include_dirs", "")) +
@@ -1087,30 +1219,48 @@ def main() -> int:
             "krn_server -> krn -> krn_engine, so a closure that does not "
             "contain krn_engine never traversed an edge and check D is a "
             "one-level check wearing a closure's name")
-    # POSITIVE CONTROL: the patterns must be shown to match something in THIS
-    # build before a clean engine verdict means anything.
-    #
-    # Driven by the GRAPH, not by the krn_data_enabled string, and the two are
-    # cross-checked.  CMake writes whichever truthy spelling the user passed --
-    # `-DKRN_BUILD_DATA=1` yields "1" -- so a bare `== "ON"` would report the
-    # control as unavailable, in those words, in a build that does have
-    # krn_data.  A control that announces its own absence incorrectly is worse
-    # than no control.
+    # POSITIVE CONTROL (ENC-1507): the patterns must be shown to match
+    # something in THIS build before a clean engine verdict means anything.
+    # The primary control is krn_isolation_control, which exists in every
+    # configuration; its absence is "could not run", never a pass.
+    if CONTROL_TARGET not in graph:
+        vacuous.append(
+            f"the manifest has no link.{CONTROL_TARGET} row -- the positive "
+            f"control is missing, so nothing shows the forbidden patterns can "
+            f"match anything in this build and a clean verdict proves nothing "
+            f"(CMakeLists.txt must declare it in every configuration)")
+        control = f"MISSING ({CONTROL_TARGET} is not in the manifest)"
+    else:
+        ctl_hits = forbidden_links(graph, CONTROL_TARGET)
+        ctl_probe = any(CONTROL_PROBE in cands for _, cands, _ in
+                        link_closure(graph, CONTROL_TARGET))
+        if not ctl_hits or not ctl_probe:
+            vacuous.append(
+                f"{CONTROL_TARGET}'s closure "
+                f"{'trips no forbidden pattern' if not ctl_hits else 'does not reach ' + CONTROL_PROBE} "
+                f"-- the control is silent or mis-declared, so checks C and D "
+                f"are not shown to detect anything")
+            control = f"FAILED ({CONTROL_TARGET} does not fire)"
+        else:
+            control = (f"ok ({CONTROL_TARGET} -> {CONTROL_PROBE}: "
+                       f"{len(ctl_hits)} forbidden link(s) seen)")
+    # krn_data is a second control when it is in the build.  Driven by the
+    # GRAPH, not by the krn_data_enabled string, and the two are cross-checked:
+    # `-DKRN_BUILD_DATA=1` reaches the manifest as "1", not "ON".
     have_krn_data = "krn_data" in graph
     if have_krn_data:
         hits = forbidden_links(graph, "krn_data")
         if not hits:
             vacuous.append(
                 "krn_data's own link closure trips NO forbidden pattern, but it "
-                "links krn::arrow by construction -- the patterns match nothing "
-                "in this build, so checks C and D cannot detect a violation and "
-                "a pass proves nothing")
-            control = "FAILED (krn_data's closure trips no forbidden pattern)"
+                "links krn::arrow by construction -- the patterns do not match "
+                "what this build actually links")
+            control += "; krn_data: FAILED (its closure trips no pattern)"
         else:
-            control = f"ok ({len(hits)} forbidden link(s) seen from krn_data)"
+            control += f"; krn_data: ok ({len(hits)} forbidden link(s))"
     else:
-        control = (f"unavailable -- krn_data is not a target in this build "
-                   f"(krn_data_enabled={data_enabled!r})")
+        control += (f"; krn_data: not in this build "
+                    f"(krn_data_enabled={data_enabled!r})")
     if have_krn_data != cmake_true(data_enabled):
         vacuous.append(
             f"krn_data_enabled={data_enabled!r} but the manifest "
@@ -1133,31 +1283,60 @@ def main() -> int:
                 forbidden_links(graph, "krn_engine") +
                 forbidden_links(graph, "krn_server") +
                 (forbidden_links(graph, "krn_tests")
-                 if "krn_tests" in graph else []))
+                 if "krn_tests" in graph else []) +
+                control_reachers(graph))
 
-    print(f"krn_engine isolation (ENC-1481, SPEC D14)")
-    print(f"  root            : {root}")
-    print(f"  engine files    : {len(sources)} "
-          f"({len(cmake_sources)} from CMake, {len(walked)} walked)")
-    print(f"  include dirs    : {len(include_dirs)}")
+    summary.append("krn_engine isolation (ENC-1481, SPEC D14)")
+    summary.append(f"  root            : {root}")
+    summary.append(f"  engine files    : {len(sources)} "
+                   f"({len(cmake_sources)} from CMake, {len(walked)} walked)")
+    summary.append(f"  include dirs    : {len(include_dirs)}")
     # Printed unconditionally and on both verdicts: it is the field that
     # explains why two checkouts of one commit can disagree (ENC-1497).
-    print(f"  rapidjson       : {classify_include_dir(root, rapidjson_dir)}")
-    print(f"  link libraries  : {len(link_libs)} engine, {len(server_libs)} server "
-          f"(direct)")
-    print(f"  link closure    : {len(engine_closure)} from krn_engine, "
-          f"{len(server_closure)} from krn_server, "
-          f"{len(tests_closure)} from krn_tests, over "
-          f"{len(graph)} graphed target(s): {sorted(graph)}")
-    print(f"  positive control: {control}")
-    print(f"  foreign roots   : {[os.path.relpath(r, root) for r in foreign_roots]}")
-    print(f"  krn_data built  : {data_enabled}")
+    summary.append(f"  rapidjson       : {classify_include_dir(root, rapidjson_dir)}")
+    summary.append(f"  link libraries  : {len(link_libs)} engine, {len(server_libs)} server "
+                   f"(direct)")
+    summary.append(f"  link closure    : {len(engine_closure)} from krn_engine, "
+                   f"{len(server_closure)} from krn_server, "
+                   f"{len(tests_closure)} from krn_tests, over "
+                   f"{len(graph)} graphed target(s): {sorted(graph)}")
+    summary.append(f"  positive control: {control}")
+    reachers = control_reachers(graph)
+    summary.append(f"  control linked  : "
+                   f"{'by ' + str(len(reachers)) + ' target(s)' if reachers else 'by nothing'}"
+                   f" (closure of all {len(graph) - (CONTROL_TARGET in graph)} "
+                   f"other graphed target(s) read)")
+    summary.append(f"  foreign roots   : {[os.path.relpath(r, root) for r in foreign_roots]}")
+    summary.append(f"  krn_data built  : {data_enabled}")
+
+    return vacuous, problems, summary
+
+
+def exit_code(vacuous: list[str], problems: list[str]) -> int:
+    """1 on a violation, else 2 if the gate could not run, else 0."""
+    if problems:
+        return 1
+    if vacuous:
+        return 2
+    return 0
+
+
+def run_gate(manifest_path: str) -> int:
+    try:
+        manifest = read_manifest(manifest_path)
+    except OSError as exc:
+        print(f"error: cannot read manifest {manifest_path!r}: {exc}",
+              file=sys.stderr)
+        return 2
+    vacuous, problems, summary = evaluate(manifest)
+    for line in summary:
+        print(line)
 
     if vacuous:
-        print("\nVACUOUS INPUT -- refusing to report a pass:", file=sys.stderr)
+        print("\nCOULD NOT RUN -- vacuous input, refusing to report a pass "
+              "(exit 2 unless a violation is also found):", file=sys.stderr)
         for v in vacuous:
             print(f"  ! {v}", file=sys.stderr)
-        return 1
 
     if problems:
         print(f"\nFAILED: {len(problems)} isolation violation(s):", file=sys.stderr)
@@ -1167,15 +1346,38 @@ def main() -> int:
               "dependencies (SPEC D14, docs/data-layer.md §4 rule 6): the "
               "live-only variant of D14's client profile omits krn_data "
               "entirely and must still link.", file=sys.stderr)
-        return 1
 
-    print("\nOK: no Arrow/ClickHouse include in engine code or the composition "
-          "root, no data/ or connector header reached from the engine, engine "
-          "include path is include/ or a non-forbidden vendored tree, and no "
-          "data-layer library anywhere "
-          "in the TRANSITIVE link closure of krn_engine, krn_server or "
-          "krn_tests.")
-    return 0
+    code = exit_code(vacuous, problems)
+    if code == 0:
+        print("\nOK: no Arrow/ClickHouse include in engine code or the composition "
+              "root, no data/ or connector header reached from the engine, engine "
+              "include path is include/ or a non-forbidden vendored tree, and no "
+              "data-layer library anywhere "
+              "in the TRANSITIVE link closure of krn_engine, krn_server or "
+              "krn_tests.")
+    return code
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--manifest",
+                    help="key=value file generated by CMake with krn_engine's "
+                         "resolved include dirs and sources, plus one "
+                         "link.<target> / interface_link.<target> row per "
+                         "first-party target (the link graph checks C and D "
+                         "walk)")
+    ap.add_argument("--selftest", action="store_true",
+                    help="verify each predicate flags a violating input")
+    args = ap.parse_args()
+
+    if args.selftest:
+        return selftest()
+
+    if not args.manifest:
+        print("error: --manifest is required (or pass --selftest)", file=sys.stderr)
+        return 2
+    return run_gate(args.manifest)
 
 
 if __name__ == "__main__":
