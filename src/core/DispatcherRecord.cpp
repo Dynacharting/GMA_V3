@@ -1,6 +1,6 @@
 // Dispatcher::onRecord — the non-JSON ingress path (ENC-1486).
 //
-// Design: specs/2026-10-14-gma-data-layer/SPEC.md D1, D3, D9, D13;
+// Design: specs/2026-10-14-krn-data-layer/SPEC.md D1, D3, D9, D13;
 //         docs/data-layer.md §C2, §C6, §C7, §6.
 //
 // WHY THIS IS ITS OWN TRANSLATION UNIT, AND NOT THREE MORE FUNCTIONS IN
@@ -74,7 +74,7 @@ void Dispatcher::onRecord(const data::TickRecord& rec) {
     // false: this branch is reached per RECORD, `util::Logger` has no
     // throttling API at all (see Logger.hpp), and nothing anywhere rate-limits
     // it. `onRecord` is step 2 of ENC-1487's five-step B2 measurement, the
-    // number SPEC specs/2026-10-14-gma-data-layer/SPEC.md D13 sizes this whole
+    // number SPEC specs/2026-10-14-krn-data-layer/SPEC.md D13 sizes this whole
     // project by, and it carries MBO at tens of millions of records per
     // symbol-day. A per-record `Warn` — a `std::to_string` plus a
     // `vector<Field>` plus a locked formatted write, each time — would not

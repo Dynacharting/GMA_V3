@@ -1,4 +1,4 @@
-# Linear sync record — 2026-05-08-gma-string-id-subscriptions
+# Linear sync record — 2026-05-08-krn-string-id-subscriptions
 
 project_id: f7c0ac88-a734-4c06-840a-b2a366809c41
 project_url: https://linear.app/encultured/project/2026-05-08-gma-string-id-subscriptions-60a28cce56dd

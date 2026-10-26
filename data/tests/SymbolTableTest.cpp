@@ -1,6 +1,6 @@
 // SymbolTable — interning, id stability, and the reserved zero (ENC-1481).
 //
-// Design: specs/2026-10-14-gma-data-layer/SPEC.md D3.
+// Design: specs/2026-10-14-krn-data-layer/SPEC.md D3.
 //
 // ENC-1102 note: SymbolTable is an ORDINARY OBJECT, not one of the repo's
 // process-global registries (FunctionMap, NodeTypeRegistry, …), so these tests

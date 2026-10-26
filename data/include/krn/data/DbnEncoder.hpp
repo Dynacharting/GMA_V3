@@ -2,7 +2,7 @@
 //
 // A minimal DBN encoder — promoted out of DatabentoAdapterTest.cpp (ENC-1483).
 //
-// Design: specs/2026-10-14-gma-data-layer/SPEC.md D6, D11; docs/data-layer.md
+// Design: specs/2026-10-14-krn-data-layer/SPEC.md D6, D11; docs/data-layer.md
 //         §8.6, §8.7, §14.2.
 //
 // WHY THIS IS A LIBRARY COMPONENT AND NOT TEST-LOCAL ANY MORE

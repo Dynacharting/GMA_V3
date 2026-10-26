@@ -1,4 +1,4 @@
-// Manual cross-proposal smoke equivalent for gma-string-id-subscriptions
+// Manual cross-proposal smoke equivalent for krn-string-id-subscriptions
 // phase 2 task 3 (ENC-389). Sends a string-id-shaped subscribe payload
 // matching what embassy emits on the saved-scene path, asserts the
 // subscribed ack carries `requestId` and at least one value frame

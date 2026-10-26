@@ -2,7 +2,7 @@
 //
 // JsonFieldSource — the JSON DOM adapter for FieldSource (ENC-1486).
 //
-// Design: specs/2026-10-14-gma-data-layer/SPEC.md D1; docs/data-layer.md §C2.
+// Design: specs/2026-10-14-krn-data-layer/SPEC.md D1; docs/data-layer.md §C2.
 //
 // This is the LEGACY ingress shape and it is unchanged: the TCP feed server
 // and `market.wsclient` both hand `Dispatcher::onTick` a

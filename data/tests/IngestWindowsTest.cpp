@@ -1,7 +1,7 @@
 //
 // The `gma.ingest_windows` read rule (ENC-1483).
 //
-// Design: specs/2026-10-14-gma-data-layer/SPEC.md D11; docs/data-layer.md §8.8;
+// Design: specs/2026-10-14-krn-data-layer/SPEC.md D11; docs/data-layer.md §8.8;
 //         the ⚠ READ RULE block in data/schema/clickhouse.sql.
 //
 // WHY THESE TESTS ARE PURE AND NOT AGAINST THE SERVER. The rule is the thing

@@ -1,7 +1,7 @@
 # `krn_data` — the L1 data and query layer
 
 The library designed in [`../docs/data-layer.md`](../docs/data-layer.md) (ENC-1478) and
-locked in [`../specs/2026-10-14-gma-data-layer/SPEC.md`](../specs/2026-10-14-gma-data-layer/SPEC.md).
+locked in [`../specs/2026-10-14-krn-data-layer/SPEC.md`](../specs/2026-10-14-krn-data-layer/SPEC.md).
 
 **As of ENC-1481 the schema half is real and in the build.** `add_library(krn_data …)`
 lives in [`CMakeLists.txt`](CMakeLists.txt), Arrow is found-or-fetched by

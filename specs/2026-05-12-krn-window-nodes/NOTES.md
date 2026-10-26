@@ -1,4 +1,4 @@
-# Discovery notes — gma-window-nodes
+# Discovery notes — krn-window-nodes
 
 Seeded from Linear ticket ENC-297 (GMA: Window node — buffer ticks within a period, emit reduced batch on boundary). The ticket already framed the problem clearly and offered two design shapes (A: single Window node; B: TumblingWindow + Worker). Discovery focused on three open dimensions.
 

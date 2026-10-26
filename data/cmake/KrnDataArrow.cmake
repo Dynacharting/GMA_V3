@@ -1,7 +1,7 @@
 # ===========================================================================
 # Arrow for krn_data (ENC-1481)
 #
-# Design: specs/2026-10-14-gma-data-layer/SPEC.md D14; docs/data-layer.md §15.
+# Design: specs/2026-10-14-krn-data-layer/SPEC.md D14; docs/data-layer.md §15.
 #
 # Produces ONE target, `krn::arrow`, and nothing else. Everything downstream
 # links that, so whether Arrow came from the system or from source is invisible

@@ -1,7 +1,7 @@
 //
 // Databento CSV -> vendor PODs -> DBN (ENC-1483).
 //
-// Design: specs/2026-10-14-gma-data-layer/SPEC.md D1, D6, D8;
+// Design: specs/2026-10-14-krn-data-layer/SPEC.md D1, D6, D8;
 //         docs/data-layer.md §8.7, §8.8.
 //
 // NO ROW OF THE REAL SAMPLE APPEARS HERE. The sample is licensed vendor data
