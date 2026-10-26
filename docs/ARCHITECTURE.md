@@ -1,10 +1,10 @@
-# GMA_V3 Architecture
+# KRN Architecture
 
-This document is the authoritative reference for how GMA_V3 is put together. `CLAUDE.md` is the scannable orientation; this is the deeper picture.
+This document is the authoritative reference for how KRN is put together. `CLAUDE.md` is the scannable orientation; this is the deeper picture.
 
 ## 1. Design intent
 
-GMA_V3 is a **streaming-computation server**: JSON request trees come in over WebSocket, events come in from data feeds, and the node pipeline runs user-specified math on the stream and pushes results back out. The codebase is split into two layers:
+KRN is a **streaming-computation server**: JSON request trees come in over WebSocket, events come in from data feeds, and the node pipeline runs user-specified math on the stream and pushes results back out. The codebase is split into two layers:
 
 - **Engine** (`libkrn_engine`): everything that has no idea what it's processing — node pipeline, event routing, JSON tree builder, WebSocket transport, thread pool, atomic store.
 - **Connectors** (`libkrn_connector_market`, `libkrn_connector_synthetic`, …): everything domain-specific — feed protocols, per-event computations (e.g. TA), order books, custom atomic provider namespaces, specialized node types.

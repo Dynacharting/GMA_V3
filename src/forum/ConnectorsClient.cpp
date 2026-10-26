@@ -78,7 +78,7 @@ buildRequest(const ParsedURL& url,
 
   http::request<http::empty_body> req{http::verb::get, apiTarget, 11};
   req.set(http::field::host, url.host + (url.port == "80" || url.port == "443" ? "" : ":" + url.port));
-  req.set(http::field::user_agent, std::string("gma_v3/") + BOOST_BEAST_VERSION_STRING);
+  req.set(http::field::user_agent, std::string("krn/") + BOOST_BEAST_VERSION_STRING);
   req.set(http::field::accept, "application/json");
   if (!tenantId.empty()) {
     req.set("X-Tenant-Id", tenantId);
