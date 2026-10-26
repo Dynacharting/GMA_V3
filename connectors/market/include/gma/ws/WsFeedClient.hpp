@@ -9,7 +9,7 @@
 #include <boost/beast/core.hpp>
 #include <boost/beast/websocket.hpp>
 
-#ifdef GMA_HAS_SSL
+#ifdef KRN_HAS_SSL
 #include <boost/asio/ssl.hpp>
 #include <boost/beast/ssl.hpp>
 #include <boost/beast/websocket/ssl.hpp>
@@ -30,7 +30,7 @@ namespace ws {
 /// pluggable IFeedAdapter, and routes the resulting FeedEvents to
 /// Dispatcher + OrderBookManager.
 ///
-/// Supports ws:// (plain) and wss:// (TLS, requires GMA_HAS_SSL).
+/// Supports ws:// (plain) and wss:// (TLS, requires KRN_HAS_SSL).
 /// Auto-reconnects with exponential backoff on disconnection.
 class WsFeedClient : public std::enable_shared_from_this<WsFeedClient> {
 public:
@@ -88,7 +88,7 @@ private:
   using PlainWs = boost::beast::websocket::stream<boost::beast::tcp_stream>;
   std::unique_ptr<PlainWs> ws_;
 
-#ifdef GMA_HAS_SSL
+#ifdef KRN_HAS_SSL
   // TLS WS stream
   boost::asio::ssl::context sslCtx_;
   using SslWs = boost::beast::websocket::stream<

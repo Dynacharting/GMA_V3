@@ -45,15 +45,15 @@
 #include <string>
 #include <vector>
 
-#ifndef GMA_DATA_DBN_FIXTURE_DIR
-#error "GMA_DATA_DBN_FIXTURE_DIR must be defined by the build (data/CMakeLists.txt)"
+#ifndef KRN_DATA_DBN_FIXTURE_DIR
+#error "KRN_DATA_DBN_FIXTURE_DIR must be defined by the build (data/CMakeLists.txt)"
 #endif
 
 namespace krn::data {
 namespace {
 
 // ===========================================================================
-// The DBN encoder — PROMOTED to gma_data under ENC-1483.
+// The DBN encoder — PROMOTED to krn_data under ENC-1483.
 //
 // It used to live right here, in this translation unit. ENC-1483's ingest job
 // feeds the adapter DBN re-encoded from a real Databento CSV sample, and must
@@ -72,7 +72,7 @@ namespace {
 //
 // The only behavioural difference in the moved code: `build()`'s check that
 // its own fixed metadata block is 100 bytes was a gtest `EXPECT_EQ` and is now
-// a thrown `std::logic_error` plus an out-param, because gma_data cannot link
+// a thrown `std::logic_error` plus an out-param, because krn_data cannot link
 // gtest. `DbnEncoderTest.BuildWritesTheHundredByteFixedBlockInEveryVersion`
 // below is where that out-param is asserted, so the check is still seen.
 // ===========================================================================
@@ -95,7 +95,7 @@ using dbn::enc::putZeros;
 // ===========================================================================
 
 std::vector<std::byte> readFixture(const std::string& name) {
-  const std::string path = std::string{GMA_DATA_DBN_FIXTURE_DIR} + "/" + name;
+  const std::string path = std::string{KRN_DATA_DBN_FIXTURE_DIR} + "/" + name;
   std::ifstream in(path, std::ios::binary);
   // A MISSING fixture FAILS. It never skips: a skipped fixture test looks
   // exactly like a passing one, and the whole value of this suite is that the
@@ -266,7 +266,7 @@ TEST(DbnEncoderTest, EncoderReproducesEveryFixtureByteForByte) {
 // that does not add up to 100 shifts every subsequent byte of the file — the
 // same failure mode as reading records at a 7-byte offset.
 //
-// Inside the encoder this is a thrown `std::logic_error`, because gma_data
+// Inside the encoder this is a thrown `std::logic_error`, because krn_data
 // cannot link gtest. THIS is where the check is observed: `build()`'s
 // out-param reports what it actually wrote, and the assertion is made here.
 // Without this test the promotion would have moved a gtest assertion into a

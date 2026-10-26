@@ -10,7 +10,7 @@
 #include "gma/util/Metrics.hpp"
 
 // Legacy macro spellings kept as thin aliases over the unified API so any
-// straggler using them keeps compiling. The live spellings are GMA_METRIC_*
+// straggler using them keeps compiling. The live spellings are KRN_METRIC_*
 // (defined in gma/util/Metrics.hpp); these METRIC_* names are currently unused
 // in-tree but are retained to avoid breaking out-of-tree callers.
 #ifndef METRIC_INC

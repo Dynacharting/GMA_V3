@@ -170,7 +170,7 @@ extern const char* const kGapsNote;
 // Reproduced against the binary: `--dbn-version 7` replaced
 // `xnas-itch-20220610.trades.dbn` with a file the adapter refuses (an unknown
 // DBN version is refused, never guessed — correctly) and only THEN failed,
-// after which `gma_ingest reload`, whose entire premise is "a reload must
+// after which `krn_ingest reload`, whose entire premise is "a reload must
 // reload FROM something", failed permanently on that file. The surviving files
 // were intact only because a later clean run regenerated them: luck about
 // timing, not a property of the design.

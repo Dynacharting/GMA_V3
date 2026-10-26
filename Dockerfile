@@ -39,7 +39,7 @@ WORKDIR /src
 COPY . .
 
 # Out-of-source build in a clean directory. Release uses a portable
-# microarchitecture baseline by default (see GMA_NATIVE_ARCH / GMA_ARCH_BASELINE
+# microarchitecture baseline by default (see KRN_NATIVE_ARCH / KRN_ARCH_BASELINE
 # in CMakeLists.txt) so the shipped binary runs on any modern x86_64 host.
 RUN cmake -S . -B /build -DCMAKE_BUILD_TYPE=Release \
  && cmake --build /build --target gma_server -j

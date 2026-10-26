@@ -94,7 +94,7 @@ std::size_t WebSocketServer::registerSession(const std::shared_ptr<ClientSession
     sessions_.emplace(id, sp);
     count = sessions_.size();
   }
-  GMA_METRIC_SET("ws.active_connections", static_cast<double>(count));
+  KRN_METRIC_SET("ws.active_connections", static_cast<double>(count));
   return id;
 }
 
@@ -105,7 +105,7 @@ void WebSocketServer::unregisterSession(std::size_t id) {
     sessions_.erase(id);
     count = sessions_.size();
   }
-  GMA_METRIC_SET("ws.active_connections", static_cast<double>(count));
+  KRN_METRIC_SET("ws.active_connections", static_cast<double>(count));
 }
 
 void WebSocketServer::doAccept() {
@@ -126,7 +126,7 @@ void WebSocketServer::onAccept(boost::system::error_code ec, tcp::socket socket)
     {
       std::lock_guard<std::mutex> lk(sessions_mu_);
       if (sessions_.size() >= MAX_WS_SESSIONS) {
-        GMA_METRIC_HIT("ws.conn_rejected");
+        KRN_METRIC_HIT("ws.conn_rejected");
         // Let socket close on scope exit — don't create a session.
         doAccept();
         return;

@@ -10,7 +10,7 @@
 // every CSV below is INVENTED. That costs nothing, because what these cases
 // test is the parser's refusals and the shape of the window arithmetic — not
 // the contents of a particular file. The real file is driven by
-// `gma_ingest ingest`, whose exit code is the verdict.
+// `krn_ingest ingest`, whose exit code is the verdict.
 //
 // THE REAL SAMPLE'S OWN NUMBERS LIVE IN THE TICKET AND IN THE COMMIT MESSAGE,
 // not in an assertion here, for the same reason: a test asserting "1000
@@ -738,7 +738,7 @@ TEST(DatabentoCsvRetention, AnExistingBaselineSurvivesUndecodableReplacement) {
   EXPECT_TRUE(isFinding(refused.status()));
 
   // THE ASSERTION THAT MATTERS: the D6 baseline is byte-for-byte intact. Before
-  // the fix this file held the undecodable bytes and `gma_ingest reload` — whose
+  // the fix this file held the undecodable bytes and `krn_ingest reload` — whose
   // entire premise is "a reload must reload FROM something" — failed on it
   // permanently.
   const auto after = readFile(path);

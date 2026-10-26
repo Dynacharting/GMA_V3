@@ -4,14 +4,14 @@
 //
 // Design: specs/2026-10-14-gma-data-layer/SPEC.md D3; docs/data-layer.md §5.3.
 //
-// WHY THIS IS IN gma_engine AND NOT IN gma_data
+// WHY THIS IS IN krn_engine AND NOT IN krn_data
 // ---------------------------------------------
-// Interning happens in `gma_data`'s decode — once per distinct symbol per
+// Interning happens in `krn_data`'s decode — once per distinct symbol per
 // batch. But *resolution*, id -> text, happens at an output boundary, and
 // every output boundary is engine code: `StreamValue` carries
 // `std::string symbol`, so the moment ENC-1486's `Dispatcher::onRecord` turns a
 // `TickRecord` into a `StreamValue` it needs the ticker back. The engine cannot
-// depend on `gma_data` (SPEC D14), so a table living there would force a second
+// depend on `krn_data` (SPEC D14), so a table living there would force a second
 // implementation of interning on the engine side — the same class of mistake
 // D1 refuses for operator math. One table, one definition, in the library both
 // halves may legally name.

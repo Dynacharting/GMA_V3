@@ -31,7 +31,7 @@ WsFeedClient::WsFeedClient(net::io_context& ioc,
   , strand_(net::make_strand(ioc))
   , resolver_(strand_)
   , reconnectTimer_(strand_)
-#ifdef GMA_HAS_SSL
+#ifdef KRN_HAS_SSL
   , sslCtx_(boost::asio::ssl::context::tlsv12_client)
 #endif
   , dispatcher_(dispatcher)
@@ -41,7 +41,7 @@ WsFeedClient::WsFeedClient(net::io_context& ioc,
 {
   url_ = parseUrl(url);
 
-#ifdef GMA_HAS_SSL
+#ifdef KRN_HAS_SSL
   // Use the system's default certificate store for TLS verification.
   sslCtx_.set_default_verify_paths();
   sslCtx_.set_verify_mode(boost::asio::ssl::verify_peer);
@@ -107,7 +107,7 @@ void WsFeedClient::stop() {
     if (self->ws_ && self->ws_->is_open()) {
       self->ws_->close(websocket::close_code::normal, ec);
     }
-#ifdef GMA_HAS_SSL
+#ifdef KRN_HAS_SSL
     if (self->wss_ && self->wss_->is_open()) {
       self->wss_->close(websocket::close_code::normal, ec);
     }
@@ -117,7 +117,7 @@ void WsFeedClient::stop() {
 
 void WsFeedClient::resetStreams() {
   ws_.reset();
-#ifdef GMA_HAS_SSL
+#ifdef KRN_HAS_SSL
   wss_.reset();
 #endif
   buffer_.clear();
@@ -141,7 +141,7 @@ void WsFeedClient::onResolve(beast::error_code ec, tcp::resolver::results_type r
 
   // Create the appropriate stream
   if (url_.tls) {
-#ifdef GMA_HAS_SSL
+#ifdef KRN_HAS_SSL
     wss_ = std::make_unique<SslWs>(strand_, sslCtx_);
     // SNI hostname
     if (!SSL_set_tlsext_host_name(wss_->next_layer().native_handle(), url_.host.c_str())) {
@@ -153,7 +153,7 @@ void WsFeedClient::onResolve(beast::error_code ec, tcp::resolver::results_type r
       beast::bind_front_handler(&WsFeedClient::onTcpConnect, shared_from_this()));
 #else
     krn::util::logger().log(krn::util::LogLevel::Error,
-      "WsFeedClient: wss:// requires GMA_HAS_SSL (install libssl-dev and rebuild)");
+      "WsFeedClient: wss:// requires KRN_HAS_SSL (install libssl-dev and rebuild)");
     return;
 #endif
   } else {
@@ -170,7 +170,7 @@ void WsFeedClient::onTcpConnect(beast::error_code ec,
   if (stopping_.load()) return;
 
   if (url_.tls) {
-#ifdef GMA_HAS_SSL
+#ifdef KRN_HAS_SSL
     beast::get_lowest_layer(*wss_).expires_after(std::chrono::seconds(30));
     wss_->next_layer().async_handshake(boost::asio::ssl::stream_base::client,
       beast::bind_front_handler(&WsFeedClient::onSslHandshake, shared_from_this()));
@@ -189,7 +189,7 @@ void WsFeedClient::onSslHandshake(beast::error_code ec) {
   auto hostHeader = url_.host + ":" + url_.port;
 
   if (url_.tls) {
-#ifdef GMA_HAS_SSL
+#ifdef KRN_HAS_SSL
     beast::get_lowest_layer(*wss_).expires_never();
     wss_->set_option(websocket::stream_base::decorator(
       [](websocket::request_type& req) {
@@ -218,7 +218,7 @@ void WsFeedClient::onWsHandshake(beast::error_code ec) {
   krn::util::logger().log(krn::util::LogLevel::Info,
     "WsFeedClient.connected",
     {{"host", url_.host}, {"target", url_.target}});
-  GMA_METRIC_HIT("feed_ws.connected");
+  KRN_METRIC_HIT("feed_ws.connected");
 
   // Send subscribe message — adapter controls the wire format
   auto msg = std::make_shared<std::string>(
@@ -230,7 +230,7 @@ void WsFeedClient::onWsHandshake(beast::error_code ec) {
   };
 
   if (url_.tls) {
-#ifdef GMA_HAS_SSL
+#ifdef KRN_HAS_SSL
     wss_->text(true);
     wss_->async_write(net::buffer(*msg), std::move(writeCb));
 #endif
@@ -249,7 +249,7 @@ void WsFeedClient::doRead() {
   auto readCb = beast::bind_front_handler(&WsFeedClient::onRead, shared_from_this());
 
   if (url_.tls) {
-#ifdef GMA_HAS_SSL
+#ifdef KRN_HAS_SSL
     wss_->async_read(buffer_, std::move(readCb));
 #endif
   } else {
@@ -272,7 +272,7 @@ void WsFeedClient::onRead(beast::error_code ec, std::size_t) {
   auto text = beast::buffers_to_string(buffer_.cdata());
   buffer_.consume(buffer_.size());
 
-  GMA_METRIC_HIT("feed_ws.msg_in");
+  KRN_METRIC_HIT("feed_ws.msg_in");
 
   try {
     handleMessage(text);
@@ -311,7 +311,7 @@ void WsFeedClient::fail(beast::error_code ec, const char* where) {
   krn::util::logger().log(krn::util::LogLevel::Error,
     "WsFeedClient failure",
     {{"where", where}, {"err", ec.message()}});
-  GMA_METRIC_HIT("feed_ws.error");
+  KRN_METRIC_HIT("feed_ws.error");
 }
 
 // ---------------------------------------------------------------------------

@@ -13,7 +13,7 @@
 //     shape. No row objects, no JSON DOM, no per-field conversion.
 //
 //   * TickRecord / BookRecord / SnapshotRecord — plain PODs, the engine-facing
-//     form, defined in `include/gma/data/Record.hpp` (gma_engine). The decode
+//     form, defined in `include/gma/data/Record.hpp` (krn_engine). The decode
 //     below turns a batch into these COLUMN-WISE, once per batch. That decode
 //     is the single Arrow->scalar boundary in the system
 //     (docs/data-layer.md C2). It exists because gma's DAG is a scalar push
@@ -21,13 +21,13 @@
 //     StreamValue — and making it columnar is a rewrite of ~25 node types that
 //     this design explicitly does not take on.
 //
-// THIS HEADER IS WHERE ARROW STOPS. It is reachable only from `gma_data`;
-// `gma_engine` neither includes it nor links the library (SPEC D14 — the
-// live-only variant of the client profile omits `gma_data` entirely and must
+// THIS HEADER IS WHERE ARROW STOPS. It is reachable only from `krn_data`;
+// `krn_engine` neither includes it nor links the library (SPEC D14 — the
+// live-only variant of the client profile omits `krn_data` entirely and must
 // still link; D14's other client variant reads a central L1 over the wire and
 // does need this header). The invariant is asserted at build time by
 // `tools/check_engine_isolation.py`, run as the ctest case
-// `gma_engine_isolation`.
+// `krn_engine_isolation`.
 //
 // WHAT IS NOT HERE: the shim's planner, the SQL lint, transport, the DBN
 // adapter and `Dispatcher::onRecord`. Those are ENC-1482 / ENC-1485 /

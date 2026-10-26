@@ -42,8 +42,8 @@ Key properties:
   fine-grained pipelining and reuse.
 - **Composable request trees** — clients compose nested pipelines of nodes
   (Listener → Worker/Aggregate/AtomicAccessor → Responder).
-- **Engine / connector split** — `libgma_engine` is source-agnostic;
-  `libgma_connector_market` adds OB + TA + feed adapters. CMake include-scoping
+- **Engine / connector split** — `libkrn_engine` is source-agnostic;
+  `libkrn_connector_market` adds OB + TA + feed adapters. CMake include-scoping
   enforces that the engine never depends on connector headers.
 - **WebSocket interface** — clients connect, subscribe, and receive continuous
   value updates.
@@ -55,7 +55,7 @@ Key properties:
 ```
 ├── CMakeLists.txt              # Root build (engine + connectors + server + tests)
 ├── LICENSE                     # Proprietary, all-rights-reserved licence
-├── include/gma/                # Engine public headers (libgma_engine)
+├── include/gma/                # Engine public headers (libkrn_engine)
 │   ├── engine/                 # IConnector, EngineRegistries, registries
 │   ├── nodes/                  # INode, Listener, Worker, Aggregate, Interval, ...
 │   ├── server/                 # WebSocketServer, ClientSession, RequestKey
@@ -71,11 +71,11 @@ Key properties:
 │   ├── util/gma.conf           # Example INI runtime config
 │   └── main.cpp                # Composition root — boots engine, registers connectors
 ├── connectors/
-│   ├── market/                 # libgma_connector_market (OB, TA, ITCH, FeedServer, WsFeedClient)
+│   ├── market/                 # libkrn_connector_market (OB, TA, ITCH, FeedServer, WsFeedClient)
 │   │   ├── include/gma/        # market/, book/, ob/, ta/, feed/, ws/, server/
 │   │   └── src/
 │   └── synthetic/              # demo connector (linked into tests only)
-├── tests/                      # GoogleTest suites (one gma_tests binary)
+├── tests/                      # GoogleTest suites (one krn_tests binary)
 └── docs/                       # ARCHITECTURE.md, atomic-keys.md, feed-adapters.md, ...
 ```
 
@@ -87,7 +87,7 @@ Key properties:
 - **C++20 compiler** (GCC 12+, Clang 14+ — clang++ is preferred by `tools/compile.sh`)
 - **Boost.Asio / Beast** — networking + WebSocket
 - **RapidJSON** — JSON parsing
-- **GoogleTest** (only when `GMA_BUILD_TESTS=ON`)
+- **GoogleTest** (only when `KRN_BUILD_TESTS=ON`)
 - **Python 3** (utility scripts)
 
 Third-party deps are vendored under `third_party/` (override with
@@ -103,15 +103,15 @@ cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j$(nproc)
 
 # Debug + tests
-cmake -B build -DCMAKE_BUILD_TYPE=Debug -DGMA_BUILD_TESTS=ON
+cmake -B build -DCMAKE_BUILD_TYPE=Debug -DKRN_BUILD_TESTS=ON
 cmake --build build -j$(nproc)
 
 # Or use the helper (prefers clang++)
 ./tools/compile.sh
 ```
 
-CMake targets: `libgma_engine.a`, `libgma_connector_market.a`,
-`libgma_connector_synthetic.a`, the **`gma_server`** binary, and `gma_tests`.
+CMake targets: `libkrn_engine.a`, `libkrn_connector_market.a`,
+`libkrn_connector_synthetic.a`, the **`gma_server`** binary, and `krn_tests`.
 
 ---
 
@@ -209,14 +209,14 @@ feed adapter — see **[docs/feed-adapters.md](./docs/feed-adapters.md)** and
 ## Testing
 
 ```bash
-cmake -B build -DGMA_BUILD_TESTS=ON && cmake --build build -j$(nproc)
+cmake -B build -DKRN_BUILD_TESTS=ON && cmake --build build -j$(nproc)
 cd build && ctest --output-on-failure
 
 # A single suite
-./gma_tests --gtest_filter="ItchAdapterTest.*"
+./krn_tests --gtest_filter="ItchAdapterTest.*"
 ```
 
-All tests build into one `gma_tests` executable.
+All tests build into one `krn_tests` executable.
 
 ---
 

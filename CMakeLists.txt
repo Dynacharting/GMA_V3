@@ -2,31 +2,31 @@ cmake_minimum_required(VERSION 3.20)
 project(GMA_V3 LANGUAGES CXX)
 
 # ---- Options ----
-option(GMA_BUILD_TESTS "Build unit tests in tests/" OFF)
-option(GMA_BUILD_BENCHMARKS "Build Google Benchmark suite in benchmarks/" OFF)
-option(GMA_WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
+option(KRN_BUILD_TESTS "Build unit tests in tests/" OFF)
+option(KRN_BUILD_BENCHMARKS "Build Google Benchmark suite in benchmarks/" OFF)
+option(KRN_WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
 
 # Data layer (ENC-1481, specs/2026-10-14-gma-data-layer/SPEC.md).
 #
-# THE DEFAULT FOLLOWS GMA_BUILD_TESTS, and an explicit -DGMA_BUILD_DATA always
+# THE DEFAULT FOLLOWS KRN_BUILD_TESTS, and an explicit -DKRN_BUILD_DATA always
 # wins. Three constraints had to hold at once and no fixed default holds all
 # three:
 #
 #   * Nothing may be silently skipped in a configuration that runs tests. A
 #     skipped target reads exactly like a passing one and this repo has paid for
 #     that twice (ENC-994 / ENC-1095). The acceptance command and every gate
-#     configuration pass -DGMA_BUILD_TESTS=ON, so gma_data, gma_data_tests and
+#     configuration pass -DKRN_BUILD_TESTS=ON, so krn_data, krn_data_tests and
 #     both engine-isolation cases are built and run there.
 #   * The documented quickstart — `cmake -B build -DCMAKE_BUILD_TYPE=Release`,
 #     tests off — must still work offline. A fixed ON made it fetch a 17 MB
 #     Arrow release unconditionally and HARD-FAIL at the download behind a
 #     firewall, where before this library existed it fetched nothing at all
-#     (googletest sits behind GMA_BUILD_TESTS=OFF too).
-#   * GMA_BUILD_DATA=OFF is SPEC D14's live-only CLIENT VARIANT: no local store,
+#     (googletest sits behind KRN_BUILD_TESTS=OFF too).
+#   * KRN_BUILD_DATA=OFF is SPEC D14's live-only CLIENT VARIANT: no local store,
 #     no Arrow. `gma_server` must build, link and run identically with it off,
 #     which is the whole reason the library is separately linkable. (D14's other
 #     client variant reads a central L1 over the wire — that one needs Arrow IPC,
-#     i.e. it needs this library. The invariant is about gma_engine, not about
+#     i.e. it needs this library. The invariant is about krn_engine, not about
 #     the product: see the engine isolation gate at the bottom of this file.)
 #
 # The cost of ON, measured on this toolchain 2026-10-14 and recorded in
@@ -35,74 +35,74 @@ option(GMA_WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
 # A warm build dir pays none of it.
 # Resolve, then report the value AGAINST the default rather than claiming to
 # know the provenance. `option()` writes the cache on the first configure, so
-# `if (DEFINED GMA_BUILD_DATA)` is true on every configure after that and
+# `if (DEFINED KRN_BUILD_DATA)` is true on every configure after that and
 # cannot tell "the user passed -D today" from "we defaulted it last week" —
 # a status line that said "explicit or cached" was wrong in the common case,
 # and the "why" is the only reason the line exists. Comparing the resolved
-# value with the default this GMA_BUILD_TESTS would produce is always true and
+# value with the default this KRN_BUILD_TESTS would produce is always true and
 # never goes stale.
-set(_gma_data_default ${GMA_BUILD_TESTS})
-option(GMA_BUILD_DATA
-  "Build gma_data: the L1 Arrow schema and codec. Defaults to GMA_BUILD_TESTS. OFF selects SPEC D14's live-only client variant (no Arrow fetched or built)."
-  ${_gma_data_default})
+set(_krn_data_default ${KRN_BUILD_TESTS})
+option(KRN_BUILD_DATA
+  "Build krn_data: the L1 Arrow schema and codec. Defaults to KRN_BUILD_TESTS. OFF selects SPEC D14's live-only client variant (no Arrow fetched or built)."
+  ${_krn_data_default})
 
-if (GMA_BUILD_DATA AND _gma_data_default)
-  set(_gma_data_why "matches the default for GMA_BUILD_TESTS=${GMA_BUILD_TESTS}")
-elseif (NOT GMA_BUILD_DATA AND NOT _gma_data_default)
-  set(_gma_data_why "matches the default for GMA_BUILD_TESTS=${GMA_BUILD_TESTS}")
+if (KRN_BUILD_DATA AND _krn_data_default)
+  set(_krn_data_why "matches the default for KRN_BUILD_TESTS=${KRN_BUILD_TESTS}")
+elseif (NOT KRN_BUILD_DATA AND NOT _krn_data_default)
+  set(_krn_data_why "matches the default for KRN_BUILD_TESTS=${KRN_BUILD_TESTS}")
 else()
-  set(_gma_data_why
-    "OVERRIDDEN — the default for GMA_BUILD_TESTS=${GMA_BUILD_TESTS} is ${_gma_data_default}, and this build dir's cache says otherwise")
+  set(_krn_data_why
+    "OVERRIDDEN — the default for KRN_BUILD_TESTS=${KRN_BUILD_TESTS} is ${_krn_data_default}, and this build dir's cache says otherwise")
 endif()
 
-if (GMA_BUILD_DATA)
+if (KRN_BUILD_DATA)
   message(STATUS
-    "GMA_BUILD_DATA=ON [${_gma_data_why}] — gma_data is built; Arrow is "
+    "KRN_BUILD_DATA=ON [${_krn_data_why}] — krn_data is built; Arrow is "
     "found via find_package(Arrow CONFIG) or fetched and built from source.")
 else()
   message(STATUS
-    "GMA_BUILD_DATA=OFF [${_gma_data_why}] — SPEC D14's live-only client "
-    "variant: NO Arrow is fetched or built, and gma_data / gma_data_tests do not "
-    "exist in this build. Pass -DGMA_BUILD_DATA=ON to build them regardless.")
+    "KRN_BUILD_DATA=OFF [${_krn_data_why}] — SPEC D14's live-only client "
+    "variant: NO Arrow is fetched or built, and krn_data / krn_data_tests do not "
+    "exist in this build. Pass -DKRN_BUILD_DATA=ON to build them regardless.")
 endif()
 
 # A SKIP IN A CONFIGURATION THAT RUNS TESTS MUST NOT BE SILENT. The default
-# above makes `GMA_BUILD_TESTS=ON` imply the data layer, but a CACHE ENTRY
+# above makes `KRN_BUILD_TESTS=ON` imply the data layer, but a CACHE ENTRY
 # OUTLIVES IT: configure a dir with tests off (data defaults off), then
-# re-run with -DGMA_BUILD_TESTS=ON, and `option()` leaves GMA_BUILD_DATA=OFF.
-# ctest then goes green over a build with no gma_data_tests and no positive
+# re-run with -DKRN_BUILD_TESTS=ON, and `option()` leaves KRN_BUILD_DATA=OFF.
+# ctest then goes green over a build with no krn_data_tests and no positive
 # control — exactly the ENC-994 / ENC-1095 mode this default was chosen to
 # avoid, arriving through the cache instead of through the default. It cannot
 # be fixed by forcing the value (that would silently discard a deliberate
-# -DGMA_BUILD_DATA=OFF), so it is NAMED instead.
-if (GMA_BUILD_TESTS AND NOT GMA_BUILD_DATA)
+# -DKRN_BUILD_DATA=OFF), so it is NAMED instead.
+if (KRN_BUILD_TESTS AND NOT KRN_BUILD_DATA)
   message(WARNING
-    "GMA_BUILD_DATA=OFF while GMA_BUILD_TESTS=ON: gma_data_tests is NOT "
-    "registered with ctest and gma_engine_isolation's gma_data positive "
+    "KRN_BUILD_DATA=OFF while KRN_BUILD_TESTS=ON: krn_data_tests is NOT "
+    "registered with ctest and krn_engine_isolation's krn_data positive "
     "control cannot run, so a green `ctest` in this build directory EXCLUDES "
     "the entire data layer. Intended if you asked for SPEC D14's live-only "
     "client variant. If you did not: this is a STALE CACHE — `option()` wrote "
-    "GMA_BUILD_DATA on the first configure of this directory and a later "
-    "-DGMA_BUILD_TESTS=ON does not move it. Re-run with an explicit "
-    "-DGMA_BUILD_DATA=ON, or configure a fresh build directory.")
+    "KRN_BUILD_DATA on the first configure of this directory and a later "
+    "-DKRN_BUILD_TESTS=ON does not move it. Re-run with an explicit "
+    "-DKRN_BUILD_DATA=ON, or configure a fresh build directory.")
 endif()
 
 # Microarchitecture (ENC-790 / H5): -march=native pins the binary to the exact
 # build CPU and SIGILLs on older hosts. Release/RelWithDebInfo therefore default
-# to a portable baseline (GMA_ARCH_BASELINE, x86-64-v2 ≈ any 2009+ x86_64 CPU);
-# -march=native is opt-in via GMA_NATIVE_ARCH. -O3 and LTO are kept regardless.
-option(GMA_NATIVE_ARCH
+# to a portable baseline (KRN_ARCH_BASELINE, x86-64-v2 ≈ any 2009+ x86_64 CPU);
+# -march=native is opt-in via KRN_NATIVE_ARCH. -O3 and LTO are kept regardless.
+option(KRN_NATIVE_ARCH
   "Build Release with -march=native (non-portable: pins the binary to the build CPU; SIGILL on other hosts)"
   OFF)
-set(GMA_ARCH_BASELINE "x86-64-v2" CACHE STRING
-  "Portable -march baseline used for Release on x86_64 when GMA_NATIVE_ARCH is OFF (empty string disables -march entirely)")
+set(KRN_ARCH_BASELINE "x86-64-v2" CACHE STRING
+  "Portable -march baseline used for Release on x86_64 when KRN_NATIVE_ARCH is OFF (empty string disables -march entirely)")
 
 # Sanitizers (ENC-801 / M15): opt-in, default off so a plain `cmake .. && make`
 # is byte-for-byte unaffected. When set, the flags are injected into compile AND
 # link for every target in this build (engine, connectors, server, tests, gtest).
-set(GMA_SANITIZE "off" CACHE STRING
+set(KRN_SANITIZE "off" CACHE STRING
   "Enable a sanitizer for all targets: off|address|thread|undefined|address+undefined")
-set_property(CACHE GMA_SANITIZE PROPERTY STRINGS off address thread undefined address+undefined)
+set_property(CACHE KRN_SANITIZE PROPERTY STRINGS off address thread undefined address+undefined)
 
 # ---- C++ standard ----
 set(CMAKE_CXX_STANDARD 20)
@@ -141,25 +141,25 @@ endif()
 # Injected at directory scope BEFORE any target is defined, so every target
 # created below (including FetchContent's googletest/benchmark) is instrumented
 # in both compile and link. Default "off" => no flags => default build unchanged.
-if (NOT GMA_SANITIZE STREQUAL "off")
+if (NOT KRN_SANITIZE STREQUAL "off")
   if (MSVC)
-    message(WARNING "GMA_SANITIZE=${GMA_SANITIZE} is not supported with this MSVC toolchain — ignoring")
+    message(WARNING "KRN_SANITIZE=${KRN_SANITIZE} is not supported with this MSVC toolchain — ignoring")
   else()
-    if (GMA_SANITIZE STREQUAL "address")
-      set(_GMA_SAN_FLAGS -fsanitize=address -fno-omit-frame-pointer)
-    elseif (GMA_SANITIZE STREQUAL "thread")
-      set(_GMA_SAN_FLAGS -fsanitize=thread -fno-omit-frame-pointer)
-    elseif (GMA_SANITIZE STREQUAL "undefined")
-      set(_GMA_SAN_FLAGS -fsanitize=undefined -fno-omit-frame-pointer)
-    elseif (GMA_SANITIZE STREQUAL "address+undefined")
-      set(_GMA_SAN_FLAGS -fsanitize=address,undefined -fno-omit-frame-pointer)
+    if (KRN_SANITIZE STREQUAL "address")
+      set(_KRN_SAN_FLAGS -fsanitize=address -fno-omit-frame-pointer)
+    elseif (KRN_SANITIZE STREQUAL "thread")
+      set(_KRN_SAN_FLAGS -fsanitize=thread -fno-omit-frame-pointer)
+    elseif (KRN_SANITIZE STREQUAL "undefined")
+      set(_KRN_SAN_FLAGS -fsanitize=undefined -fno-omit-frame-pointer)
+    elseif (KRN_SANITIZE STREQUAL "address+undefined")
+      set(_KRN_SAN_FLAGS -fsanitize=address,undefined -fno-omit-frame-pointer)
     else()
       message(FATAL_ERROR
-        "GMA_SANITIZE='${GMA_SANITIZE}' is invalid — use off|address|thread|undefined|address+undefined")
+        "KRN_SANITIZE='${KRN_SANITIZE}' is invalid — use off|address|thread|undefined|address+undefined")
     endif()
-    add_compile_options(${_GMA_SAN_FLAGS})
-    add_link_options(${_GMA_SAN_FLAGS})
-    message(STATUS "Sanitizer enabled for all targets: ${GMA_SANITIZE}")
+    add_compile_options(${_KRN_SAN_FLAGS})
+    add_link_options(${_KRN_SAN_FLAGS})
+    message(STATUS "Sanitizer enabled for all targets: ${KRN_SANITIZE}")
   endif()
 endif()
 
@@ -167,17 +167,17 @@ endif()
 # Warning flags helper (ENC-806 / L12)
 # =======================
 # Applies the standard warning set to a target. -Werror stays OFF unless the
-# opt-in GMA_WARNINGS_AS_ERRORS is set, so concurrent source edits never break
+# opt-in KRN_WARNINGS_AS_ERRORS is set, so concurrent source edits never break
 # the central build just by emitting a warning.
-function(gma_apply_warnings tgt)
+function(krn_apply_warnings tgt)
   if (MSVC)
     target_compile_options(${tgt} PRIVATE /W4)
-    if (GMA_WARNINGS_AS_ERRORS)
+    if (KRN_WARNINGS_AS_ERRORS)
       target_compile_options(${tgt} PRIVATE /WX)
     endif()
   else()
     target_compile_options(${tgt} PRIVATE -Wall -Wextra -Wpedantic)
-    if (GMA_WARNINGS_AS_ERRORS)
+    if (KRN_WARNINGS_AS_ERRORS)
       target_compile_options(${tgt} PRIVATE -Werror)
     endif()
   endif()
@@ -246,42 +246,42 @@ message(STATUS "RapidJSON include dir: ${RAPIDJSON_INCLUDE_DIR}")
 # Sources / targets
 # =======================
 # Engine / connector split:
-#   gma_engine             — domain-agnostic core (all src/**/*.cpp, minus main)
-#   gma_connector_market   — market-specific code (connectors/market/**)
-#   gma                    — INTERFACE alias linking both (legacy consumer target)
+#   krn_engine             — domain-agnostic core (all src/**/*.cpp, minus main)
+#   krn_connector_market   — market-specific code (connectors/market/**)
+#   krn                    — INTERFACE alias linking both (legacy consumer target)
 #   gma_server             — composition root, picks up main.cpp + both libs
-# The split is enforced by include-directory scoping: gma_engine's PUBLIC
+# The split is enforced by include-directory scoping: krn_engine's PUBLIC
 # include paths contain *only* the engine headers, so engine code that
 # accidentally references a connector header fails to compile.
 
 set(MAIN_SRC "${CMAKE_SOURCE_DIR}/src/main.cpp")
 
-file(GLOB_RECURSE GMA_ENGINE_SOURCES "${CMAKE_SOURCE_DIR}/src/*.cpp")
+file(GLOB_RECURSE KRN_ENGINE_SOURCES "${CMAKE_SOURCE_DIR}/src/*.cpp")
 if (EXISTS "${MAIN_SRC}")
-  list(REMOVE_ITEM GMA_ENGINE_SOURCES "${MAIN_SRC}")
+  list(REMOVE_ITEM KRN_ENGINE_SOURCES "${MAIN_SRC}")
 endif()
 
-file(GLOB_RECURSE GMA_ENGINE_HEADERS
+file(GLOB_RECURSE KRN_ENGINE_HEADERS
   "${CMAKE_SOURCE_DIR}/include/**/*.hpp"
   "${CMAKE_SOURCE_DIR}/include/*.hpp"
 )
 
-file(GLOB_RECURSE GMA_MARKET_SOURCES "${CMAKE_SOURCE_DIR}/connectors/market/src/*.cpp")
-file(GLOB_RECURSE GMA_MARKET_HEADERS
+file(GLOB_RECURSE KRN_MARKET_SOURCES "${CMAKE_SOURCE_DIR}/connectors/market/src/*.cpp")
+file(GLOB_RECURSE KRN_MARKET_HEADERS
   "${CMAKE_SOURCE_DIR}/connectors/market/include/**/*.hpp"
   "${CMAKE_SOURCE_DIR}/connectors/market/include/*.hpp"
 )
 
 # ---- Engine library ----
-add_library(gma_engine STATIC ${GMA_ENGINE_SOURCES} ${GMA_ENGINE_HEADERS})
-target_include_directories(gma_engine PUBLIC "${CMAKE_SOURCE_DIR}/include")
+add_library(krn_engine STATIC ${KRN_ENGINE_SOURCES} ${KRN_ENGINE_HEADERS})
+target_include_directories(krn_engine PUBLIC "${CMAKE_SOURCE_DIR}/include")
 
 if (Boost_FOUND)
-  target_include_directories(gma_engine PUBLIC ${Boost_INCLUDE_DIRS})
-  target_link_libraries(gma_engine PUBLIC Boost::system)
+  target_include_directories(krn_engine PUBLIC ${Boost_INCLUDE_DIRS})
+  target_link_libraries(krn_engine PUBLIC Boost::system)
 else()
-  target_link_libraries(gma_engine PUBLIC Boost::system)
-  target_compile_definitions(gma_engine PUBLIC
+  target_link_libraries(krn_engine PUBLIC Boost::system)
+  target_compile_definitions(krn_engine PUBLIC
     BOOST_ALL_NO_LIB
     BOOST_ERROR_CODE_HEADER_ONLY
     BOOST_SYSTEM_NO_DEPRECATED
@@ -290,46 +290,46 @@ else()
   )
 endif()
 
-target_link_libraries(gma_engine PUBLIC Threads::Threads RapidJSON::rapidjson)
+target_link_libraries(krn_engine PUBLIC Threads::Threads RapidJSON::rapidjson)
 
 if (OpenSSL_FOUND)
-  target_link_libraries(gma_engine PUBLIC OpenSSL::SSL OpenSSL::Crypto)
-  target_compile_definitions(gma_engine PUBLIC GMA_HAS_SSL=1)
+  target_link_libraries(krn_engine PUBLIC OpenSSL::SSL OpenSSL::Crypto)
+  target_compile_definitions(krn_engine PUBLIC KRN_HAS_SSL=1)
 endif()
 
 # ---- Market connector library ----
-add_library(gma_connector_market STATIC ${GMA_MARKET_SOURCES} ${GMA_MARKET_HEADERS})
-target_include_directories(gma_connector_market PUBLIC
+add_library(krn_connector_market STATIC ${KRN_MARKET_SOURCES} ${KRN_MARKET_HEADERS})
+target_include_directories(krn_connector_market PUBLIC
   "${CMAKE_SOURCE_DIR}/connectors/market/include"
 )
-target_link_libraries(gma_connector_market PUBLIC gma_engine)
+target_link_libraries(krn_connector_market PUBLIC krn_engine)
 
-# ---- Legacy umbrella alias so existing rules that link `gma` keep working ----
-add_library(gma INTERFACE)
-target_link_libraries(gma INTERFACE gma_engine gma_connector_market)
+# ---- Legacy umbrella alias so existing rules that link `krn` keep working ----
+add_library(krn INTERFACE)
+target_link_libraries(krn INTERFACE krn_engine krn_connector_market)
 
 # ---- Synthetic connector (demo): proves the zero-core-changes invariant ----
-# Not linked into `gma` — kept as an opt-in target that test code and demos
+# Not linked into `krn` — kept as an opt-in target that test code and demos
 # pull in explicitly. Adding a connector requires (a) this library target and
 # (b) one `registerWith` call at the composition root; no engine edits.
-file(GLOB_RECURSE GMA_SYNTHETIC_SOURCES
+file(GLOB_RECURSE KRN_SYNTHETIC_SOURCES
   "${CMAKE_SOURCE_DIR}/connectors/synthetic/src/*.cpp")
-file(GLOB_RECURSE GMA_SYNTHETIC_HEADERS
+file(GLOB_RECURSE KRN_SYNTHETIC_HEADERS
   "${CMAKE_SOURCE_DIR}/connectors/synthetic/include/**/*.hpp"
   "${CMAKE_SOURCE_DIR}/connectors/synthetic/include/*.hpp")
-add_library(gma_connector_synthetic STATIC
-  ${GMA_SYNTHETIC_SOURCES} ${GMA_SYNTHETIC_HEADERS})
-target_include_directories(gma_connector_synthetic PUBLIC
+add_library(krn_connector_synthetic STATIC
+  ${KRN_SYNTHETIC_SOURCES} ${KRN_SYNTHETIC_HEADERS})
+target_include_directories(krn_connector_synthetic PUBLIC
   "${CMAKE_SOURCE_DIR}/connectors/synthetic/include")
-target_link_libraries(gma_connector_synthetic PUBLIC gma_engine)
+target_link_libraries(krn_connector_synthetic PUBLIC krn_engine)
 
 # Warnings — apply to every first-party target (ENC-806 / L12). Previously only
-# gma_engine + gma_connector_market got -Wall/-Wextra; gma_connector_synthetic,
-# gma_server, gma_tests and the benchmarks were silent. gma_server/gma_tests/
+# krn_engine + krn_connector_market got -Wall/-Wextra; krn_connector_synthetic,
+# gma_server, krn_tests and the benchmarks were silent. gma_server/krn_tests/
 # benchmarks are wired at their definition sites below.
-gma_apply_warnings(gma_engine)
-gma_apply_warnings(gma_connector_market)
-gma_apply_warnings(gma_connector_synthetic)
+krn_apply_warnings(krn_engine)
+krn_apply_warnings(krn_connector_market)
+krn_apply_warnings(krn_connector_synthetic)
 
 if (WIN32)
   add_definitions(-D_WIN32_WINNT=0x0A00 -DNOMINMAX)
@@ -340,36 +340,36 @@ endif()
 # =======================
 if (CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
   if (MSVC)
-    target_compile_options(gma_engine           PRIVATE /O2 /Ob2 /GL)
-    target_compile_options(gma_connector_market PRIVATE /O2 /Ob2 /GL)
-    target_link_options(gma_engine           PUBLIC /LTCG)
-    target_link_options(gma_connector_market PUBLIC /LTCG)
+    target_compile_options(krn_engine           PRIVATE /O2 /Ob2 /GL)
+    target_compile_options(krn_connector_market PRIVATE /O2 /Ob2 /GL)
+    target_link_options(krn_engine           PUBLIC /LTCG)
+    target_link_options(krn_connector_market PUBLIC /LTCG)
   else()
     # Microarchitecture (ENC-790 / H5). -O3 always; -march is portable by default.
-    set(GMA_RELEASE_ARCH_FLAGS "")
-    if (GMA_NATIVE_ARCH)
-      list(APPEND GMA_RELEASE_ARCH_FLAGS -march=native)
-      message(STATUS "Release: -march=native (GMA_NATIVE_ARCH=ON) — binary pinned to THIS CPU")
-    elseif (NOT GMA_ARCH_BASELINE STREQUAL "" AND
+    set(KRN_RELEASE_ARCH_FLAGS "")
+    if (KRN_NATIVE_ARCH)
+      list(APPEND KRN_RELEASE_ARCH_FLAGS -march=native)
+      message(STATUS "Release: -march=native (KRN_NATIVE_ARCH=ON) — binary pinned to THIS CPU")
+    elseif (NOT KRN_ARCH_BASELINE STREQUAL "" AND
             CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64|amd64")
-      list(APPEND GMA_RELEASE_ARCH_FLAGS "-march=${GMA_ARCH_BASELINE}")
-      message(STATUS "Release: portable -march=${GMA_ARCH_BASELINE} (set GMA_NATIVE_ARCH=ON to target the build CPU)")
+      list(APPEND KRN_RELEASE_ARCH_FLAGS "-march=${KRN_ARCH_BASELINE}")
+      message(STATUS "Release: portable -march=${KRN_ARCH_BASELINE} (set KRN_NATIVE_ARCH=ON to target the build CPU)")
     else()
       message(STATUS "Release: no -march (portable default)")
     endif()
-    target_compile_options(gma_engine           PRIVATE -O3 ${GMA_RELEASE_ARCH_FLAGS})
-    target_compile_options(gma_connector_market PRIVATE -O3 ${GMA_RELEASE_ARCH_FLAGS})
+    target_compile_options(krn_engine           PRIVATE -O3 ${KRN_RELEASE_ARCH_FLAGS})
+    target_compile_options(krn_connector_market PRIVATE -O3 ${KRN_RELEASE_ARCH_FLAGS})
   endif()
 
   include(CheckIPOSupported)
   check_ipo_supported(RESULT ipo_supported OUTPUT ipo_output)
   if (ipo_supported)
-    set_property(TARGET gma_engine           PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-    set_property(TARGET gma_connector_market PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+    set_property(TARGET krn_engine           PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+    set_property(TARGET krn_connector_market PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
     if (TARGET gma_server)
       set_property(TARGET gma_server PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
     endif()
-    message(STATUS "LTO enabled for gma_engine + gma_connector_market + gma_server")
+    message(STATUS "LTO enabled for krn_engine + krn_connector_market + gma_server")
   else()
     message(STATUS "LTO not supported: ${ipo_output}")
   endif()
@@ -381,9 +381,9 @@ if (EXISTS "${MAIN_SRC}")
   target_include_directories(gma_server PRIVATE "${CMAKE_SOURCE_DIR}/include")
   if (Boost_FOUND)
     target_include_directories(gma_server PRIVATE ${Boost_INCLUDE_DIRS})
-    target_link_libraries(gma_server PRIVATE gma Boost::system)
+    target_link_libraries(gma_server PRIVATE krn Boost::system)
   else()
-    target_link_libraries(gma_server PRIVATE gma Boost::system)
+    target_link_libraries(gma_server PRIVATE krn Boost::system)
     target_compile_definitions(gma_server PRIVATE
       BOOST_ALL_NO_LIB
       BOOST_ERROR_CODE_HEADER_ONLY
@@ -393,11 +393,11 @@ if (EXISTS "${MAIN_SRC}")
     )
   endif()
   target_link_libraries(gma_server PRIVATE Threads::Threads RapidJSON::rapidjson)
-  gma_apply_warnings(gma_server)
+  krn_apply_warnings(gma_server)
 endif()
 
 # Tests (opt-in)
-if (GMA_BUILD_TESTS)
+if (KRN_BUILD_TESTS)
   enable_testing()
 
   include(FetchContent)
@@ -409,15 +409,15 @@ if (GMA_BUILD_TESTS)
   set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
   FetchContent_MakeAvailable(googletest)
 
-  file(GLOB_RECURSE GMA_TEST_SOURCES "${CMAKE_SOURCE_DIR}/tests/*.cpp")
-  add_executable(gma_tests ${GMA_TEST_SOURCES})
-  target_include_directories(gma_tests PRIVATE "${CMAKE_SOURCE_DIR}/include")
+  file(GLOB_RECURSE KRN_TEST_SOURCES "${CMAKE_SOURCE_DIR}/tests/*.cpp")
+  add_executable(krn_tests ${KRN_TEST_SOURCES})
+  target_include_directories(krn_tests PRIVATE "${CMAKE_SOURCE_DIR}/include")
   if (Boost_FOUND)
-    target_include_directories(gma_tests PRIVATE ${Boost_INCLUDE_DIRS})
-    target_link_libraries(gma_tests PRIVATE gma Boost::system)
+    target_include_directories(krn_tests PRIVATE ${Boost_INCLUDE_DIRS})
+    target_link_libraries(krn_tests PRIVATE krn Boost::system)
   else()
-    target_link_libraries(gma_tests PRIVATE gma Boost::system)
-    target_compile_definitions(gma_tests PRIVATE
+    target_link_libraries(krn_tests PRIVATE krn Boost::system)
+    target_compile_definitions(krn_tests PRIVATE
       BOOST_ALL_NO_LIB
       BOOST_ERROR_CODE_HEADER_ONLY
       BOOST_SYSTEM_NO_DEPRECATED
@@ -425,22 +425,22 @@ if (GMA_BUILD_TESTS)
       BOOST_BEAST_USE_STD_STRING_VIEW
     )
   endif()
-  target_link_libraries(gma_tests PRIVATE
+  target_link_libraries(krn_tests PRIVATE
     Threads::Threads
     RapidJSON::rapidjson
     GTest::gtest_main
-    gma_connector_synthetic
+    krn_connector_synthetic
   )
-  gma_apply_warnings(gma_tests)
+  krn_apply_warnings(krn_tests)
 
   # CorpusTest data (ENC-807 / L17): copy the corpus next to the test binary and
   # run the test from that directory, so CorpusTest can always locate
   # corpus_requests.json (it otherwise GTEST_SKIPs / fails on the missing file).
-  add_custom_command(TARGET gma_tests POST_BUILD
+  add_custom_command(TARGET krn_tests POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
       "${CMAKE_SOURCE_DIR}/tests/treebuilder/corpus_requests.json"
-      "$<TARGET_FILE_DIR:gma_tests>/corpus_requests.json"
-    COMMENT "Copying corpus_requests.json next to gma_tests")
+      "$<TARGET_FILE_DIR:krn_tests>/corpus_requests.json"
+    COMMENT "Copying corpus_requests.json next to krn_tests")
 
   # ENC-1340: let the binary find its corpus without help from the cwd.
   # The three historical search paths were all cwd-relative, so `ctest` (which
@@ -451,8 +451,8 @@ if (GMA_BUILD_TESTS)
   # configure-time source tree. Between them a binary built by this project
   # finds the corpus from any directory, and the diagnostic it prints when it
   # genuinely cannot names the cwd and every path tried.
-  target_compile_definitions(gma_tests PRIVATE
-    GMA_TEST_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+  target_compile_definitions(krn_tests PRIVATE
+    KRN_TEST_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
 
   # ─── ENC-1289's EXPECTED-FAILURE MACHINERY IS GONE. ENC-1292 CLEARED THE
   # LAST GATE, 2026-09-20.
@@ -461,7 +461,7 @@ if (GMA_BUILD_TESTS)
   # (SPEC specs/2026-09-20-gma-join-correctness D8) were red on `master` BY
   # DESIGN — an instrument that cannot fail is not a gate — so each was
   # registered as its own ctest case with `WILL_FAIL TRUE`, excluded from the
-  # main `gma_tests` case by a `--gtest_filter=-...` list, and guarded by
+  # main `krn_tests` case by a `--gtest_filter=-...` list, and guarded by
   # `gma_enc1289_expected_failures_really_failed`, which pinned the COUNT and
   # required gtest's own end-of-run summary line so a crash could not read as
   # an expected failure. It unwound itself by construction: each fix flipped
@@ -481,41 +481,41 @@ if (GMA_BUILD_TESTS)
   # MIXED tuples, and the assertion is now checking a non-empty set. All three
   # corpus 87 tests — the gate, its observation-point control, and the
   # cross-corpus measurement in `tests/treebuilder/FanInJoinKeyTest.cpp` —
-  # now run inside the ordinary `gma_tests` case below, uninverted.
+  # now run inside the ordinary `krn_tests` case below, uninverted.
   #
   # NOTE (unchanged and still true): the ENC-1065 `--gtest_repeat` check must
-  # be run against the RAW, UNFILTERED binary (`./gma_tests --gtest_repeat=N`).
+  # be run against the RAW, UNFILTERED binary (`./krn_tests --gtest_repeat=N`).
   # It always had to be; there is simply no filter left for it to dodge.
-  add_test(NAME gma_tests
-    COMMAND gma_tests
-    WORKING_DIRECTORY "$<TARGET_FILE_DIR:gma_tests>")
+  add_test(NAME krn_tests
+    COMMAND krn_tests
+    WORKING_DIRECTORY "$<TARGET_FILE_DIR:krn_tests>")
 
   # ENC-1006: an occupied wsPort/feedPort must produce a clean non-zero exit,
   # not std::terminate. This drives the real gma_server binary, so it lives as
   # a script test rather than a gtest case.
   find_package(Python3 COMPONENTS Interpreter QUIET)
   if (TARGET gma_server AND Python3_Interpreter_FOUND)
-    add_test(NAME gma_port_conflict
+    add_test(NAME krn_port_conflict
       COMMAND "${Python3_EXECUTABLE}"
               "${CMAKE_SOURCE_DIR}/tests/scripts/port_conflict_test.py"
               "$<TARGET_FILE:gma_server>")
-    set_tests_properties(gma_port_conflict PROPERTIES TIMEOUT 120)
+    set_tests_properties(krn_port_conflict PROPERTIES TIMEOUT 120)
 
     # ENC-1331: `gma_server <ws> <conf> <feed>` must BIND <feed>. Asserted
     # against the live acceptor rather than the boot log, because the log
     # already printed the right number while the socket used the file's.
-    add_test(NAME gma_feed_port_override
+    add_test(NAME krn_feed_port_override
       COMMAND "${Python3_EXECUTABLE}"
               "${CMAKE_SOURCE_DIR}/tests/scripts/feed_port_override_test.py"
               "$<TARGET_FILE:gma_server>")
-    set_tests_properties(gma_feed_port_override PROPERTIES TIMEOUT 120)
+    set_tests_properties(krn_feed_port_override PROPERTIES TIMEOUT 120)
   elseif (NOT Python3_Interpreter_FOUND)
-    message(STATUS "gma_port_conflict / gma_feed_port_override tests skipped: no Python3 interpreter")
+    message(STATUS "krn_port_conflict / krn_feed_port_override tests skipped: no Python3 interpreter")
   endif()
 endif()
 
 # Benchmarks (opt-in)
-if (GMA_BUILD_BENCHMARKS)
+if (KRN_BUILD_BENCHMARKS)
   include(FetchContent)
   FetchContent_Declare(
     googlebenchmark
@@ -527,14 +527,14 @@ if (GMA_BUILD_BENCHMARKS)
   FetchContent_MakeAvailable(googlebenchmark)
 
   # Helper: create a benchmark executable from a single source file
-  function(gma_add_benchmark NAME SRC)
+  function(krn_add_benchmark NAME SRC)
     add_executable(${NAME} ${SRC})
     target_include_directories(${NAME} PRIVATE "${CMAKE_SOURCE_DIR}/include")
     if (Boost_FOUND)
       target_include_directories(${NAME} PRIVATE ${Boost_INCLUDE_DIRS})
-      target_link_libraries(${NAME} PRIVATE gma Boost::system)
+      target_link_libraries(${NAME} PRIVATE krn Boost::system)
     else()
-      target_link_libraries(${NAME} PRIVATE gma Boost::system)
+      target_link_libraries(${NAME} PRIVATE krn Boost::system)
       target_compile_definitions(${NAME} PRIVATE
         BOOST_ALL_NO_LIB
         BOOST_ERROR_CODE_HEADER_ONLY
@@ -548,17 +548,17 @@ if (GMA_BUILD_BENCHMARKS)
       RapidJSON::rapidjson
       benchmark::benchmark
     )
-    gma_apply_warnings(${NAME})
+    krn_apply_warnings(${NAME})
   endfunction()
 
-  gma_add_benchmark(bench_atomic_functions  "${CMAKE_SOURCE_DIR}/benchmarks/AtomicFunctionsBench.cpp")
-  gma_add_benchmark(bench_dispatcher        "${CMAKE_SOURCE_DIR}/benchmarks/DispatcherBench.cpp")
-  gma_add_benchmark(bench_atomic_store      "${CMAKE_SOURCE_DIR}/benchmarks/AtomicStoreBench.cpp")
-  gma_add_benchmark(bench_thread_pool       "${CMAKE_SOURCE_DIR}/benchmarks/ThreadPoolBench.cpp")
-  gma_add_benchmark(bench_window_nodes      "${CMAKE_SOURCE_DIR}/benchmarks/WindowNodesBench.cpp")
+  krn_add_benchmark(bench_atomic_functions  "${CMAKE_SOURCE_DIR}/benchmarks/AtomicFunctionsBench.cpp")
+  krn_add_benchmark(bench_dispatcher        "${CMAKE_SOURCE_DIR}/benchmarks/DispatcherBench.cpp")
+  krn_add_benchmark(bench_atomic_store      "${CMAKE_SOURCE_DIR}/benchmarks/AtomicStoreBench.cpp")
+  krn_add_benchmark(bench_thread_pool       "${CMAKE_SOURCE_DIR}/benchmarks/ThreadPoolBench.cpp")
+  krn_add_benchmark(bench_window_nodes      "${CMAKE_SOURCE_DIR}/benchmarks/WindowNodesBench.cpp")
 
   # Convenience target: build all benchmarks at once
-  add_custom_target(gma_benchmarks DEPENDS
+  add_custom_target(krn_benchmarks DEPENDS
     bench_atomic_functions
     bench_dispatcher
     bench_atomic_store
@@ -573,23 +573,23 @@ endif()
 # After the tests block on purpose: data/CMakeLists.txt registers its own ctest
 # case against GTest::gtest_main, which only exists once the block above has
 # run FetchContent on googletest.
-if (GMA_BUILD_DATA)
+if (KRN_BUILD_DATA)
   add_subdirectory(data)
 else()
   message(STATUS
-    "gma_data: DISABLED (GMA_BUILD_DATA=OFF) — SPEC D14's live-only client "
-    "variant. No Arrow is fetched or built, and gma_data_tests is not "
-    "registered with ctest. gma_engine_isolation still runs (with its "
-    "gma_data positive control reported as unavailable).")
+    "krn_data: DISABLED (KRN_BUILD_DATA=OFF) — SPEC D14's live-only client "
+    "variant. No Arrow is fetched or built, and krn_data_tests is not "
+    "registered with ctest. krn_engine_isolation still runs (with its "
+    "krn_data positive control reported as unavailable).")
 endif()
 
 # =======================
 # Engine isolation gate (ENC-1481)
 # =======================
-# THE INVARIANT: gma_engine must not acquire a dependency on Arrow, the
-# ClickHouse client, or the gma_data library target (SPEC D14,
+# THE INVARIANT: krn_engine must not acquire a dependency on Arrow, the
+# ClickHouse client, or the krn_data library target (SPEC D14,
 # docs/data-layer.md §4 rule 6). SPEC D14's live-only client variant omits
-# gma_data entirely and must still link, so this is a shipping constraint and
+# krn_data entirely and must still link, so this is a shipping constraint and
 # not a style preference.
 #
 # It is checked rather than claimed because every way of breaking it still
@@ -597,28 +597,28 @@ endif()
 # line would make the live-only variant impossible and nothing would say so.
 #
 # ONE ROW PER FIRST-PARTY TARGET, BECAUSE THE CHECK WALKS THE CLOSURE.
-# gma_server links the `gma` umbrella and nothing else, so reading only
-# gma_engine's and gma_server's own LINK_LIBRARIES is blind to exactly the line
-# that breaks the invariant: `target_link_libraries(gma INTERFACE gma_data)`,
-# or `gma::arrow` on a connector `gma` pulls in. Both leave the two roots'
-# properties unchanged and both make GMA_BUILD_DATA=OFF unlinkable. The
+# gma_server links the `krn` umbrella and nothing else, so reading only
+# krn_engine's and gma_server's own LINK_LIBRARIES is blind to exactly the line
+# that breaks the invariant: `target_link_libraries(krn INTERFACE krn_data)`,
+# or `krn::arrow` on a connector `krn` pulls in. Both leave the two roots'
+# properties unchanged and both make KRN_BUILD_DATA=OFF unlinkable. The
 # checker therefore reads a link GRAPH — `link.<target>` /
-# `interface_link.<target>` — and walks it transitively from gma_engine and
+# `interface_link.<target>` — and walks it transitively from krn_engine and
 # gma_server. Add a first-party library target here when you add one; a target
 # with no row is treated as a leaf and only pattern-matched, which is correct
 # for system and imported libraries and wrong for ours.
 #
-# THE CHECKED ROOTS are gma_engine, gma_server and gma_tests. gma_tests is
+# THE CHECKED ROOTS are krn_engine, gma_server and krn_tests. krn_tests is
 # there because data/CMakeLists.txt names "the engine test suite is built
 # against an Arrow-free include path" as the thing being protected, and a
 # prose claim with no check behind it is what finding 1 was about.
 #
-# gma_data gets a row too. It is not a checked root — it is the gate's
+# krn_data gets a row too. It is not a checked root — it is the gate's
 # POSITIVE CONTROL: its own closure must trip a
-# forbidden pattern, since it links gma::arrow by construction. If it does not,
-# the patterns match nothing in this build and a clean verdict about gma_engine
+# forbidden pattern, since it links krn::arrow by construction. If it does not,
+# the patterns match nothing in this build and a clean verdict about krn_engine
 # is a verdict from a search that cannot find anything. The control also
-# cross-checks GMA_BUILD_DATA against the presence of the row, so the two
+# cross-checks KRN_BUILD_DATA against the presence of the row, so the two
 # cannot disagree silently.
 #
 # THE RESOLVED RAPIDJSON PATH IS IN THE MANIFEST (ENC-1497). `/third_party/`
@@ -635,80 +635,80 @@ endif()
 # command line because the properties are generator expressions, and because a
 # resolved list on an add_test COMMAND would be split into separate arguments
 # at every semicolon.
-if (GMA_BUILD_TESTS AND TARGET gma_server)
-  set(GMA_ISOLATION_MANIFEST "${CMAKE_BINARY_DIR}/gma_engine_isolation.manifest")
+if (KRN_BUILD_TESTS AND TARGET gma_server)
+  set(KRN_ISOLATION_MANIFEST "${CMAKE_BINARY_DIR}/krn_engine_isolation.manifest")
 
   # THE TARGET LIST IS ENUMERATED FROM CMAKE, NOT HAND-WRITTEN. A hand-written
   # list reproduces the original hole one level deeper: a new first-party
   # library would arrive with no row, be treated by the checker as a leaf, and
-  # have its own dependencies never walked — so `gma_store -> gma_data` would
-  # pass green exactly the way `gma -> gma_data` used to. BUILDSYSTEM_TARGETS
+  # have its own dependencies never walked — so `krn_store -> krn_data` would
+  # pass green exactly the way `krn -> krn_data` used to. BUILDSYSTEM_TARGETS
   # registers a target by its existing. UTILITY targets are dropped because
   # they have no link line. (CMake does not report IMPORTED or ALIAS targets
   # here, which is why the checker ALSO fails on any first-party-looking name
   # that has no row — belt and braces, and the braces are producer-independent.)
-  set(_gma_iso_dirs "${CMAKE_SOURCE_DIR}")
-  if (GMA_BUILD_DATA)
-    list(APPEND _gma_iso_dirs "${CMAKE_SOURCE_DIR}/data")
+  set(_krn_iso_dirs "${CMAKE_SOURCE_DIR}")
+  if (KRN_BUILD_DATA)
+    list(APPEND _krn_iso_dirs "${CMAKE_SOURCE_DIR}/data")
   endif()
-  set(_gma_iso_link_targets "")
-  foreach (_gma_iso_dir IN LISTS _gma_iso_dirs)
-    get_directory_property(_gma_iso_dir_targets
-      DIRECTORY "${_gma_iso_dir}" BUILDSYSTEM_TARGETS)
-    foreach (_gma_iso_t IN LISTS _gma_iso_dir_targets)
-      get_target_property(_gma_iso_type ${_gma_iso_t} TYPE)
-      if (NOT _gma_iso_type STREQUAL "UTILITY")
-        list(APPEND _gma_iso_link_targets ${_gma_iso_t})
+  set(_krn_iso_link_targets "")
+  foreach (_krn_iso_dir IN LISTS _krn_iso_dirs)
+    get_directory_property(_krn_iso_dir_targets
+      DIRECTORY "${_krn_iso_dir}" BUILDSYSTEM_TARGETS)
+    foreach (_krn_iso_t IN LISTS _krn_iso_dir_targets)
+      get_target_property(_krn_iso_type ${_krn_iso_t} TYPE)
+      if (NOT _krn_iso_type STREQUAL "UTILITY")
+        list(APPEND _krn_iso_link_targets ${_krn_iso_t})
       endif()
     endforeach()
   endforeach()
-  list(REMOVE_DUPLICATES _gma_iso_link_targets)
-  list(SORT _gma_iso_link_targets)
+  list(REMOVE_DUPLICATES _krn_iso_link_targets)
+  list(SORT _krn_iso_link_targets)
 
-  set(_gma_iso_link_rows "")
-  foreach (_gma_iso_t IN LISTS _gma_iso_link_targets)
-    string(APPEND _gma_iso_link_rows
-"link.${_gma_iso_t}=$<JOIN:$<TARGET_PROPERTY:${_gma_iso_t},LINK_LIBRARIES>,|>
-interface_link.${_gma_iso_t}=$<JOIN:$<TARGET_PROPERTY:${_gma_iso_t},INTERFACE_LINK_LIBRARIES>,|>
+  set(_krn_iso_link_rows "")
+  foreach (_krn_iso_t IN LISTS _krn_iso_link_targets)
+    string(APPEND _krn_iso_link_rows
+"link.${_krn_iso_t}=$<JOIN:$<TARGET_PROPERTY:${_krn_iso_t},LINK_LIBRARIES>,|>
+interface_link.${_krn_iso_t}=$<JOIN:$<TARGET_PROPERTY:${_krn_iso_t},INTERFACE_LINK_LIBRARIES>,|>
 ")
   endforeach()
   message(STATUS
-    "gma_engine_isolation: link graph covers ${_gma_iso_link_targets}")
+    "krn_engine_isolation: link graph covers ${_krn_iso_link_targets}")
 
-  file(GENERATE OUTPUT "${GMA_ISOLATION_MANIFEST}" CONTENT
+  file(GENERATE OUTPUT "${KRN_ISOLATION_MANIFEST}" CONTENT
 "# Generated by CMake for tools/check_engine_isolation.py (ENC-1481). Do not edit.
 root=${CMAKE_SOURCE_DIR}
-engine_include_dirs=$<JOIN:$<TARGET_PROPERTY:gma_engine,INCLUDE_DIRECTORIES>,|>
-engine_interface_include_dirs=$<JOIN:$<TARGET_PROPERTY:gma_engine,INTERFACE_INCLUDE_DIRECTORIES>,|>
-engine_cmake_sources=$<JOIN:$<TARGET_PROPERTY:gma_engine,SOURCES>,|>
-gma_data_enabled=${GMA_BUILD_DATA}
+engine_include_dirs=$<JOIN:$<TARGET_PROPERTY:krn_engine,INCLUDE_DIRECTORIES>,|>
+engine_interface_include_dirs=$<JOIN:$<TARGET_PROPERTY:krn_engine,INTERFACE_INCLUDE_DIRECTORIES>,|>
+engine_cmake_sources=$<JOIN:$<TARGET_PROPERTY:krn_engine,SOURCES>,|>
+krn_data_enabled=${KRN_BUILD_DATA}
 rapidjson_include_dir=${RAPIDJSON_INCLUDE_DIR}
-${_gma_iso_link_rows}")
+${_krn_iso_link_rows}")
 
   if (Python3_Interpreter_FOUND)
-    add_test(NAME gma_engine_isolation
+    add_test(NAME krn_engine_isolation
       COMMAND "${Python3_EXECUTABLE}"
               "${CMAKE_SOURCE_DIR}/tools/check_engine_isolation.py"
-              --manifest "${GMA_ISOLATION_MANIFEST}")
-    set_tests_properties(gma_engine_isolation PROPERTIES TIMEOUT 120)
+              --manifest "${KRN_ISOLATION_MANIFEST}")
+    set_tests_properties(krn_engine_isolation PROPERTIES TIMEOUT 120)
 
     # The gate's own gate. A predicate that stopped detecting its violation
-    # would turn gma_engine_isolation into a green no-op; this runs each one
+    # would turn krn_engine_isolation into a green no-op; this runs each one
     # against an input that violates it and fails unless it is caught. The
     # anti-vacuity rule of docs/data-layer.md §5.4, applied to the checker.
-    add_test(NAME gma_engine_isolation_selftest
+    add_test(NAME krn_engine_isolation_selftest
       COMMAND "${Python3_EXECUTABLE}"
               "${CMAKE_SOURCE_DIR}/tools/check_engine_isolation.py"
               --selftest)
-    set_tests_properties(gma_engine_isolation_selftest PROPERTIES TIMEOUT 120)
+    set_tests_properties(krn_engine_isolation_selftest PROPERTIES TIMEOUT 120)
   else()
     message(WARNING
-      "gma_engine_isolation test SKIPPED: no Python3 interpreter. The SPEC D14 "
+      "krn_engine_isolation test SKIPPED: no Python3 interpreter. The SPEC D14 "
       "engine-isolation invariant is NOT being checked in this build.")
   endif()
-elseif (GMA_BUILD_TESTS)
+elseif (KRN_BUILD_TESTS)
   message(WARNING
-    "gma_engine_isolation test SKIPPED: no gma_server target (src/main.cpp is "
+    "krn_engine_isolation test SKIPPED: no gma_server target (src/main.cpp is "
     "absent), so check D cannot read its link libraries. The SPEC D14 "
     "engine-isolation invariant is NOT being checked in this build.")
 endif()
@@ -729,9 +729,9 @@ endif()
 # with ENC-1480 as a standalone script, which means it was a gate exactly as
 # often as somebody remembered to type it.
 #
-# NOT GATED ON GMA_BUILD_DATA, DELIBERATELY. The check reads a text file: no
+# NOT GATED ON KRN_BUILD_DATA, DELIBERATELY. The check reads a text file: no
 # Arrow, no ClickHouse client, no C++ target, no server. Gating it on
-# GMA_BUILD_DATA would mean SPEC D14's live-only client variant silently stops
+# KRN_BUILD_DATA would mean SPEC D14's live-only client variant silently stops
 # checking the invariant — and the schema file still ships in that variant, so
 # the thing being protected is still there while the protection is not. It runs
 # whenever tests are on.
@@ -743,28 +743,28 @@ endif()
 # seven fixtures and nine generated mutants of the real schema — each asserting
 # its substitution changed the text before asserting the check reddens — so the
 # gate is observed failing on every pass. Same anti-vacuity rule as
-# gma_engine_isolation_selftest above (docs/data-layer.md §5.4).
+# krn_engine_isolation_selftest above (docs/data-layer.md §5.4).
 #
 # The schema path is passed explicitly rather than left to the script's own
 # __file__ resolution so that a wrong path is a loud failure (exit 2, "could not
 # run") instead of a case that quietly checks whatever it found.
-if (GMA_BUILD_TESTS)
+if (KRN_BUILD_TESTS)
   if (Python3_Interpreter_FOUND)
-    add_test(NAME gma_schema_no_compute
+    add_test(NAME krn_schema_no_compute
       COMMAND "${Python3_EXECUTABLE}"
               "${CMAKE_SOURCE_DIR}/data/schema/check_no_compute.py"
               lint "${CMAKE_SOURCE_DIR}/data/schema/clickhouse.sql")
-    set_tests_properties(gma_schema_no_compute PROPERTIES TIMEOUT 120)
+    set_tests_properties(krn_schema_no_compute PROPERTIES TIMEOUT 120)
 
     # The gate's own gate — see the note above.
-    add_test(NAME gma_schema_no_compute_selftest
+    add_test(NAME krn_schema_no_compute_selftest
       COMMAND "${Python3_EXECUTABLE}"
               "${CMAKE_SOURCE_DIR}/data/schema/check_no_compute.py"
               self-test)
-    set_tests_properties(gma_schema_no_compute_selftest PROPERTIES TIMEOUT 120)
+    set_tests_properties(krn_schema_no_compute_selftest PROPERTIES TIMEOUT 120)
   else()
     message(WARNING
-      "gma_schema_no_compute test SKIPPED: no Python3 interpreter. The SPEC D2 "
+      "krn_schema_no_compute test SKIPPED: no Python3 interpreter. The SPEC D2 "
       "invariant that data/schema/clickhouse.sql computes nothing — no "
       "aggregate, no GROUP BY, no MATERIALIZED/ALIAS column, no "
       "Aggregating/SummingMergeTree — is NOT being checked in this build.")

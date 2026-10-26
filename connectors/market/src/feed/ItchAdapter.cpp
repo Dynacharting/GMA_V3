@@ -103,7 +103,7 @@ void ItchAdapter::routeStockDirectory(const rapidjson::Value& doc,
     // NASDAQ uses $0.01 tick size for all equities
     out.push_back(ObTickSizeEvent{stock, 0.01});
 
-    GMA_METRIC_HIT("feed_ws.stock_directory");
+    KRN_METRIC_HIT("feed_ws.stock_directory");
 
     krn::util::logger().log(krn::util::LogLevel::Info,
         "ItchAdapter.stockDirectory",
@@ -154,7 +154,7 @@ void ItchAdapter::routeAddOrder(const rapidjson::Value& doc,
 
     out.push_back(ObAddEvent{stock, orderRef, side, price, shares, 0});
 
-    GMA_METRIC_HIT("feed_ws.add_order");
+    KRN_METRIC_HIT("feed_ws.add_order");
 }
 
 // ---------------------------------------------------------------------------
@@ -198,7 +198,7 @@ void ItchAdapter::routeOrderExecuted(const rapidjson::Value& doc,
         out.push_back(makeTradeTickEvent(symbol, os.price, execShares));
     }
 
-    GMA_METRIC_HIT("feed_ws.order_executed");
+    KRN_METRIC_HIT("feed_ws.order_executed");
 }
 
 // ---------------------------------------------------------------------------
@@ -226,7 +226,7 @@ void ItchAdapter::routeOrderCancel(const rapidjson::Value& doc,
                                      std::nullopt, os.remainingShares});
     }
 
-    GMA_METRIC_HIT("feed_ws.order_cancel");
+    KRN_METRIC_HIT("feed_ws.order_cancel");
 }
 
 // ---------------------------------------------------------------------------
@@ -244,7 +244,7 @@ void ItchAdapter::routeOrderDelete(const rapidjson::Value& doc,
     out.push_back(ObDeleteEvent{it->second.symbol, orderRef});
     orders_.erase(it);
 
-    GMA_METRIC_HIT("feed_ws.order_delete");
+    KRN_METRIC_HIT("feed_ws.order_delete");
 }
 
 // ---------------------------------------------------------------------------
@@ -276,7 +276,7 @@ void ItchAdapter::routeOrderReplace(const rapidjson::Value& doc,
     orders_[newRef] = {symbol, shares, side, price};
     out.push_back(ObAddEvent{symbol, newRef, side, price, shares, 0});
 
-    GMA_METRIC_HIT("feed_ws.order_replace");
+    KRN_METRIC_HIT("feed_ws.order_replace");
 }
 
 // ---------------------------------------------------------------------------
@@ -320,7 +320,7 @@ void ItchAdapter::routeTrade(const rapidjson::Value& doc,
     // Emit tick to dispatcher for TA computation
     out.push_back(makeTradeTickEvent(stock, price, shares));
 
-    GMA_METRIC_HIT("feed_ws.trade");
+    KRN_METRIC_HIT("feed_ws.trade");
 }
 
 // ---------------------------------------------------------------------------

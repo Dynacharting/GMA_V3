@@ -85,7 +85,7 @@ private:
     // Guard against slow-send DoS: disconnect if pending data exceeds limit
     // without producing a complete line.
     if (pending_.size() > MAX_PENDING) {
-      GMA_METRIC_HIT("feed.pending_overflow");
+      KRN_METRIC_HIT("feed.pending_overflow");
       krn::util::logger().log(krn::util::LogLevel::Warn,
                               "feed.pending_overflow",
                               {{"size", std::to_string(pending_.size())}});
@@ -116,11 +116,11 @@ private:
   static constexpr std::size_t MAX_PENDING  = 128 * 1024; // 128 KB
 
   void handleLine(const std::string& line) {
-    GMA_METRIC_HIT("feed.line_in");
+    KRN_METRIC_HIT("feed.line_in");
 
     // Guard against oversized lines (DoS prevention).
     if (line.size() > MAX_LINE_SIZE) {
-      GMA_METRIC_HIT("feed.tick_bad");
+      KRN_METRIC_HIT("feed.tick_bad");
       krn::util::logger().log(krn::util::LogLevel::Warn,
                               "feed.line.too_large",
                               {{"size", std::to_string(line.size())}});
@@ -131,7 +131,7 @@ private:
       rapidjson::Document doc;
       doc.Parse(line.c_str());
       if (doc.HasParseError() || !doc.IsObject()) {
-        GMA_METRIC_HIT("feed.tick_bad");
+        KRN_METRIC_HIT("feed.tick_bad");
         krn::util::logger().log(krn::util::LogLevel::Warn,
                                 "feed.line.bad_json",
                                 {{"line", line.substr(0, 200)}});
@@ -156,12 +156,12 @@ private:
       handleTickMessage(doc, line);
 
     } catch (const std::exception& ex) {
-      GMA_METRIC_HIT("feed.tick_bad");
+      KRN_METRIC_HIT("feed.tick_bad");
       krn::util::logger().log(krn::util::LogLevel::Error,
                               "feed.handleLine exception",
                               {{"err", ex.what()}});
     } catch (...) {
-      GMA_METRIC_HIT("feed.tick_bad");
+      KRN_METRIC_HIT("feed.tick_bad");
       krn::util::logger().log(krn::util::LogLevel::Error,
                               "feed.handleLine unknown exception");
     }
@@ -171,7 +171,7 @@ private:
     if (!dispatcher_) return;
 
     if (!doc.HasMember("symbol") || !doc["symbol"].IsString()) {
-      GMA_METRIC_HIT("feed.tick_bad");
+      KRN_METRIC_HIT("feed.tick_bad");
       krn::util::logger().log(krn::util::LogLevel::Warn,
                               "feed.line.missing_symbol",
                               {{"line", line.substr(0, 200)}});
@@ -183,7 +183,7 @@ private:
 
     // Reject empty or absurdly long symbols.
     if (t.symbol.empty() || t.symbol.size() > 64) {
-      GMA_METRIC_HIT("feed.tick_bad");
+      KRN_METRIC_HIT("feed.tick_bad");
       krn::util::logger().log(krn::util::LogLevel::Warn,
                               "feed.line.bad_symbol",
                               {{"len", std::to_string(t.symbol.size())}});
@@ -194,23 +194,23 @@ private:
     auto shared = std::make_shared<rapidjson::Document>(std::move(doc));
     t.payload = std::move(shared);
 
-    GMA_METRIC_HIT("feed.tick_ok");
-    GMA_METRIC_HIT("dispatch.tick");
+    KRN_METRIC_HIT("feed.tick_ok");
+    KRN_METRIC_HIT("dispatch.tick");
     dispatcher_->onTick(t);
   }
 
   void handleObMessage(const rapidjson::Document& doc) {
     if (!obManager_) {
-      GMA_METRIC_HIT("feed.ob_no_manager");
+      KRN_METRIC_HIT("feed.ob_no_manager");
       return;
     }
 
     if (!doc.HasMember("symbol") || !doc["symbol"].IsString()) {
-      GMA_METRIC_HIT("feed.ob_bad");
+      KRN_METRIC_HIT("feed.ob_bad");
       return;
     }
     if (!doc.HasMember("action") || !doc["action"].IsString()) {
-      GMA_METRIC_HIT("feed.ob_bad");
+      KRN_METRIC_HIT("feed.ob_bad");
       return;
     }
 
@@ -218,7 +218,7 @@ private:
     const std::string action = doc["action"].GetString();
 
     if (symbol.empty() || symbol.size() > 64) {
-      GMA_METRIC_HIT("feed.ob_bad");
+      KRN_METRIC_HIT("feed.ob_bad");
       return;
     }
 
@@ -229,24 +229,24 @@ private:
     // field are unaffected (no behavior change).
     if (doc.HasMember("seq") && doc["seq"].IsUint64()) {
       if (!obManager_->onSeq(symbol, doc["seq"].GetUint64())) {
-        GMA_METRIC_HIT("feed.ob_seq_gap");
+        KRN_METRIC_HIT("feed.ob_seq_gap");
         return;
       }
     }
 
     if (action == "ticksize") {
       if (!doc.HasMember("tickSize") || !doc["tickSize"].IsNumber()) {
-        GMA_METRIC_HIT("feed.ob_bad");
+        KRN_METRIC_HIT("feed.ob_bad");
         return;
       }
       obManager_->setTickSize(symbol, doc["tickSize"].GetDouble());
-      GMA_METRIC_HIT("feed.ob_ticksize");
+      KRN_METRIC_HIT("feed.ob_ticksize");
 
     } else if (action == "add") {
-      if (!doc.HasMember("id") || !doc["id"].IsUint64()) { GMA_METRIC_HIT("feed.ob_bad"); return; }
-      if (!doc.HasMember("side") || !doc["side"].IsString()) { GMA_METRIC_HIT("feed.ob_bad"); return; }
-      if (!doc.HasMember("price") || !doc["price"].IsNumber()) { GMA_METRIC_HIT("feed.ob_bad"); return; }
-      if (!doc.HasMember("size") || !doc["size"].IsUint64()) { GMA_METRIC_HIT("feed.ob_bad"); return; }
+      if (!doc.HasMember("id") || !doc["id"].IsUint64()) { KRN_METRIC_HIT("feed.ob_bad"); return; }
+      if (!doc.HasMember("side") || !doc["side"].IsString()) { KRN_METRIC_HIT("feed.ob_bad"); return; }
+      if (!doc.HasMember("price") || !doc["price"].IsNumber()) { KRN_METRIC_HIT("feed.ob_bad"); return; }
+      if (!doc.HasMember("size") || !doc["size"].IsUint64()) { KRN_METRIC_HIT("feed.ob_bad"); return; }
 
       const std::string sideStr = doc["side"].GetString();
       Side side = (sideStr == "ask") ? Side::Ask : Side::Bid;
@@ -255,10 +255,10 @@ private:
 
       obManager_->onAdd(symbol, doc["id"].GetUint64(), side,
                         doc["price"].GetDouble(), doc["size"].GetUint64(), priority);
-      GMA_METRIC_HIT("feed.ob_add");
+      KRN_METRIC_HIT("feed.ob_add");
 
     } else if (action == "update") {
-      if (!doc.HasMember("id") || !doc["id"].IsUint64()) { GMA_METRIC_HIT("feed.ob_bad"); return; }
+      if (!doc.HasMember("id") || !doc["id"].IsUint64()) { KRN_METRIC_HIT("feed.ob_bad"); return; }
 
       std::optional<double> newPrice;
       std::optional<uint64_t> newSize;
@@ -268,17 +268,17 @@ private:
         newSize = doc["size"].GetUint64();
 
       obManager_->onUpdate(symbol, doc["id"].GetUint64(), FeedScope{}, newPrice, newSize);
-      GMA_METRIC_HIT("feed.ob_update");
+      KRN_METRIC_HIT("feed.ob_update");
 
     } else if (action == "delete") {
-      if (!doc.HasMember("id") || !doc["id"].IsUint64()) { GMA_METRIC_HIT("feed.ob_bad"); return; }
+      if (!doc.HasMember("id") || !doc["id"].IsUint64()) { KRN_METRIC_HIT("feed.ob_bad"); return; }
 
       obManager_->onDelete(symbol, doc["id"].GetUint64(), FeedScope{});
-      GMA_METRIC_HIT("feed.ob_delete");
+      KRN_METRIC_HIT("feed.ob_delete");
 
     } else if (action == "trade") {
-      if (!doc.HasMember("price") || !doc["price"].IsNumber()) { GMA_METRIC_HIT("feed.ob_bad"); return; }
-      if (!doc.HasMember("size") || !doc["size"].IsUint64()) { GMA_METRIC_HIT("feed.ob_bad"); return; }
+      if (!doc.HasMember("price") || !doc["price"].IsNumber()) { KRN_METRIC_HIT("feed.ob_bad"); return; }
+      if (!doc.HasMember("size") || !doc["size"].IsUint64()) { KRN_METRIC_HIT("feed.ob_bad"); return; }
 
       Aggressor aggr = Aggressor::Unknown;
       if (doc.HasMember("aggressor") && doc["aggressor"].IsString()) {
@@ -288,10 +288,10 @@ private:
       }
 
       obManager_->onTrade(symbol, doc["price"].GetDouble(), doc["size"].GetUint64(), aggr);
-      GMA_METRIC_HIT("feed.ob_trade");
+      KRN_METRIC_HIT("feed.ob_trade");
 
     } else {
-      GMA_METRIC_HIT("feed.ob_bad");
+      KRN_METRIC_HIT("feed.ob_bad");
       krn::util::logger().log(krn::util::LogLevel::Warn,
                               "feed.ob.unknown_action",
                               {{"action", action}});
@@ -300,7 +300,7 @@ private:
 
   void handleControlMessage(const rapidjson::Document& doc) {
     if (!doc.HasMember("action") || !doc["action"].IsString()) {
-      GMA_METRIC_HIT("feed.control_bad");
+      KRN_METRIC_HIT("feed.control_bad");
       return;
     }
 
@@ -308,7 +308,7 @@ private:
 
     if (action == "reset") {
       if (!doc.HasMember("symbol") || !doc["symbol"].IsString()) {
-        GMA_METRIC_HIT("feed.control_bad");
+        KRN_METRIC_HIT("feed.control_bad");
         return;
       }
       uint32_t epoch = 0;
@@ -317,10 +317,10 @@ private:
 
       if (obManager_) {
         obManager_->onReset(doc["symbol"].GetString(), epoch);
-        GMA_METRIC_HIT("feed.control_reset");
+        KRN_METRIC_HIT("feed.control_reset");
       }
     } else {
-      GMA_METRIC_HIT("feed.control_bad");
+      KRN_METRIC_HIT("feed.control_bad");
       krn::util::logger().log(krn::util::LogLevel::Warn,
                               "feed.control.unknown_action",
                               {{"action", action}});
@@ -336,7 +336,7 @@ private:
       if (!ec) {
         krn::util::logger().log(krn::util::LogLevel::Warn,
                                 "feed.session.idle_timeout");
-        GMA_METRIC_HIT("feed.idle_timeout");
+        KRN_METRIC_HIT("feed.idle_timeout");
         self->close();
       }
     });
@@ -442,7 +442,7 @@ void FeedServer::onAccept(boost::system::error_code ec, tcp::socket socket) {
     {
       std::lock_guard<std::mutex> lk(mu_);
       if (sessions_.size() >= MAX_FEED_SESSIONS) {
-        GMA_METRIC_HIT("feed.conn_rejected");
+        KRN_METRIC_HIT("feed.conn_rejected");
         krn::util::logger().log(krn::util::LogLevel::Warn,
                                 "feed.max_sessions_reached",
                                 {{"max", std::to_string(MAX_FEED_SESSIONS)}});

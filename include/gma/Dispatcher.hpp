@@ -27,7 +27,7 @@
 namespace krn {
 
 // ENC-1486. The record ingress path's parameter types. Forward-declared
-// rather than included: they are PODs in `gma_engine` (include/gma/data/),
+// rather than included: they are PODs in `krn_engine` (include/gma/data/),
 // Arrow-free by construction, and `Dispatcher` only needs to name them.
 namespace data {
 struct TickRecord;

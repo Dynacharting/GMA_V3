@@ -215,8 +215,8 @@ private:
 // -----------------------------------------------------------------------------
 // Optional convenience macros
 // -----------------------------------------------------------------------------
-#define GMA_METRIC_INC(name, d) ::krn::util::MetricRegistry::instance().increment((name), (d))
-#define GMA_METRIC_HIT(name)    ::krn::util::MetricRegistry::instance().increment((name), 1.0)
-#define GMA_METRIC_SET(name, v) ::krn::util::MetricRegistry::instance().setGauge((name), (v))
+#define KRN_METRIC_INC(name, d) ::krn::util::MetricRegistry::instance().increment((name), (d))
+#define KRN_METRIC_HIT(name)    ::krn::util::MetricRegistry::instance().increment((name), 1.0)
+#define KRN_METRIC_SET(name, v) ::krn::util::MetricRegistry::instance().setGauge((name), (v))
 
 } // namespace krn
