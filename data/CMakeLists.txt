@@ -35,6 +35,7 @@ include(KrnDataArrow)
 add_library(krn_data STATIC
   "${CMAKE_CURRENT_SOURCE_DIR}/src/Schema.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/include/krn/data/Schema.hpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/include/krn/data/BookRecord.hpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/src/DatabentoAdapter.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/include/krn/data/DatabentoAdapter.hpp"
   # Promoted out of DatabentoAdapterTest.cpp (ENC-1483, begun under the

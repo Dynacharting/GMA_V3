@@ -79,24 +79,8 @@ std::int64_t toFixed(double px) noexcept;
 // replacing them, so the decode is a cast and not a lookup table.
 // ---------------------------------------------------------------------------
 
-// Mirrors krn::Side (connectors/market/include/krn/book/OrderBook.hpp).
-enum class Side : std::uint8_t { Bid = 0, Ask = 1 };
-
 // Mirrors krn::Aggressor (same header).
 enum class Aggressor : std::uint8_t { Unknown = 0, Buy = 1, Sell = 2 };
-
-// Mirrors the krn::feed::FeedEvent variant set
-// (connectors/market/include/krn/feed/FeedEvent.hpp) one-for-one. That variant
-// is already the canonical event model in this repo; the schema does not invent
-// a second one.
-enum class BookAction : std::uint8_t {
-  Add      = 0,   // ObAddEvent
-  Update   = 1,   // ObUpdateEvent
-  Delete   = 2,   // ObDeleteEvent
-  Trade    = 3,   // ObTradeEvent (print; see bookNeutral)
-  TickSize = 4,   // ObTickSizeEvent
-  Clear    = 5,   // ObResetEvent — new epoch
-};
 
 enum class RecordKind : std::uint8_t {
   Trade        = 0,
@@ -178,44 +162,6 @@ struct TickRecord {
   std::uint32_t askCt = 0;
 
   std::uint16_t flags = 0;        // provider condition flags, passed through
-};
-
-// One L2/L3 book mutation. Maps onto the OrderBookManager entry points that
-// already exist (onAdd / onUpdate / onDelete / onTrade / setTickSize /
-// onReset), so the data layer drives that machinery rather than duplicating it
-// (docs/data-layer.md §4.6).
-struct BookRecord {
-  RecordHeader  header;
-  BookAction    action   = BookAction::Add;
-  Side          side     = Side::Bid;
-  std::int64_t  price    = kNoPrice;
-  std::uint64_t size     = 0;
-  std::uint64_t orderId  = 0;     // 0 == venue supplied none (OrderKey::idMissing)
-  std::uint64_t priority = 0;     // recv seq or venue ts, per Order::priority
-  std::uint16_t depth    = 0;     // level index for aggregated (L2) feeds
-  std::uint32_t epoch    = 0;     // FeedScope::epoch; bumped by Clear
-  std::uint16_t flags    = 0;
-};
-
-// One level of a book snapshot. Snapshots are persisted on a cadence so a
-// replay of an arbitrary window can seek instead of rebuilding from session
-// open — with MBO, the alternative is replaying every order event from the
-// open, per research run (docs/data-layer.md §8.5).
-struct SnapshotLevel {
-  Side          side       = Side::Bid;
-  std::int64_t  price      = kNoPrice;
-  std::uint64_t size       = 0;
-  std::uint32_t orderCount = 0;
-};
-
-// One ROW of `book_snapshots`: a level, plus the header, plus the resume seq
-// the snapshot was taken at (`onSnapshotPerOrder`'s snapshotSeq). A snapshot is
-// many rows sharing one snapshotSeq; the level alone is not addressable, which
-// is why the row type exists rather than persisting bare SnapshotLevels.
-struct SnapshotRecord {
-  RecordHeader  header;
-  std::uint64_t snapshotSeq = 0;
-  SnapshotLevel level;
 };
 
 } // namespace krn::data
