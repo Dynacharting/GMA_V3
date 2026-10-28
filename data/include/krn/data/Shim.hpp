@@ -155,21 +155,6 @@ std::string renderSelect(const Selection& sel, std::string_view database);
 // Transport + decode
 // ---------------------------------------------------------------------------
 
-// Interns symbol strings to ids. Exists because StreamValue carries
-// `std::string symbol`, so today a symbol is HEAP-COPIED into every value on
-// every edge of every DAG. At research scale that single copy is a measurable
-// fraction of total cost (docs §5.3, §6).
-class SymbolTable {
-public:
-  std::uint32_t intern(std::string_view sym);
-  std::string_view lookup(std::uint32_t id) const;
-  std::size_t size() const noexcept;
-
-private:
-  struct Impl;
-  std::shared_ptr<Impl> impl_;
-};
-
 struct ShimConfig {
   // Bounded buffering. ClickHouse reads faster than gma computes; without a
   // bound a month-long research scan buffers a month in RAM (docs §5.2).
