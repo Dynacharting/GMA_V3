@@ -71,10 +71,11 @@ Key properties:
 │   ├── util/krn.conf           # Example INI runtime config
 │   └── main.cpp                # Composition root — boots engine, registers connectors
 ├── connectors/
-│   ├── market/                 # libkrn_connector_market (OB, TA, ITCH, FeedServer, WsFeedClient)
-│   │   ├── include/krn/        # market/, book/, ob/, ta/, feed/, ws/, server/
-│   │   └── src/
-│   └── synthetic/              # demo connector (linked into tests only)
+│   └── market/                 # libkrn_connector_market (OB, TA, ITCH, FeedServer, WsFeedClient)
+│       ├── include/krn/        # market/, book/, ob/, ta/, feed/, ws/, server/
+│       └── src/
+├── plugins/
+│   └── reference/              # demo connector (linked into tests only)
 ├── tests/                      # GoogleTest suites (one krn_tests binary)
 └── docs/                       # ARCHITECTURE.md, atomic-keys.md, feed-adapters.md, ...
 ```
@@ -111,7 +112,7 @@ cmake --build build -j$(nproc)
 ```
 
 CMake targets: `libkrn_engine.a`, `libkrn_connector_market.a`,
-`libkrn_connector_synthetic.a`, the **`krn_server`** binary, and `krn_tests`.
+`libkrn_plugin_reference.a`, the **`krn_server`** binary, and `krn_tests`.
 
 ---
 

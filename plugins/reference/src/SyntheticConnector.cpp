@@ -1,4 +1,4 @@
-#include "krn/synthetic/SyntheticConnector.hpp"
+#include "krn/reference/SyntheticConnector.hpp"
 
 #include <chrono>
 #include <cmath>

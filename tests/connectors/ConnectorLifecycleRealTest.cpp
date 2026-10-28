@@ -13,9 +13,9 @@
 #include "krn/atomic/AtomicProviderRegistry.hpp"
 #include "krn/engine/Registries.hpp"
 #include "krn/market/MarketConnector.hpp"
+#include "krn/reference/SyntheticConnector.hpp"
 #include "krn/rt/ThreadPool.hpp"
 #include "krn/runtime/ShutdownCoordinator.hpp"
-#include "krn/synthetic/SyntheticConnector.hpp"
 #include "krn/util/Config.hpp"
 #include "krn/util/Logger.hpp"
 
