@@ -45,8 +45,8 @@ library" is true of one variant and not of D14. The invariant is unaffected eith
 because it constrains **`krn_engine`**, not the product: `krn_data` is linked into a
 deployment or it is not, and `krn_engine` must build in both cases.
 
-**The engine-facing PODs are deliberately NOT in this directory.** `RecordHeader`,
-`TickRecord`, `BookRecord` and `SnapshotRecord` live in
+**The engine-facing PODs are deliberately NOT in this directory.** `RecordHeader` and
+`TickRecord` live in
 [`../include/krn/data/Record.hpp`](../include/krn/data/Record.hpp), inside `krn_engine`,
 because ENC-1486 adds `Dispatcher::onRecord(const data::TickRecord&)` and `Dispatcher` *is*
 engine code — the engine has to be able to name a record. They are Arrow-free and
@@ -102,6 +102,7 @@ control when built: its closure must trip a forbidden pattern (it links `krn::ar
 |---|---|
 | `include/krn/data/Schema.hpp` + `src/Schema.cpp` | **real** — the three first-slice Arrow schemas, `quotes`, and the column-wise codec |
 | `../include/krn/data/Record.hpp` | **real** — the engine-facing PODs (in `krn_engine`) |
+| `include/krn/data/BookRecord.hpp` | **real** — `BookRecord`, `SnapshotRecord`; no engine consumer, so in `krn_data` (ENC-1550) |
 | `../include/krn/data/SymbolTable.hpp` | **real** — ticker/venue interning (in `krn_engine`) |
 | `include/krn/data/DatabentoAdapter.hpp` + `src/DatabentoAdapter.cpp` | **real** — the DBN decoder and the DBN→canonical mapping (ENC-1482) |
 | `include/krn/data/DbnEncoder.hpp` + `src/DbnEncoder.cpp` | **real** — a DBN *encoder*, promoted out of the test TU (ENC-1483). It is a non-circularity instrument first and a component second: the layout claims in `DatabentoAdapter.hpp` are believed only because this code reproduces five real vendor files byte for byte |

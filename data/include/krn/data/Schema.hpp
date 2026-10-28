@@ -13,7 +13,8 @@
 //     shape. No row objects, no JSON DOM, no per-field conversion.
 //
 //   * TickRecord / BookRecord / SnapshotRecord — plain PODs, the engine-facing
-//     form, defined in `include/krn/data/Record.hpp` (krn_engine). The decode
+//     form. TickRecord is in `include/krn/data/Record.hpp` (krn_engine); the
+//     book records are in `krn/data/BookRecord.hpp` (here, ENC-1550). The decode
 //     below turns a batch into these COLUMN-WISE, once per batch. That decode
 //     is the single Arrow->scalar boundary in the system
 //     (docs/data-layer.md C2). It exists because gma's DAG is a scalar push
