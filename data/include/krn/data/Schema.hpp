@@ -34,6 +34,7 @@
 // ENC-1486. This is the schema and the codec, nothing more.
 //
 
+#include "krn/data/BookRecord.hpp"
 #include "krn/data/Record.hpp"
 #include "krn/data/SymbolTable.hpp"
 

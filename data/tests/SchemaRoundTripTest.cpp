@@ -12,6 +12,7 @@
 // is DISTINCT FROM THE FIELD'S DEFAULT, and `AllFixtureFieldsDifferFromDefault`
 // pins that property so the round-trip tests cannot go vacuous later.
 
+#include "krn/data/BookRecord.hpp"
 #include "krn/data/Record.hpp"
 #include "krn/data/Schema.hpp"
 #include "krn/data/SymbolTable.hpp"

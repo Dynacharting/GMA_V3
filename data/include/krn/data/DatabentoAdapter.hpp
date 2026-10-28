@@ -124,6 +124,7 @@
 // `kUndefPrice` (INT64_MAX) and ours is `kNoPrice` (INT64_MIN).
 //
 
+#include "krn/data/BookRecord.hpp"
 #include "krn/data/Record.hpp"
 #include "krn/data/Schema.hpp"
 #include "krn/data/SymbolTable.hpp"
