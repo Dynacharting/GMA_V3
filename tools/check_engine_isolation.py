@@ -31,7 +31,7 @@ FOUR CHECKS, each closing a different route in:
 
   A  textual   no engine translation unit includes an Arrow / Parquet /
                ClickHouse / DuckDB header, nor a header that exists only under
-               `data/include` or `connectors/*/include`.
+               `data/include`, `connectors/*/include` or `plugins/*/include`.
   B  include   krn_engine's include directories, restricted to paths inside
                the repo, are `<root>/include` or a VENDORED THIRD-PARTY tree
                under `<root>/third_party` whose name is not itself a forbidden
@@ -309,12 +309,14 @@ def check_cmake_sources_stay_in_the_engine_trees(
 
 
 def non_engine_header_roots(root: str) -> list[str]:
-    """Include roots that belong to krn_data and the connectors, not the engine."""
+    """Include roots that belong to krn_data, the connectors and the plugins."""
     roots = [os.path.join(root, "data", "include")]
-    connectors = os.path.join(root, "connectors")
-    if os.path.isdir(connectors):
-        for name in sorted(os.listdir(connectors)):
-            candidate = os.path.join(connectors, name, "include")
+    for parent in ("connectors", "plugins"):
+        base = os.path.join(root, parent)
+        if not os.path.isdir(base):
+            continue
+        for name in sorted(os.listdir(base)):
+            candidate = os.path.join(base, name, "include")
             if os.path.isdir(candidate):
                 roots.append(candidate)
     return [r for r in roots if os.path.isdir(r)]
@@ -392,7 +394,7 @@ def check_b_include_dirs(root: str, dirs: list[str]) -> list[str]:
         a forbidden dependency (ENC-1497).
 
     Everything else in-repo fails, and that set is the check's actual job:
-    `data/include`, `connectors/market/include`, `connectors/synthetic/include`.
+    `data/include`, `connectors/market/include`, `plugins/reference/include`.
     Comparison is on `os.path.realpath`, so the exemption cannot be reached by
     symlinking a foreign include root into `third_party/` -- it resolves back
     out and fails on the general rule.
@@ -831,8 +833,17 @@ def selftest() -> int:
         with open(good, "w", encoding="utf-8") as fh:
             fh.write('#include "krn/data/Record.hpp"\n#include <vector>\n')
 
+        os.makedirs(os.path.join(tmp, "plugins", "reference", "include", "krn", "reference"))
+        open(os.path.join(tmp, "plugins", "reference", "include", "krn",
+                          "reference", "SyntheticConnector.hpp"), "w").close()
+
         foreign = non_engine_header_roots(tmp)
         expect_clean("A/legal-Record.hpp", check_a_includes(tmp, [good], foreign))
+        plugin_user = os.path.join(tmp, "UsesPlugin.cpp")
+        with open(plugin_user, "w", encoding="utf-8") as fh:
+            fh.write('#include "krn/reference/SyntheticConnector.hpp"\n')
+        expect_detected("A/engine-includes-a-plugin-header",
+                        check_a_includes(tmp, [plugin_user], foreign))
 
         # The composition root: it may reach a connector, it may not reach
         # Arrow or data/. This is the distinction the first real run of this
@@ -942,14 +953,14 @@ def selftest() -> int:
                         check_b_include_dirs(
                             tmp, [engine_inc,
                                   os.path.join(tmp, "data", "include")]))
-        os.makedirs(os.path.join(tmp, "connectors", "synthetic", "include"),
+        os.makedirs(os.path.join(tmp, "plugins", "reference", "include"),
                     exist_ok=True)
-        for conn in ("market", "synthetic"):
+        for parent, conn in (("connectors", "market"), ("plugins", "reference")):
             expect_detected(
-                f"B/connector-{conn}-include-on-engine-path",
+                f"B/{parent}-{conn}-include-on-engine-path",
                 check_b_include_dirs(
                     tmp, [engine_inc,
-                          os.path.join(tmp, "connectors", conn, "include")]))
+                          os.path.join(tmp, parent, conn, "include")]))
         # A bare src/ on the engine's include path is not vendored either --
         # the general rule still covers everything outside the two cases above.
         expect_detected("B/src-on-engine-path",
@@ -987,10 +998,10 @@ def selftest() -> int:
                            "RapidJSON::rapidjson", "OpenSSL::SSL",
                            "OpenSSL::Crypto"],
             "krn_connector_market": ["krn_engine"],
-            "krn_connector_synthetic": ["krn_engine"],
+            "krn_plugin_reference": ["krn_engine"],
             "krn_tests": ["krn", "Boost::system", "Threads::Threads",
                           "RapidJSON::rapidjson", "GTest::gtest_main",
-                          "krn_connector_synthetic"],
+                          "krn_plugin_reference"],
         }
         expect_clean("C/closure-legal", forbidden_links(legal, "krn_engine"))
         expect_clean("D/closure-legal", forbidden_links(legal, "krn_server"))
@@ -1201,7 +1212,8 @@ def evaluate(manifest: dict[str, str]
     if not foreign_roots:
         vacuous.append(
             "found no non-engine include roots (data/include, "
-            "connectors/*/include) -- check A cannot detect a layering "
+            "connectors/*/include, plugins/*/include) -- check A cannot "
+            "detect a layering "
             "violation it has no tree to resolve against")
     if not cmake_sources:
         vacuous.append(
