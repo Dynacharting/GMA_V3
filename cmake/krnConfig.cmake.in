@@ -1,0 +1,41 @@
+# Package config for the krn engine (ENC-1553). Generated from
+# cmake/krnConfig.cmake.in; gives the imported target krn::krn_engine.
+include(CMakeFindDependencyMacro)
+
+find_dependency(Threads)
+
+if (@OpenSSL_FOUND@)  # the engine was built with KRN_HAS_SSL=1
+  find_dependency(OpenSSL)
+endif()
+
+if (@Boost_FOUND@)
+  set(Boost_USE_STATIC_LIBS @Boost_USE_STATIC_LIBS@)
+  set(Boost_USE_STATIC_RUNTIME @Boost_USE_STATIC_RUNTIME@)
+  find_dependency(Boost 1.75 COMPONENTS system)
+elseif (NOT TARGET Boost::system)
+  # The engine was built against the header-only fallback; recreate its stubs.
+  add_library(Boost::headers INTERFACE IMPORTED)
+  set_target_properties(Boost::headers PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "@BOOST_FALLBACK_INCLUDE@")
+  add_library(Boost::system INTERFACE IMPORTED)
+  set_target_properties(Boost::system PROPERTIES
+    INTERFACE_LINK_LIBRARIES Boost::headers)
+endif()
+
+# RapidJSON ships no package to find: the engine defines RapidJSON::rapidjson
+# over a find_path result, so recreate it here the same way.
+if (NOT TARGET RapidJSON::rapidjson)
+  find_path(KRN_RAPIDJSON_INCLUDE_DIR NAMES rapidjson/document.h
+    HINTS "${RAPIDJSON_ROOT}" "$ENV{RAPIDJSON_ROOT}" "@RAPIDJSON_INCLUDE_DIR@")
+  if (NOT KRN_RAPIDJSON_INCLUDE_DIR)
+    set(${CMAKE_FIND_PACKAGE_NAME}_FOUND FALSE)
+    set(${CMAKE_FIND_PACKAGE_NAME}_NOT_FOUND_MESSAGE
+      "krn: RapidJSON headers not found; set RAPIDJSON_ROOT")
+    return()
+  endif()
+  add_library(RapidJSON::rapidjson INTERFACE IMPORTED)
+  set_target_properties(RapidJSON::rapidjson PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${KRN_RAPIDJSON_INCLUDE_DIR}")
+endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/krnTargets.cmake")

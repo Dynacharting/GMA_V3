@@ -1036,3 +1036,51 @@ if (KRN_BUILD_TESTS)
       "Aggregating/SummingMergeTree — is NOT being checked in this build.")
   endif()
 endif()
+
+# =======================
+# Install / export (ENC-1553, purity SPEC D5)
+# =======================
+# Top-level only: a FetchContent consumer builds krn_engine from source and
+# installs nothing of ours. `find_package(krn CONFIG)` gives krn::krn_engine.
+if (_krn_top_level)
+  include(GNUInstallDirs)
+  set(KRN_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/krn")
+  install(TARGETS krn_engine EXPORT krnTargets
+    ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+    INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+  install(DIRECTORY "${PROJECT_SOURCE_DIR}/include/krn"
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+  install(EXPORT krnTargets NAMESPACE krn::
+    DESTINATION "${KRN_INSTALL_CMAKEDIR}")
+  configure_file("${PROJECT_SOURCE_DIR}/cmake/krnConfig.cmake.in"
+    "${PROJECT_BINARY_DIR}/krnConfig.cmake" @ONLY)
+  install(FILES "${PROJECT_BINARY_DIR}/krnConfig.cmake"
+    DESTINATION "${KRN_INSTALL_CMAKEDIR}")
+endif()
+
+# =======================
+# Consumer smoke tests (ENC-1553)
+# =======================
+# The CMake analogue of wt.mjs's assertLinksResolve. Each drives a separate
+# consumer project in a fresh dir under this build tree:
+#   fetchcontent — FetchContent of this repo's HEAD from a file:// URL, with the
+#                  engine's own options set ON in the consumer's cache; asserts
+#                  krn_engine's SOURCES sit under the fetched tree and that no
+#                  other engine target exists. It checks the COMMITTED HEAD.
+#   install      — cmake --install of this build into an empty prefix, then a
+#                  find_package(krn CONFIG) consumer that links krn::krn_engine.
+if (KRN_BUILD_TESTS)
+  foreach (_krn_smoke IN ITEMS fetchcontent install)
+    add_test(NAME krn_consumer_${_krn_smoke}_smoke
+      COMMAND "${CMAKE_COMMAND}"
+              -DMODE=${_krn_smoke}
+              "-DKRN_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
+              "-DKRN_BINARY_DIR=${PROJECT_BINARY_DIR}"
+              "-DKRN_CONFIG=$<CONFIG>"
+              "-DKRN_CXX_COMPILER=${CMAKE_CXX_COMPILER}"
+              "-DKRN_GENERATOR=${CMAKE_GENERATOR}"
+              "-DKRN_RAPIDJSON_ROOT=${RAPIDJSON_INCLUDE_DIR}"
+              -P "${PROJECT_SOURCE_DIR}/tests/consumer/run_consumer_smoke.cmake")
+    set_tests_properties(krn_consumer_${_krn_smoke}_smoke PROPERTIES TIMEOUT 900)
+  endforeach()
+endif()
