@@ -91,11 +91,21 @@ static_assert(offsetof(BookRecord, header) == 0 &&
               offsetof(BookRecord, epoch) == 84 &&
               offsetof(BookRecord, flags) == 88);
 
+static_assert(sizeof(BookRecord::price) == 8 && sizeof(BookRecord::size) == 8 &&
+              sizeof(BookRecord::orderId) == 8 &&
+              sizeof(BookRecord::priority) == 8 &&
+              sizeof(BookRecord::depth) == 2 && sizeof(BookRecord::epoch) == 4 &&
+              sizeof(BookRecord::flags) == 2);
+
 static_assert(sizeof(SnapshotLevel) == 32 && alignof(SnapshotLevel) == 8);
 static_assert(offsetof(SnapshotLevel, side) == 0 &&
               offsetof(SnapshotLevel, price) == 8 &&
               offsetof(SnapshotLevel, size) == 16 &&
               offsetof(SnapshotLevel, orderCount) == 24);
+
+static_assert(sizeof(SnapshotLevel::price) == 8 &&
+              sizeof(SnapshotLevel::size) == 8 &&
+              sizeof(SnapshotLevel::orderCount) == 4);
 
 static_assert(sizeof(SnapshotRecord) == 80 && alignof(SnapshotRecord) == 8);
 static_assert(offsetof(SnapshotRecord, header) == 0 &&
