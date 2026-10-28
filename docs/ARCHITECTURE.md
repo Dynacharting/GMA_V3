@@ -7,7 +7,7 @@ This document is the authoritative reference for how KRN is put together. `CLAUD
 KRN is a **streaming-computation server**: JSON request trees come in over WebSocket, events come in from data feeds, and the node pipeline runs user-specified math on the stream and pushes results back out. The codebase is split into two layers:
 
 - **Engine** (`libkrn_engine`): everything that has no idea what it's processing — node pipeline, event routing, JSON tree builder, WebSocket transport, thread pool, atomic store.
-- **Connectors** (`libkrn_connector_market`, `libkrn_connector_synthetic`, …): everything domain-specific — feed protocols, per-event computations (e.g. TA), order books, custom atomic provider namespaces, specialized node types.
+- **Connectors** (`libkrn_connector_market`, `libkrn_plugin_reference`, …): everything domain-specific — feed protocols, per-event computations (e.g. TA), order books, custom atomic provider namespaces, specialized node types.
 
 **The core invariant:** adding a new connector touches only the connector's own directory plus one line at the composition root. No engine edits. If a change to the engine is ever required to support a new connector, something went wrong in the extension-point design.
 
@@ -41,7 +41,7 @@ KRN is a **streaming-computation server**: JSON request trees come in over WebSo
 └──────────────────────────────────────────────────────────────┘
 ```
 
-`libkrn_connector_synthetic` sits next to the market connector (also depending on `krn_engine`) but is only linked into `krn_tests` — it exists as a demo + regression check, not a production feature.
+`libkrn_plugin_reference` sits next to the market connector (also depending on `krn_engine`) but is only linked into `krn_tests` — it exists as a demo + regression check, not a production feature.
 
 Engine isolation is enforced via CMake include scoping: `krn_engine`'s PUBLIC include path is `include/` only, so any accidental `#include "krn/book/..."` or `#include "krn/market/..."` from inside engine code fails at compile time.
 
@@ -297,7 +297,7 @@ That's the entire integration. You shouldn't need to touch any file under `inclu
 
 **Reference implementations:**
 - `connectors/market/` — full production connector with OB, TA, two feed paths, custom provider namespace.
-- `connectors/synthetic/` — ~120 LOC proof-of-concept. Emits a sine wave on a timer. Looked at alongside `tests/connectors/SyntheticConnectorTest.cpp` it's a complete worked example.
+- `plugins/reference/` — ~120 LOC proof-of-concept. Emits a sine wave on a timer. Looked at alongside `tests/connectors/SyntheticConnectorTest.cpp` it's a complete worked example.
 
 ## 7. Node pipeline
 

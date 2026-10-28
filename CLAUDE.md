@@ -80,8 +80,8 @@ connectors/market/        # libkrn_connector_market (depends on krn_engine)
     AtomicFunctions.hpp   # Transitional umbrella (TA + builtins)
   src/                    # Implementations mirrored
 
-connectors/synthetic/     # libkrn_connector_synthetic (demo; linked only into tests)
-  include/krn/synthetic/SyntheticConnector.hpp
+plugins/reference/        # libkrn_plugin_reference (demo; linked only into tests)
+  include/krn/reference/SyntheticConnector.hpp
   src/SyntheticConnector.cpp
 
 data/                     # libkrn_data — L1 data/query layer (ENC-1481; see data/README.md)
@@ -114,7 +114,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full picture including 
 ## Tech Stack
 
 - **C++20** (`-DCMAKE_CXX_STANDARD=20`)
-- **CMake 3.20+** — produces `libkrn_engine.a`, `libkrn_connector_market.a`, `libkrn_connector_synthetic.a`, `libkrn_data.a`, `krn_server`, `krn_tests`, `krn_data_tests`
+- **CMake 3.20+** — produces `libkrn_engine.a`, `libkrn_connector_market.a`, `libkrn_plugin_reference.a`, `libkrn_data.a`, `krn_server`, `krn_tests`, `krn_data_tests`
 - **Apache Arrow** (`krn_data` only) — found with `find_package(Arrow CONFIG)`, else built
   from source by `data/cmake/KrnDataArrow.cmake`. A cold configure downloads a 17 MB
   archive (2m33s on this link) and the build costs 45s Debug / 63s Release on 16 cores;
