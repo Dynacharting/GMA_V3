@@ -120,7 +120,7 @@ if (NOT DEFINED THIRD_PARTY_ROOT)
   if (WIN32)
     set(THIRD_PARTY_ROOT "C:/thirdparty")
   else()
-    set(THIRD_PARTY_ROOT "${CMAKE_SOURCE_DIR}/third_party")
+    set(THIRD_PARTY_ROOT "${PROJECT_SOURCE_DIR}/third_party")
   endif()
 endif()
 
@@ -254,27 +254,164 @@ message(STATUS "RapidJSON include dir: ${RAPIDJSON_INCLUDE_DIR}")
 # include paths contain *only* the engine headers, so engine code that
 # accidentally references a connector header fails to compile.
 
-set(MAIN_SRC "${CMAKE_SOURCE_DIR}/src/main.cpp")
+set(MAIN_SRC "${PROJECT_SOURCE_DIR}/src/main.cpp")
 
-file(GLOB_RECURSE KRN_ENGINE_SOURCES "${CMAKE_SOURCE_DIR}/src/*.cpp")
-if (EXISTS "${MAIN_SRC}")
-  list(REMOVE_ITEM KRN_ENGINE_SOURCES "${MAIN_SRC}")
-endif()
-
-file(GLOB_RECURSE KRN_ENGINE_HEADERS
-  "${CMAKE_SOURCE_DIR}/include/**/*.hpp"
-  "${CMAKE_SOURCE_DIR}/include/*.hpp"
+# Explicit lists, not globs (ENC-1551): a missing file is a configure error,
+# and paths are rooted at this project, not at whoever add_subdirectory()s it.
+set(KRN_ENGINE_SOURCES
+  src/core/AtomicStore.cpp
+  src/core/BuiltinFunctions.cpp
+  src/core/Dispatcher.cpp
+  src/core/DispatcherRecord.cpp
+  src/core/Expr.cpp
+  src/core/FunctionMap.cpp
+  src/core/JsonValidator.cpp
+  src/core/RequestRegistry.cpp
+  src/core/TreeBuilder.cpp
+  src/data/SymbolTable.cpp
+  src/engine/IEventComputer.cpp
+  src/forum/ConnectorsClient.cpp
+  src/nodes/Aggregate.cpp
+  src/nodes/AtomicAccessor.cpp
+  src/nodes/BucketTime.cpp
+  src/nodes/Expr.cpp
+  src/nodes/Field.cpp
+  src/nodes/Filter.cpp
+  src/nodes/GroupSplit.cpp
+  src/nodes/Interval.cpp
+  src/nodes/Listener.cpp
+  src/nodes/Pack.cpp
+  src/nodes/Responder.cpp
+  src/nodes/Switch.cpp
+  src/nodes/Tee.cpp
+  src/nodes/TumblingWindow.cpp
+  src/nodes/VectorReducer.cpp
+  src/nodes/Worker.cpp
+  src/rt/Strand.cpp
+  src/rt/ThreadPool.cpp
+  src/server/ClientSession.cpp
+  src/server/WebSocketServer.cpp
+  src/util/Config.cpp
+  src/util/Logger.cpp
+  src/util/Metrics.cpp
+  src/ws/ClientConnection.cpp
+  src/ws/WSResponder.cpp
+  src/ws/WsBridge.cpp
 )
+list(TRANSFORM KRN_ENGINE_SOURCES PREPEND "${PROJECT_SOURCE_DIR}/")
 
-file(GLOB_RECURSE KRN_MARKET_SOURCES "${CMAKE_SOURCE_DIR}/connectors/market/src/*.cpp")
-file(GLOB_RECURSE KRN_MARKET_HEADERS
-  "${CMAKE_SOURCE_DIR}/connectors/market/include/**/*.hpp"
-  "${CMAKE_SOURCE_DIR}/connectors/market/include/*.hpp"
+set(KRN_ENGINE_HEADERS
+  include/krn/AtomicStore.hpp
+  include/krn/Dispatcher.hpp
+  include/krn/Event.hpp
+  include/krn/ExecutionContext.hpp
+  include/krn/Expr.hpp
+  include/krn/FunctionMap.hpp
+  include/krn/FunctionRegistry.hpp
+  include/krn/JsonValidator.hpp
+  include/krn/Metrics.hpp
+  include/krn/NodeRegistry.hpp
+  include/krn/RequestRegistry.hpp
+  include/krn/Result.hpp
+  include/krn/Span.hpp
+  include/krn/StreamValue.hpp
+  include/krn/TreeBuilder.hpp
+  include/krn/atomic/AtomicProviderRegistry.hpp
+  include/krn/data/Record.hpp
+  include/krn/data/SymbolTable.hpp
+  include/krn/engine/ConfigNamespaceRegistry.hpp
+  include/krn/engine/EngineRegistries.hpp
+  include/krn/engine/EventComputerRegistry.hpp
+  include/krn/engine/EventTypeRegistry.hpp
+  include/krn/engine/FieldSource.hpp
+  include/krn/engine/IConnector.hpp
+  include/krn/engine/IEventComputer.hpp
+  include/krn/engine/IngressRegistry.hpp
+  include/krn/engine/JsonFieldSource.hpp
+  include/krn/engine/NodeTypeRegistry.hpp
+  include/krn/engine/RecordFieldSource.hpp
+  include/krn/engine/Registries.hpp
+  include/krn/forum/ConnectorsClient.hpp
+  include/krn/nodes/Aggregate.hpp
+  include/krn/nodes/AtomicAccessor.hpp
+  include/krn/nodes/BucketTime.hpp
+  include/krn/nodes/Expr.hpp
+  include/krn/nodes/Field.hpp
+  include/krn/nodes/Filter.hpp
+  include/krn/nodes/GroupSplit.hpp
+  include/krn/nodes/INode.hpp
+  include/krn/nodes/InputPort.hpp
+  include/krn/nodes/Interval.hpp
+  include/krn/nodes/JoinBy.hpp
+  include/krn/nodes/Listener.hpp
+  include/krn/nodes/NodeEnv.hpp
+  include/krn/nodes/Pack.hpp
+  include/krn/nodes/Responder.hpp
+  include/krn/nodes/Switch.hpp
+  include/krn/nodes/Tee.hpp
+  include/krn/nodes/TumblingWindow.hpp
+  include/krn/nodes/VectorReducer.hpp
+  include/krn/nodes/Worker.hpp
+  include/krn/rt/SPSCQueue.hpp
+  include/krn/rt/Strand.hpp
+  include/krn/rt/ThreadPool.hpp
+  include/krn/runtime/IStoppable.hpp
+  include/krn/runtime/ShutdownCoordinator.hpp
+  include/krn/server/ClientSession.hpp
+  include/krn/server/RequestKey.hpp
+  include/krn/server/WebSocketServer.hpp
+  include/krn/util/Config.hpp
+  include/krn/util/JsonUtil.hpp
+  include/krn/util/Logger.hpp
+  include/krn/util/Metrics.hpp
+  include/krn/ws/ClientConnection.hpp
+  include/krn/ws/WSResponder.hpp
+  include/krn/ws/WsBridge.hpp
 )
+list(TRANSFORM KRN_ENGINE_HEADERS PREPEND "${PROJECT_SOURCE_DIR}/")
+
+set(KRN_MARKET_SOURCES
+  connectors/market/src/MarketConnector.cpp
+  connectors/market/src/MarketIngress.cpp
+  connectors/market/src/MarketTA.cpp
+  connectors/market/src/book/OrderBook.cpp
+  connectors/market/src/book/OrderBookManager.cpp
+  connectors/market/src/feed/IFeedAdapter.cpp
+  connectors/market/src/feed/ItchAdapter.cpp
+  connectors/market/src/ob/ObKey.cpp
+  connectors/market/src/ob/ObMaterializer.cpp
+  connectors/market/src/ob/ObProvider.cpp
+  connectors/market/src/server/FeedServer.cpp
+  connectors/market/src/ws/WsFeedClient.cpp
+)
+list(TRANSFORM KRN_MARKET_SOURCES PREPEND "${PROJECT_SOURCE_DIR}/")
+set(KRN_MARKET_HEADERS
+  connectors/market/include/krn/AtomicFunctions.hpp
+  connectors/market/include/krn/MarketTA.hpp
+  connectors/market/include/krn/SymbolHistory.hpp
+  connectors/market/include/krn/book/DepthTypes.hpp
+  connectors/market/include/krn/book/OrderBook.hpp
+  connectors/market/include/krn/book/OrderBookManager.hpp
+  connectors/market/include/krn/feed/FeedEvent.hpp
+  connectors/market/include/krn/feed/IFeedAdapter.hpp
+  connectors/market/include/krn/feed/ItchAdapter.hpp
+  connectors/market/include/krn/market/MarketConnector.hpp
+  connectors/market/include/krn/market/MarketFieldMap.hpp
+  connectors/market/include/krn/market/MarketIngress.hpp
+  connectors/market/include/krn/ob/FunctionalSnapshotSource.hpp
+  connectors/market/include/krn/ob/ObKey.hpp
+  connectors/market/include/krn/ob/ObMaterializer.hpp
+  connectors/market/include/krn/ob/ObProvider.hpp
+  connectors/market/include/krn/ob/ObSnapshot.hpp
+  connectors/market/include/krn/server/FeedServer.hpp
+  connectors/market/include/krn/ta/Indicators.hpp
+  connectors/market/include/krn/ws/WsFeedClient.hpp
+)
+list(TRANSFORM KRN_MARKET_HEADERS PREPEND "${PROJECT_SOURCE_DIR}/")
 
 # ---- Engine library ----
 add_library(krn_engine STATIC ${KRN_ENGINE_SOURCES} ${KRN_ENGINE_HEADERS})
-target_include_directories(krn_engine PUBLIC "${CMAKE_SOURCE_DIR}/include")
+target_include_directories(krn_engine PUBLIC "${PROJECT_SOURCE_DIR}/include")
 
 if (Boost_FOUND)
   target_include_directories(krn_engine PUBLIC ${Boost_INCLUDE_DIRS})
@@ -300,7 +437,7 @@ endif()
 # ---- Market connector library ----
 add_library(krn_connector_market STATIC ${KRN_MARKET_SOURCES} ${KRN_MARKET_HEADERS})
 target_include_directories(krn_connector_market PUBLIC
-  "${CMAKE_SOURCE_DIR}/connectors/market/include"
+  "${PROJECT_SOURCE_DIR}/connectors/market/include"
 )
 target_link_libraries(krn_connector_market PUBLIC krn_engine)
 
@@ -312,15 +449,18 @@ target_link_libraries(krn INTERFACE krn_engine krn_connector_market)
 # Not linked into `krn` — kept as an opt-in target that test code and demos
 # pull in explicitly. Adding a connector requires (a) this library target and
 # (b) one `registerWith` call at the composition root; no engine edits.
-file(GLOB_RECURSE KRN_SYNTHETIC_SOURCES
-  "${CMAKE_SOURCE_DIR}/connectors/synthetic/src/*.cpp")
-file(GLOB_RECURSE KRN_SYNTHETIC_HEADERS
-  "${CMAKE_SOURCE_DIR}/connectors/synthetic/include/**/*.hpp"
-  "${CMAKE_SOURCE_DIR}/connectors/synthetic/include/*.hpp")
+set(KRN_SYNTHETIC_SOURCES
+  connectors/synthetic/src/SyntheticConnector.cpp
+)
+list(TRANSFORM KRN_SYNTHETIC_SOURCES PREPEND "${PROJECT_SOURCE_DIR}/")
+set(KRN_SYNTHETIC_HEADERS
+  connectors/synthetic/include/krn/synthetic/SyntheticConnector.hpp
+)
+list(TRANSFORM KRN_SYNTHETIC_HEADERS PREPEND "${PROJECT_SOURCE_DIR}/")
 add_library(krn_connector_synthetic STATIC
   ${KRN_SYNTHETIC_SOURCES} ${KRN_SYNTHETIC_HEADERS})
 target_include_directories(krn_connector_synthetic PUBLIC
-  "${CMAKE_SOURCE_DIR}/connectors/synthetic/include")
+  "${PROJECT_SOURCE_DIR}/connectors/synthetic/include")
 target_link_libraries(krn_connector_synthetic PUBLIC krn_engine)
 
 # Warnings — apply to every first-party target (ENC-806 / L12). Previously only
@@ -378,7 +518,7 @@ endif()
 # App executable (if src/main.cpp exists)
 if (EXISTS "${MAIN_SRC}")
   add_executable(krn_server "${MAIN_SRC}")
-  target_include_directories(krn_server PRIVATE "${CMAKE_SOURCE_DIR}/include")
+  target_include_directories(krn_server PRIVATE "${PROJECT_SOURCE_DIR}/include")
   if (Boost_FOUND)
     target_include_directories(krn_server PRIVATE ${Boost_INCLUDE_DIRS})
     target_link_libraries(krn_server PRIVATE krn Boost::system)
@@ -409,9 +549,90 @@ if (KRN_BUILD_TESTS)
   set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
   FetchContent_MakeAvailable(googletest)
 
-  file(GLOB_RECURSE KRN_TEST_SOURCES "${CMAKE_SOURCE_DIR}/tests/*.cpp")
+  set(KRN_TEST_SOURCES
+    tests/book/CrossedBookTest.cpp
+    tests/book/OrderBookTest.cpp
+    tests/connection/ConnectionTest.cpp
+    tests/connectors/ConnectorLifecycleRealTest.cpp
+    tests/connectors/MarketFieldMapTest.cpp
+    tests/connectors/SyntheticConnectorTest.cpp
+    tests/context/ContextTest.cpp
+    tests/core/AtomicFunctionsTest.cpp
+    tests/core/AtomicStoreCapsTest.cpp
+    tests/core/AtomicStoreTest.cpp
+    tests/core/ConfigNamespaceDispatchTest.cpp
+    tests/core/ConfigTest.cpp
+    tests/core/ExprTest.cpp
+    tests/core/IndicatorsTest.cpp
+    tests/core/LoggerTest.cpp
+    tests/core/MarketTANumericTest.cpp
+    tests/core/RecordValueTest.cpp
+    tests/core/SelectFunctionTest.cpp
+    tests/core/ThreadPoolTest.cpp
+    tests/dispatch/AtomicKeyNamespaceTest.cpp
+    tests/dispatch/ClockCoherentPullTest.cpp
+    tests/dispatch/DispatchTest.cpp
+    tests/dispatch/InjectedAtomicTest.cpp
+    tests/dispatch/RecordIngressParityTest.cpp
+    tests/engine/ConnectorLifecycleTest.cpp
+    tests/engine/EngineRegistriesShapeTest.cpp
+    tests/engine/EventComputerCacheTest.cpp
+    tests/engine/IngressFactoryDispatchTest.cpp
+    tests/engine/RegistriesTest.cpp
+    tests/feed/FeedEventDispatchTest.cpp
+    tests/feed/GapFixesTest.cpp
+    tests/feed/ItchAdapterTest.cpp
+    tests/feed/ItchSemanticTest.cpp
+    tests/forum/ConnectorsClientTest.cpp
+    tests/integration/ConcurrencyContentionTest.cpp
+    tests/integration/Enc101CanonicalPatternTest.cpp
+    tests/integration/ExpressionLanguageCapstoneTest.cpp
+    tests/integration/IntegrationTest.cpp
+    tests/integration/LetBindingsTest.cpp
+    tests/integration/OrderedDeliveryTest.cpp
+    tests/integration/StressTest.cpp
+    tests/mapping/FunctionMapTest.cpp
+    tests/nodes/AggregateTest.cpp
+    tests/nodes/AtomicAccessorTest.cpp
+    tests/nodes/BucketStartStampTest.cpp
+    tests/nodes/BucketTimeTest.cpp
+    tests/nodes/ExprNodeTest.cpp
+    tests/nodes/FieldTest.cpp
+    tests/nodes/FilterTest.cpp
+    tests/nodes/GroupSplitTest.cpp
+    tests/nodes/IntervalTest.cpp
+    tests/nodes/ListenerTest.cpp
+    tests/nodes/PackTest.cpp
+    tests/nodes/ResponderTest.cpp
+    tests/nodes/SwitchTest.cpp
+    tests/nodes/TeeTest.cpp
+    tests/nodes/TumblingWindowTest.cpp
+    tests/nodes/VectorReducerTest.cpp
+    tests/nodes/WindowReducerCompositionTest.cpp
+    tests/nodes/WorkerTest.cpp
+    tests/ob/ObKeyTest.cpp
+    tests/ob/ObMaterializerTest.cpp
+    tests/ob/ObProviderTest.cpp
+    tests/registry/RegistryTest.cpp
+    tests/server/RequestKeyHashTest.cpp
+    tests/test_bootstrap.cpp
+    tests/treebuilder/ComposedChainTest.cpp
+    tests/treebuilder/CorpusTest.cpp
+    tests/treebuilder/FanInArityTest.cpp
+    tests/treebuilder/FanInJoinKeyTest.cpp
+    tests/treebuilder/RecordTerminalTest.cpp
+    tests/treebuilder/TreeBuilderTest.cpp
+    tests/validation/ValidationTest.cpp
+    tests/ws/ClientSessionBackpressureTest.cpp
+    tests/ws/ClientSessionTest.cpp
+    tests/ws/SubscriptionStrandMintTest.cpp
+    tests/ws/WSResponderTest.cpp
+    tests/ws/WebSocketE2ETest.cpp
+    tests/ws/WsBridgeTest.cpp
+  )
+  list(TRANSFORM KRN_TEST_SOURCES PREPEND "${PROJECT_SOURCE_DIR}/")
   add_executable(krn_tests ${KRN_TEST_SOURCES})
-  target_include_directories(krn_tests PRIVATE "${CMAKE_SOURCE_DIR}/include")
+  target_include_directories(krn_tests PRIVATE "${PROJECT_SOURCE_DIR}/include")
   if (Boost_FOUND)
     target_include_directories(krn_tests PRIVATE ${Boost_INCLUDE_DIRS})
     target_link_libraries(krn_tests PRIVATE krn Boost::system)
@@ -438,7 +659,7 @@ if (KRN_BUILD_TESTS)
   # corpus_requests.json (it otherwise GTEST_SKIPs / fails on the missing file).
   add_custom_command(TARGET krn_tests POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-      "${CMAKE_SOURCE_DIR}/tests/treebuilder/corpus_requests.json"
+      "${PROJECT_SOURCE_DIR}/tests/treebuilder/corpus_requests.json"
       "$<TARGET_FILE_DIR:krn_tests>/corpus_requests.json"
     COMMENT "Copying corpus_requests.json next to krn_tests")
 
@@ -452,7 +673,7 @@ if (KRN_BUILD_TESTS)
   # finds the corpus from any directory, and the diagnostic it prints when it
   # genuinely cannot names the cwd and every path tried.
   target_compile_definitions(krn_tests PRIVATE
-    KRN_TEST_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+    KRN_TEST_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
 
   # ─── ENC-1289's EXPECTED-FAILURE MACHINERY IS GONE. ENC-1292 CLEARED THE
   # LAST GATE, 2026-09-20.
@@ -497,7 +718,7 @@ if (KRN_BUILD_TESTS)
   if (TARGET krn_server AND Python3_Interpreter_FOUND)
     add_test(NAME krn_port_conflict
       COMMAND "${Python3_EXECUTABLE}"
-              "${CMAKE_SOURCE_DIR}/tests/scripts/port_conflict_test.py"
+              "${PROJECT_SOURCE_DIR}/tests/scripts/port_conflict_test.py"
               "$<TARGET_FILE:krn_server>")
     set_tests_properties(krn_port_conflict PROPERTIES TIMEOUT 120)
 
@@ -506,7 +727,7 @@ if (KRN_BUILD_TESTS)
     # already printed the right number while the socket used the file's.
     add_test(NAME krn_feed_port_override
       COMMAND "${Python3_EXECUTABLE}"
-              "${CMAKE_SOURCE_DIR}/tests/scripts/feed_port_override_test.py"
+              "${PROJECT_SOURCE_DIR}/tests/scripts/feed_port_override_test.py"
               "$<TARGET_FILE:krn_server>")
     set_tests_properties(krn_feed_port_override PROPERTIES TIMEOUT 120)
   elseif (NOT Python3_Interpreter_FOUND)
@@ -529,7 +750,7 @@ if (KRN_BUILD_BENCHMARKS)
   # Helper: create a benchmark executable from a single source file
   function(krn_add_benchmark NAME SRC)
     add_executable(${NAME} ${SRC})
-    target_include_directories(${NAME} PRIVATE "${CMAKE_SOURCE_DIR}/include")
+    target_include_directories(${NAME} PRIVATE "${PROJECT_SOURCE_DIR}/include")
     if (Boost_FOUND)
       target_include_directories(${NAME} PRIVATE ${Boost_INCLUDE_DIRS})
       target_link_libraries(${NAME} PRIVATE krn Boost::system)
@@ -551,11 +772,11 @@ if (KRN_BUILD_BENCHMARKS)
     krn_apply_warnings(${NAME})
   endfunction()
 
-  krn_add_benchmark(bench_atomic_functions  "${CMAKE_SOURCE_DIR}/benchmarks/AtomicFunctionsBench.cpp")
-  krn_add_benchmark(bench_dispatcher        "${CMAKE_SOURCE_DIR}/benchmarks/DispatcherBench.cpp")
-  krn_add_benchmark(bench_atomic_store      "${CMAKE_SOURCE_DIR}/benchmarks/AtomicStoreBench.cpp")
-  krn_add_benchmark(bench_thread_pool       "${CMAKE_SOURCE_DIR}/benchmarks/ThreadPoolBench.cpp")
-  krn_add_benchmark(bench_window_nodes      "${CMAKE_SOURCE_DIR}/benchmarks/WindowNodesBench.cpp")
+  krn_add_benchmark(bench_atomic_functions  "${PROJECT_SOURCE_DIR}/benchmarks/AtomicFunctionsBench.cpp")
+  krn_add_benchmark(bench_dispatcher        "${PROJECT_SOURCE_DIR}/benchmarks/DispatcherBench.cpp")
+  krn_add_benchmark(bench_atomic_store      "${PROJECT_SOURCE_DIR}/benchmarks/AtomicStoreBench.cpp")
+  krn_add_benchmark(bench_thread_pool       "${PROJECT_SOURCE_DIR}/benchmarks/ThreadPoolBench.cpp")
+  krn_add_benchmark(bench_window_nodes      "${PROJECT_SOURCE_DIR}/benchmarks/WindowNodesBench.cpp")
 
   # Convenience target: build all benchmarks at once
   add_custom_target(krn_benchmarks DEPENDS
@@ -625,7 +846,7 @@ endif()
 # THE RESOLVED RAPIDJSON PATH IS IN THE MANIFEST (ENC-1497). `/third_party/`
 # is gitignored, so it is populated in the shared checkout and absent in a
 # fresh `git worktree`; find_path above therefore resolves RapidJSON to
-# ${CMAKE_SOURCE_DIR}/third_party/rapidjson in one and to /usr/include in the
+# ${PROJECT_SOURCE_DIR}/third_party/rapidjson in one and to /usr/include in the
 # other. That made ONE COMMIT FAIL THIS GATE FROM ONE CHECKOUT AND PASS FROM
 # THE OTHER, with nothing in either run's output to explain the difference.
 # Check B now accepts both (bounded -- see the checker's docstring), and the
@@ -637,7 +858,7 @@ endif()
 # resolved list on an add_test COMMAND would be split into separate arguments
 # at every semicolon.
 if (KRN_BUILD_TESTS AND TARGET krn_server)
-  set(KRN_ISOLATION_MANIFEST "${CMAKE_BINARY_DIR}/krn_engine_isolation.manifest")
+  set(KRN_ISOLATION_MANIFEST "${PROJECT_BINARY_DIR}/krn_engine_isolation.manifest")
 
   # The gate's positive control. Scanned, never linked: the checker fails if
   # any other target's closure reaches it. The stub carries no library, so a
@@ -656,9 +877,9 @@ if (KRN_BUILD_TESTS AND TARGET krn_server)
   # they have no link line. (CMake does not report IMPORTED or ALIAS targets
   # here, which is why the checker ALSO fails on any first-party-looking name
   # that has no row — belt and braces, and the braces are producer-independent.)
-  set(_krn_iso_dirs "${CMAKE_SOURCE_DIR}")
+  set(_krn_iso_dirs "${PROJECT_SOURCE_DIR}")
   if (KRN_BUILD_DATA)
-    list(APPEND _krn_iso_dirs "${CMAKE_SOURCE_DIR}/data")
+    list(APPEND _krn_iso_dirs "${PROJECT_SOURCE_DIR}/data")
   endif()
   set(_krn_iso_link_targets "")
   foreach (_krn_iso_dir IN LISTS _krn_iso_dirs)
@@ -686,7 +907,7 @@ interface_link.${_krn_iso_t}=$<JOIN:$<TARGET_PROPERTY:${_krn_iso_t},INTERFACE_LI
 
   file(GENERATE OUTPUT "${KRN_ISOLATION_MANIFEST}" CONTENT
 "# Generated by CMake for tools/check_engine_isolation.py (ENC-1481). Do not edit.
-root=${CMAKE_SOURCE_DIR}
+root=${PROJECT_SOURCE_DIR}
 engine_include_dirs=$<JOIN:$<TARGET_PROPERTY:krn_engine,INCLUDE_DIRECTORIES>,|>
 engine_interface_include_dirs=$<JOIN:$<TARGET_PROPERTY:krn_engine,INTERFACE_INCLUDE_DIRECTORIES>,|>
 engine_cmake_sources=$<JOIN:$<TARGET_PROPERTY:krn_engine,SOURCES>,|>
@@ -697,7 +918,7 @@ ${_krn_iso_link_rows}")
   if (Python3_Interpreter_FOUND)
     add_test(NAME krn_engine_isolation
       COMMAND "${Python3_EXECUTABLE}"
-              "${CMAKE_SOURCE_DIR}/tools/check_engine_isolation.py"
+              "${PROJECT_SOURCE_DIR}/tools/check_engine_isolation.py"
               --manifest "${KRN_ISOLATION_MANIFEST}")
     set_tests_properties(krn_engine_isolation PROPERTIES TIMEOUT 120)
 
@@ -707,7 +928,7 @@ ${_krn_iso_link_rows}")
     # anti-vacuity rule of docs/data-layer.md §5.4, applied to the checker.
     add_test(NAME krn_engine_isolation_selftest
       COMMAND "${Python3_EXECUTABLE}"
-              "${CMAKE_SOURCE_DIR}/tools/check_engine_isolation.py"
+              "${PROJECT_SOURCE_DIR}/tools/check_engine_isolation.py"
               --selftest)
     set_tests_properties(krn_engine_isolation_selftest PROPERTIES TIMEOUT 120)
   else()
@@ -761,14 +982,14 @@ if (KRN_BUILD_TESTS)
   if (Python3_Interpreter_FOUND)
     add_test(NAME krn_schema_no_compute
       COMMAND "${Python3_EXECUTABLE}"
-              "${CMAKE_SOURCE_DIR}/data/schema/check_no_compute.py"
-              lint "${CMAKE_SOURCE_DIR}/data/schema/clickhouse.sql")
+              "${PROJECT_SOURCE_DIR}/data/schema/check_no_compute.py"
+              lint "${PROJECT_SOURCE_DIR}/data/schema/clickhouse.sql")
     set_tests_properties(krn_schema_no_compute PROPERTIES TIMEOUT 120)
 
     # The gate's own gate — see the note above.
     add_test(NAME krn_schema_no_compute_selftest
       COMMAND "${Python3_EXECUTABLE}"
-              "${CMAKE_SOURCE_DIR}/data/schema/check_no_compute.py"
+              "${PROJECT_SOURCE_DIR}/data/schema/check_no_compute.py"
               self-test)
     set_tests_properties(krn_schema_no_compute_selftest PROPERTIES TIMEOUT 120)
   else()
