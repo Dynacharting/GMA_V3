@@ -68,10 +68,6 @@ foreach (_lib IN LISTS _libs)
   _check("_outside STREQUAL \"\""
     "(a) every ${_lib} SOURCE is under the fetched tree; outside: [${_outside}]")
 endforeach()
-  endforeach()
-  _check("_outside STREQUAL \"\""
-    "(a) every krn_engine SOURCE is under the fetched tree; outside: [${_outside}]")
-endif()
 
 # ---- (b) the engine defines its library targets and nothing else ----
 # Every directory the engine added (data/, googletest's, ...) is walked.
