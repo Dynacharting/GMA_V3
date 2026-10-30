@@ -8,6 +8,7 @@
 #include "krn/FunctionMap.hpp"
 #include "krn/atomic/AtomicProviderRegistry.hpp"
 #include "krn/engine/Registries.hpp"
+#include "krn/reference/ReferenceComputer.hpp"
 #include "krn/reference/SyntheticConnector.hpp"
 #include "krn/rt/ThreadPool.hpp"
 #include "krn/runtime/ShutdownCoordinator.hpp"
@@ -48,6 +49,29 @@ Event makeSyntheticEvent(const std::string& sym, double counter) {
   return e;
 }
 
+// Carries BOTH computers' input fields (`counter` and the reference input), so
+// a computer reached by the wrong event type would write its keys: only the
+// event type can keep them apart.
+std::shared_ptr<rapidjson::Document> bothInputs(double v) {
+  using synthetic::ReferenceComputer;
+  auto doc = std::make_shared<rapidjson::Document>();
+  doc->SetObject();
+  doc->AddMember("counter", rapidjson::Value(v), doc->GetAllocator());
+  const std::string_view in = ReferenceComputer::kInputField;
+  doc->AddMember(rapidjson::Value(in.data(), static_cast<rapidjson::SizeType>(in.size()),
+                                  doc->GetAllocator()),
+                 rapidjson::Value(v), doc->GetAllocator());
+  return doc;
+}
+
+Event makeRoutedEvent(const std::string& sym, std::string_view type, double v) {
+  Event e;
+  e.type    = std::string(type);
+  e.symbol  = sym;
+  e.payload = bothInputs(v);
+  return e;
+}
+
 } // namespace
 
 TEST(SyntheticConnectorTest, ComputerWritesSinCosToStore) {
@@ -70,24 +94,42 @@ TEST(SyntheticConnectorTest, ComputerWritesSinCosToStore) {
 }
 
 TEST(SyntheticConnectorTest, DispatcherRoutesByEventType) {
-  // With both the market tick computer (installed globally via bootstrap) and
-  // the synthetic computer added locally, events must route only to the
-  // computer whose eventType() matches. Specifically: a "synthetic.tick" event
-  // should NOT trigger market TA (which would try to extract lastPrice/volume
-  // from a payload that only has a "counter" field).
+  // Two computers on two event types, both added locally: each event must
+  // reach only the computer whose eventType() matches. ENC-1562 rebound the
+  // second computer from the (formerly bootstrap-installed) market tick
+  // computer onto the reference plugin's ReferenceComputer, so the check
+  // needs no market code and is not vacuous in krn_tests.
+  using synthetic::ReferenceComputer;
+  const std::string sumKey(ReferenceComputer::kSumKey);
+  const std::string sumSqKey(ReferenceComputer::kSumSqKey);
+
   AtomicStore store;
   rt::ThreadPool pool(1);
   Dispatcher dispatcher(&pool, &store);
   dispatcher.addComputer(std::make_unique<synthetic::SyntheticEventComputer>());
+  dispatcher.addComputer(std::make_unique<ReferenceComputer>());
 
-  dispatcher.onTick(makeSyntheticEvent("SYN", 5.0));
+  // synthetic.tick: synthetic keys written, no reference key. Twice, because
+  // ReferenceComputer writes nothing on a stream's first event.
+  // Every event carries both input fields (bothInputs), so only the type routes.
+  const std::string_view kSyn = "synthetic.tick";
+  dispatcher.onTick(makeRoutedEvent("SYN", kSyn, 5.0));
+  dispatcher.onTick(makeRoutedEvent("SYN", kSyn, 6.0));
+  // reference.tick on another stream: reference keys written, no synthetic key.
+  dispatcher.onTick(makeRoutedEvent("REF", ReferenceComputer::kEventType, 7.0));
+  dispatcher.onTick(makeRoutedEvent("REF", ReferenceComputer::kEventType, 8.0));
   pool.shutdown();
 
   EXPECT_TRUE(store.get("SYN", "synthetic.sin").has_value());
-  // Market computer must have left no TA keys behind on SYN — it should have
-  // seen a mismatched event type and skipped entirely.
-  EXPECT_FALSE(store.get("SYN", "sma_5").has_value());
-  EXPECT_FALSE(store.get("SYN", "lastPrice").has_value());
+  EXPECT_FALSE(store.get("SYN", sumKey).has_value())
+      << "a synthetic.tick event reached ReferenceComputer";
+  EXPECT_FALSE(store.get("SYN", sumSqKey).has_value());
+
+  // Anti-vacuity: the reference computer did run on its own event type.
+  EXPECT_TRUE(store.get("REF", sumKey).has_value());
+  EXPECT_FALSE(store.get("REF", "synthetic.sin").has_value())
+      << "a reference.tick event reached SyntheticEventComputer";
+  EXPECT_FALSE(store.get("REF", "synthetic.cos").has_value());
 }
 
 namespace {

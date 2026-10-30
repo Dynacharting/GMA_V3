@@ -45,7 +45,8 @@ FOUR CHECKS, each closing a different route in:
                data/CMakeLists.txt names "the engine test suite is built
                against an Arrow-free include path" as the thing being
                protected, and a prose claim with no check behind it is what
-               this whole file is a reaction to.
+               this whole file is a reaction to.  krn_tests alone is also
+               barred from krn_connector_market (ENC-1562).
 
 CHECK B IS THE WEAKEST OF THE FOUR, AND ITS HOLE IS DELIBERATE.  (ENC-1497)
 Its rule used to be "any in-repo include dir that is not `<root>/include`",
@@ -177,6 +178,12 @@ FORBIDDEN_LINK_PATTERNS = (
     re.compile(r"clickhouse", re.IGNORECASE),
     re.compile(r"duckdb", re.IGNORECASE),
 )
+
+# Check D, krn_tests only (ENC-1562, purity SPEC D11.1/D13): the engine test
+# binary must not reach the market connector.  Its market cases build as
+# krn_market_tests, which is not a checked root.
+MARKET_CONNECTOR_LINK = re.compile(r"(?:^|[:/])krn_connector_market$")
+ROOT_FORBIDDEN_LINKS = {"krn_tests": (MARKET_CONNECTOR_LINK,)}
 
 # The positive control (ENC-1507).  Must match root CMakeLists.txt.
 CONTROL_TARGET = "krn_isolation_control"
@@ -635,7 +642,16 @@ def forbidden_links(graph: dict[str, list[str]], root: str) -> list[str]:
     a search that did not happen".
     """
     problems: list[str] = []
+    extra = ROOT_FORBIDDEN_LINKS.get(root, ())
     for name, cands, chain in link_closure(graph, root):
+        market = next((c for c in cands for p in extra if p.search(c)), None)
+        if market is not None:
+            shown = market if market == name else f"{name}' (as '{market}"
+            problems.append(
+                f"{root} links '{shown}' via {' -> '.join(chain)} -- "
+                f"{root} carries no market code (ENC-1562); market cases "
+                f"build as krn_market_tests")
+            continue
         hit = next((c for c in cands
                     for p in FORBIDDEN_LINK_PATTERNS if p.search(c)), None)
         if hit is not None:
@@ -708,7 +724,11 @@ def selftest_gate(failures: list[str]) -> int:
             "krn": ["krn_engine", "krn_connector_market"],
             "krn_connector_market": ["krn_engine"],
             "krn_server": ["krn", "Threads::Threads"],
-            "krn_tests": ["krn", "GTest::gtest_main"],
+            "krn_plugin_reference": ["krn_engine"],
+            "krn_tests": ["krn_engine", "krn_plugin_reference",
+                          "GTest::gtest_main"],
+            "krn_market_tests": ["krn", "krn_plugin_reference",
+                                 "GTest::gtest_main"],
             CONTROL_TARGET: [CONTROL_PROBE],
         }
 
@@ -777,6 +797,14 @@ def selftest_gate(failures: list[str]) -> int:
         drifted = mutant("control-without-stub", lambda g: g.update(
             {CONTROL_TARGET: ["krn::arrow"]}))
         gate("control-without-stub", drifted, "OFF", 2, CONTROL_TARGET)
+
+        # ENC-1562: the whole gate exits 1 when krn_tests links the market
+        # connector -- the CMake line `target_link_libraries(krn_tests
+        # PRIVATE krn_connector_market)`.
+        gate("krn_tests-links-market",
+             mutant("krn_tests-links-market",
+                    lambda g: g["krn_tests"].append("krn_connector_market")),
+             "OFF", 1)
 
         # Scanned, never linked: the stub or the control target in a real one.
         gate("stub-in-krn_engine",
@@ -999,14 +1027,30 @@ def selftest() -> int:
                            "OpenSSL::Crypto"],
             "krn_connector_market": ["krn_engine"],
             "krn_plugin_reference": ["krn_engine"],
-            "krn_tests": ["krn", "Boost::system", "Threads::Threads",
+            "krn_tests": ["krn_engine", "Boost::system", "Threads::Threads",
                           "RapidJSON::rapidjson", "GTest::gtest_main",
                           "krn_plugin_reference"],
+            "krn_market_tests": ["krn", "Boost::system", "Threads::Threads",
+                                 "RapidJSON::rapidjson", "GTest::gtest_main",
+                                 "krn_plugin_reference"],
         }
         expect_clean("C/closure-legal", forbidden_links(legal, "krn_engine"))
         expect_clean("D/closure-legal", forbidden_links(legal, "krn_server"))
         expect_clean("D/closure-legal-krn_tests",
                      forbidden_links(legal, "krn_tests"))
+
+        # ENC-1562: krn_tests must not reach krn_connector_market, directly
+        # or through the umbrella; the ban is krn_tests' alone.
+        for label, libs in (("direct", ["krn_engine", "krn_connector_market"]),
+                            ("via-umbrella", ["krn", "GTest::gtest_main"])):
+            mut = dict(legal, krn_tests=libs)
+            if mut == legal:
+                failures.append(f"SELFTEST: D/krn_tests-market-{label}: "
+                                f"mutation did not apply")
+            expect_detected(f"D/krn_tests-links-market-{label}",
+                            forbidden_links(mut, "krn_tests"))
+        expect_clean("D/market-ban-is-krn_tests-only",
+                     forbidden_links(legal, "krn_market_tests"))
 
         # THE CASE THAT MOTIVATED THE CLOSURE. One line on the umbrella makes
         # KRN_BUILD_DATA=OFF unlinkable; neither krn_engine's nor krn_server's

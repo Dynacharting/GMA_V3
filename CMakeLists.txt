@@ -612,23 +612,19 @@ if (KRN_BUILD_TESTS)
   set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)  # cmake --install ships krn only
   FetchContent_MakeAvailable(googletest)
 
+  # krn_tests: the engine suite. Its bootstrap registers no connector, and it
+  # links krn_engine, not the `krn` umbrella, so no market code reaches it
+  # (ENC-1562; krn_engine_isolation check D enforces it).
   set(KRN_TEST_SOURCES
-    tests/book/CrossedBookTest.cpp
-    tests/book/OrderBookTest.cpp
     tests/connection/ConnectionTest.cpp
-    tests/connectors/ConnectorLifecycleRealTest.cpp
-    tests/connectors/MarketFieldMapTest.cpp
     tests/connectors/SyntheticConnectorTest.cpp
     tests/context/ContextTest.cpp
-    tests/core/AtomicFunctionsTest.cpp
     tests/core/AtomicStoreCapsTest.cpp
     tests/core/AtomicStoreTest.cpp
     tests/core/ConfigNamespaceDispatchTest.cpp
     tests/core/ConfigTest.cpp
     tests/core/ExprTest.cpp
-    tests/core/IndicatorsTest.cpp
     tests/core/LoggerTest.cpp
-    tests/core/MarketTANumericTest.cpp
     tests/core/RecordValueTest.cpp
     tests/core/SelectFunctionTest.cpp
     tests/core/ThreadPoolTest.cpp
@@ -643,15 +639,11 @@ if (KRN_BUILD_TESTS)
     tests/engine/IngressFactoryDispatchTest.cpp
     tests/engine/RegistriesTest.cpp
     tests/engine/SymbolTableTest.cpp
-    tests/feed/FeedEventDispatchTest.cpp
     tests/feed/GapFixesTest.cpp
-    tests/feed/ItchAdapterTest.cpp
-    tests/feed/ItchSemanticTest.cpp
     tests/forum/ConnectorsClientTest.cpp
     tests/integration/ConcurrencyContentionTest.cpp
     tests/integration/Enc101CanonicalPatternTest.cpp
     tests/integration/ExpressionLanguageCapstoneTest.cpp
-    tests/integration/IntegrationTest.cpp
     tests/integration/LetBindingsTest.cpp
     tests/integration/OrderedDeliveryTest.cpp
     tests/integration/StressTest.cpp
@@ -674,9 +666,6 @@ if (KRN_BUILD_TESTS)
     tests/nodes/VectorReducerTest.cpp
     tests/nodes/WindowReducerCompositionTest.cpp
     tests/nodes/WorkerTest.cpp
-    tests/ob/ObKeyTest.cpp
-    tests/ob/ObMaterializerTest.cpp
-    tests/ob/ObProviderTest.cpp
     tests/registry/RegistryTest.cpp
     tests/server/RequestKeyHashTest.cpp
     tests/test_bootstrap.cpp
@@ -699,9 +688,9 @@ if (KRN_BUILD_TESTS)
   target_include_directories(krn_tests PRIVATE "${PROJECT_SOURCE_DIR}/include")
   if (Boost_FOUND)
     target_include_directories(krn_tests PRIVATE ${Boost_INCLUDE_DIRS})
-    target_link_libraries(krn_tests PRIVATE krn Boost::system)
+    target_link_libraries(krn_tests PRIVATE krn_engine Boost::system)
   else()
-    target_link_libraries(krn_tests PRIVATE krn Boost::system)
+    target_link_libraries(krn_tests PRIVATE krn_engine Boost::system)
     target_compile_definitions(krn_tests PRIVATE
       BOOST_ALL_NO_LIB
       BOOST_ERROR_CODE_HEADER_ONLY
@@ -774,6 +763,62 @@ if (KRN_BUILD_TESTS)
   add_test(NAME krn_tests
     COMMAND krn_tests
     WORKING_DIRECTORY "$<TARGET_FILE_DIR:krn_tests>")
+
+  # krn_market_tests (ENC-1562, purity SPEC D13): every case that needs the
+  # market connector, with a market bootstrap that registers MarketConnector.
+  # The 8 COMMON files plus tests/market/; krn-common imports exactly this set
+  # (§6 row 18). Top-level only, like everything in this block.
+  set(KRN_MARKET_TEST_SOURCES
+    tests/book/CrossedBookTest.cpp
+    tests/book/OrderBookTest.cpp
+    tests/feed/FeedEventDispatchTest.cpp
+    tests/feed/ItchAdapterTest.cpp
+    tests/feed/ItchSemanticTest.cpp
+    tests/ob/ObKeyTest.cpp
+    tests/ob/ObMaterializerTest.cpp
+    tests/ob/ObProviderTest.cpp
+    tests/market/AtomicFunctionsTest.cpp
+    tests/market/AtomicKeyNamespaceMarketTest.cpp
+    tests/market/BootstrapIdempotenceTest.cpp
+    tests/market/ClockCoherentCorpusSweepTest.cpp
+    tests/market/ConnectorLifecycleRealTest.cpp
+    tests/market/GapFixesTest.cpp
+    tests/market/IndicatorsTest.cpp
+    tests/market/IntegrationTest.cpp
+    tests/market/MarketFieldMapTest.cpp
+    tests/market/MarketTANumericTest.cpp
+    tests/market/test_bootstrap.cpp
+  )
+  list(TRANSFORM KRN_MARKET_TEST_SOURCES PREPEND "${PROJECT_SOURCE_DIR}/")
+  add_executable(krn_market_tests ${KRN_MARKET_TEST_SOURCES})
+  target_include_directories(krn_market_tests PRIVATE "${PROJECT_SOURCE_DIR}/include")
+  if (Boost_FOUND)
+    target_include_directories(krn_market_tests PRIVATE ${Boost_INCLUDE_DIRS})
+  else()
+    target_compile_definitions(krn_market_tests PRIVATE
+      BOOST_ALL_NO_LIB
+      BOOST_ERROR_CODE_HEADER_ONLY
+      BOOST_SYSTEM_NO_DEPRECATED
+      BOOST_ASIO_NO_DEPRECATED
+      BOOST_BEAST_USE_STD_STRING_VIEW
+    )
+  endif()
+  target_link_libraries(krn_market_tests PRIVATE
+    krn
+    Boost::system
+    Threads::Threads
+    RapidJSON::rapidjson
+    GTest::gtest_main
+    krn_plugin_reference
+  )
+  krn_apply_warnings(krn_market_tests)
+  # The corpus is found through KRN_TEST_SOURCE_DIR (tests/support/CorpusPath.hpp);
+  # no second POST_BUILD copy into the directory krn_tests already copies into.
+  target_compile_definitions(krn_market_tests PRIVATE
+    KRN_TEST_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+  add_test(NAME krn_market_tests
+    COMMAND krn_market_tests
+    WORKING_DIRECTORY "$<TARGET_FILE_DIR:krn_market_tests>")
 
   # ENC-1006: an occupied wsPort/feedPort must produce a clean non-zero exit,
   # not std::terminate. This drives the real krn_server binary, so it lives as
@@ -906,7 +951,9 @@ endif()
 # THE CHECKED ROOTS are krn_engine, krn_server and krn_tests. krn_tests is
 # there because data/CMakeLists.txt names "the engine test suite is built
 # against an Arrow-free include path" as the thing being protected, and a
-# prose claim with no check behind it is what finding 1 was about.
+# prose claim with no check behind it is what finding 1 was about. krn_tests
+# alone is also barred from krn_connector_market (ENC-1562); the market cases
+# build as krn_market_tests, which is not a checked root.
 #
 # THE POSITIVE CONTROL IS krn_isolation_control (ENC-1507, purity SPEC Q7).
 # Its closure must trip a forbidden pattern, or the patterns match nothing in

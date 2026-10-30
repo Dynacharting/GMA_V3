@@ -104,8 +104,10 @@ tests/                    # GoogleTest suites
   connectors/             # SyntheticConnectorTest
   (book/ dispatch/ feed/ integration/ nodes/ ob/ registry/ treebuilder/
    validation/ ws/ — domain tests)
-  test_bootstrap.cpp      # Global gtest Environment — installs builtins
-                          # + MarketConnector default computer factory
+  market/                 # krn_market_tests' cases (ENC-1562), with the 8
+                          # book/ ob/ feed/ files that test connectors/market
+  test_bootstrap.cpp      # krn_tests' gtest Environment — builtins only
+  market/test_bootstrap.cpp # krn_market_tests' — builtins + MarketConnector
 
 tools/                    # Python/shell utilities (compile.sh, mapping, todo_scan)
 docs/
@@ -122,7 +124,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full picture including 
 ## Tech Stack
 
 - **C++20** (`-DCMAKE_CXX_STANDARD=20`)
-- **CMake 3.20+** — produces `libkrn_engine.a`, `libkrn_connector_market.a`, `libkrn_plugin_reference.a`, `libkrn_data.a`, `krn_server`, `krn_tests`, `krn_data_tests`
+- **CMake 3.20+** — produces `libkrn_engine.a`, `libkrn_connector_market.a`, `libkrn_plugin_reference.a`, `libkrn_data.a`, `krn_server`, `krn_tests`, `krn_market_tests`, `krn_data_tests`
 - **Apache Arrow** (`krn_data` only) — found with `find_package(Arrow CONFIG)`, else built
   from source by `data/cmake/KrnDataArrow.cmake`. A cold configure downloads a 17 MB
   archive (2m33s on this link) and the build costs 45s Debug / 63s Release on 16 cores;
@@ -179,7 +181,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full picture including 
 - Globals: `krn::gThreadPool` (shared_ptr<ThreadPool>, set up in main.cpp)
 - Runtime config: INI-style key=value files (see `src/util/krn.conf`)
 - Prefer lock-free / fine-grained locking (shared_mutex, SPSCQueue)
-- Test files named `<Component>Test.cpp` under `tests/<category>/`; the gtest binary is a single `krn_tests` executable
+- Test files named `<Component>Test.cpp` under `tests/<category>/`; engine cases build into `krn_tests`, which links no market code; a case that needs the market connector goes in `tests/market/` and builds into `krn_market_tests` (ENC-1562)
 - **A test that writes to a process-global registry must derive its key per invocation (ENC-1102).** `FunctionMap`, `NodeTypeRegistry`, `EventComputerRegistry`, `EventTypeRegistry`, `IngressRegistry`, `AtomicProviderRegistry` and `ConfigNamespaceRegistry` are process-wide singletons with no per-entry removal, and `--gtest_repeat` re-runs every test body in the **same process**. A test that registers a *fixed* name therefore meets, on iteration 2, a registry its own iteration-1 run already populated — `registerNodeType` returns false, `EventComputerRegistry` reports double the factories, `FunctionMap::getAll()` does not grow. Five tests failed exactly this way. Build the name from a file-local `static std::atomic` counter (`uniqueKey()` in `tests/engine/RegistriesTest.cpp`, `uniqueType()` in `tests/engine/EventComputerCacheTest.cpp`) instead. This is a test-lifecycle fix only — the registries' production duplicate semantics (first-wins for node/event/ingress types, append for event computers, replace for functions/providers) are deliberate and unchanged.
 - **`--gtest_repeat` must be run against the FULL unsharded binary**, never with `--gtest_filter`. ENC-1065 requires the full binary because cross-suite corruption surfaces dozens of suites later; filtering a repeat run is what hid ENC-1102 for months, since every repeat check in the project happened to be filtered.
 - Connectors implement the strict `IConnector` lifecycle: `registerWith()` allocates and registers (no live sockets/timers), `start()` brings sources online, `stop()` noexcept tears down in reverse order. The composition root drives all three; never wire your own `ShutdownCoordinator` step from inside a connector.
