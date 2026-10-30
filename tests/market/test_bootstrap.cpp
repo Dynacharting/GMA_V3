@@ -1,4 +1,5 @@
-// Registers engine builtins (worker functions and node types), constructs a
+// krn_market_tests' bootstrap (ENC-1562; krn_tests has its own, engine-only,
+// at tests/test_bootstrap.cpp). Registers engine builtins (worker functions and node types), constructs a
 // process-static MarketConnector, and calls its registerWith() — NOT start().
 // Tests don't need live sockets, so the feed server / WS clients are
 // constructed but never started. The "tick" event
@@ -20,7 +21,7 @@
 #include "krn/util/Config.hpp"
 #include "krn/util/Logger.hpp"
 
-#include "support/CorpusPath.hpp"
+#include "../support/CorpusPath.hpp"
 
 #include <boost/asio/io_context.hpp>
 #include <gtest/gtest.h>
@@ -107,11 +108,11 @@ public:
     // by design ("Multiple factories per type are retained in registration
     // order"), so a second registerWith() leaves TWO "tick" computers — every
     // tick's atomics computed twice by two MarketTickComputers with two
-    // independent TA histories. tests/connectors/ConnectorLifecycleRealTest.cpp
+    // independent TA histories. tests/market/ConnectorLifecycleRealTest.cpp
     // documents that exact corruption as the reason it must not call
     // registerWith() a second time; this keeps the invariant it relies on true
     // no matter how often SetUp() runs. Pinned by
-    // RegistriesTest's BootstrapIdempotenceTest.
+    // tests/market/BootstrapIdempotenceTest.cpp.
     //
     // Nothing else here needs resetting — those registrations are already
     // idempotent, and re-running them repairs any registry a test cleared:
