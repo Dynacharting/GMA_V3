@@ -178,7 +178,7 @@ int runHost(int argc, char* argv[], const HostOptions& opts) {
     connectors.push_back(owned.back().get());
   }
 
-  (void)0;
+  if (hooks.afterConnectorsRegistered) hooks.afterConnectorsRegistered(argc, argv, cfg);
 
   // feed-sim-connector phase 2: when forumUrl is configured, replace
   // cfg.ingress with what forum's /api/connectors says. Connector

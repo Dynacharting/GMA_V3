@@ -170,7 +170,11 @@ def main():
                 nulls = {1: 0, 2: 0}
                 deadline = time.time() + READ_TIMEOUT_S
                 while time.time() < deadline and min(len(v) for v in got.values()) < WANT_PER_KEY:
-                    msg = ws.recv_text()
+                    try:
+                        msg = ws.recv_text()
+                    except (OSError, RuntimeError) as ex:
+                        problems.append("reading updates failed: %s" % ex)
+                        break
                     print("<<< %s" % msg)
                     try:
                         frame = json.loads(msg)
