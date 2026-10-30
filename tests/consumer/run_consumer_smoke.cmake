@@ -53,7 +53,7 @@ if (MODE STREQUAL "fetchcontent")
     endif()
   endif()
   message(STATUS "KRN_SMOKE: fetching ${KRN_SMOKE_URL} at ${_tag}")
-  set(_expected "krn_engine,krn_plugin_reference")  # comma-separated
+  set(_expected "krn_engine,krn_host,krn_plugin_reference")  # comma-separated
   _run("consumer configure" "${CMAKE_COMMAND}"
     -S "${KRN_SOURCE_DIR}/tests/consumer/fetchcontent" -B "${_root}/build" ${_common}
     "-DKRN_SMOKE_URL=${KRN_SMOKE_URL}" "-DKRN_SMOKE_TAG=${_tag}"
