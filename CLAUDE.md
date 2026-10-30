@@ -34,6 +34,14 @@ cmake --build . -j$(nproc)
 cd build && ctest --output-on-failure
 ```
 
+**Consuming the engine (ENC-1553).** Under `FetchContent` / `add_subdirectory` the root
+`CMakeLists.txt` defines only the engine library targets (`krn_engine`, alias
+`krn::krn_engine`, and the reference connector) — no tests, data layer, market connector,
+server, install rules or isolation gate, whatever the consumer's cache says, and without
+writing to that cache. `cmake --install` plus `find_package(krn CONFIG)` gives
+`krn::krn_engine`. Both are pinned by the ctest cases `krn_consumer_fetchcontent_smoke`
+(which checks the **committed** `HEAD`, fetched over `file://`) and `krn_consumer_install_smoke`.
+
 ## Project Structure
 
 ```

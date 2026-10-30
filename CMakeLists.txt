@@ -1,6 +1,27 @@
 cmake_minimum_required(VERSION 3.20)
 project(KRN LANGUAGES CXX)
 
+# ---- Consumed mode (ENC-1553, purity SPEC D5) ----
+# Under FetchContent/add_subdirectory this file defines ONLY the engine library
+# targets: no tests, benchmarks, data layer, market connector, server, install
+# rules or isolation gate. 3.20 predates PROJECT_IS_TOP_LEVEL.
+#
+# The three build switches are shadowed by NORMAL variables in this directory
+# scope, never written with CACHE FORCE: option() is a no-op over a normal
+# variable (CMP0077 NEW under 3.20), and a normal variable set here is invisible
+# to the consumer's scope. So a consumer's own -DKRN_BUILD_TESTS=ON, or its own
+# option of that name, keeps its value in its cache and in its scope.
+if (CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+  set(_krn_top_level ON)
+else()
+  set(_krn_top_level OFF)
+  foreach (_krn_opt IN ITEMS KRN_BUILD_TESTS KRN_BUILD_BENCHMARKS KRN_BUILD_DATA)
+    set(${_krn_opt} OFF)
+  endforeach()
+  message(STATUS
+    "krn: consumed by ${CMAKE_PROJECT_NAME} — engine library targets only")
+endif()
+
 # ---- Options ----
 option(KRN_BUILD_TESTS "Build unit tests in tests/" OFF)
 option(KRN_BUILD_BENCHMARKS "Build Google Benchmark suite in benchmarks/" OFF)
@@ -238,8 +259,10 @@ if (NOT RAPIDJSON_INCLUDE_DIR)
     "${THIRD_PARTY_ROOT}/rapidjson so that ${RAPIDJSON_INCLUDE_DIR}/rapidjson/document.h exists.")
 endif()
 
-add_library(RapidJSON::rapidjson INTERFACE IMPORTED)
-target_include_directories(RapidJSON::rapidjson INTERFACE "${RAPIDJSON_INCLUDE_DIR}")
+if (NOT TARGET RapidJSON::rapidjson)  # a consumer may have defined it already
+  add_library(RapidJSON::rapidjson INTERFACE IMPORTED)
+  target_include_directories(RapidJSON::rapidjson INTERFACE "${RAPIDJSON_INCLUDE_DIR}")
+endif()
 message(STATUS "RapidJSON include dir: ${RAPIDJSON_INCLUDE_DIR}")
 
 # =======================
@@ -409,7 +432,10 @@ list(TRANSFORM KRN_MARKET_HEADERS PREPEND "${PROJECT_SOURCE_DIR}/")
 
 # ---- Engine library ----
 add_library(krn_engine STATIC ${KRN_ENGINE_SOURCES} ${KRN_ENGINE_HEADERS})
-target_include_directories(krn_engine PUBLIC "${PROJECT_SOURCE_DIR}/include")
+add_library(krn::krn_engine ALIAS krn_engine)  # the name find_package(krn) gives
+target_include_directories(krn_engine PUBLIC
+  "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>")
+target_compile_features(krn_engine PUBLIC cxx_std_20)
 
 if (Boost_FOUND)
   target_include_directories(krn_engine PUBLIC ${Boost_INCLUDE_DIRS})
@@ -432,16 +458,18 @@ if (OpenSSL_FOUND)
   target_compile_definitions(krn_engine PUBLIC KRN_HAS_SSL=1)
 endif()
 
-# ---- Market connector library ----
-add_library(krn_connector_market STATIC ${KRN_MARKET_SOURCES} ${KRN_MARKET_HEADERS})
-target_include_directories(krn_connector_market PUBLIC
-  "${PROJECT_SOURCE_DIR}/connectors/market/include"
-)
-target_link_libraries(krn_connector_market PUBLIC krn_engine)
+# ---- Market connector library (top-level only) ----
+if (_krn_top_level)
+  add_library(krn_connector_market STATIC ${KRN_MARKET_SOURCES} ${KRN_MARKET_HEADERS})
+  target_include_directories(krn_connector_market PUBLIC
+    "${PROJECT_SOURCE_DIR}/connectors/market/include"
+  )
+  target_link_libraries(krn_connector_market PUBLIC krn_engine)
 
-# ---- Legacy umbrella alias so existing rules that link `krn` keep working ----
-add_library(krn INTERFACE)
-target_link_libraries(krn INTERFACE krn_engine krn_connector_market)
+  # ---- Legacy umbrella alias so existing rules that link `krn` keep working ----
+  add_library(krn INTERFACE)
+  target_link_libraries(krn INTERFACE krn_engine krn_connector_market)
+endif()
 
 # ---- Synthetic connector (demo): proves the zero-core-changes invariant ----
 # Not linked into `krn` — kept as an opt-in target that test code and demos
@@ -468,7 +496,9 @@ target_link_libraries(krn_plugin_reference PUBLIC krn_engine)
 # krn_server, krn_tests and the benchmarks were silent. krn_server/krn_tests/
 # benchmarks are wired at their definition sites below.
 krn_apply_warnings(krn_engine)
-krn_apply_warnings(krn_connector_market)
+if (TARGET krn_connector_market)
+  krn_apply_warnings(krn_connector_market)
+endif()
 krn_apply_warnings(krn_plugin_reference)
 
 if (WIN32)
@@ -481,9 +511,11 @@ endif()
 if (CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
   if (MSVC)
     target_compile_options(krn_engine           PRIVATE /O2 /Ob2 /GL)
-    target_compile_options(krn_connector_market PRIVATE /O2 /Ob2 /GL)
     target_link_options(krn_engine           PUBLIC /LTCG)
-    target_link_options(krn_connector_market PUBLIC /LTCG)
+    if (TARGET krn_connector_market)
+      target_compile_options(krn_connector_market PRIVATE /O2 /Ob2 /GL)
+      target_link_options(krn_connector_market PUBLIC /LTCG)
+    endif()
   else()
     # Microarchitecture (ENC-790 / H5). -O3 always; -march is portable by default.
     set(KRN_RELEASE_ARCH_FLAGS "")
@@ -498,14 +530,18 @@ if (CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDeb
       message(STATUS "Release: no -march (portable default)")
     endif()
     target_compile_options(krn_engine           PRIVATE -O3 ${KRN_RELEASE_ARCH_FLAGS})
-    target_compile_options(krn_connector_market PRIVATE -O3 ${KRN_RELEASE_ARCH_FLAGS})
+    if (TARGET krn_connector_market)
+      target_compile_options(krn_connector_market PRIVATE -O3 ${KRN_RELEASE_ARCH_FLAGS})
+    endif()
   endif()
 
   include(CheckIPOSupported)
   check_ipo_supported(RESULT ipo_supported OUTPUT ipo_output)
   if (ipo_supported)
     set_property(TARGET krn_engine           PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-    set_property(TARGET krn_connector_market PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+    if (TARGET krn_connector_market)
+      set_property(TARGET krn_connector_market PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+    endif()
     if (TARGET krn_server)
       set_property(TARGET krn_server PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
     endif()
@@ -515,8 +551,8 @@ if (CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDeb
   endif()
 endif()
 
-# App executable (if src/main.cpp exists)
-if (EXISTS "${MAIN_SRC}")
+# App executable (if src/main.cpp exists; top-level only)
+if (_krn_top_level AND EXISTS "${MAIN_SRC}")
   add_executable(krn_server "${MAIN_SRC}")
   target_include_directories(krn_server PRIVATE "${PROJECT_SOURCE_DIR}/include")
   if (Boost_FOUND)
@@ -547,6 +583,7 @@ if (KRN_BUILD_TESTS)
     GIT_TAG        v1.14.0
   )
   set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+  set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)  # cmake --install ships krn only
   FetchContent_MakeAvailable(googletest)
 
   set(KRN_TEST_SOURCES
@@ -858,7 +895,7 @@ endif()
 # command line because the properties are generator expressions, and because a
 # resolved list on an add_test COMMAND would be split into separate arguments
 # at every semicolon.
-if (KRN_BUILD_TESTS AND TARGET krn_server)
+if (_krn_top_level AND KRN_BUILD_TESTS AND TARGET krn_server)
   set(KRN_ISOLATION_MANIFEST "${PROJECT_BINARY_DIR}/krn_engine_isolation.manifest")
 
   # The gate's positive control. Scanned, never linked: the checker fails if
@@ -1000,4 +1037,52 @@ if (KRN_BUILD_TESTS)
       "aggregate, no GROUP BY, no MATERIALIZED/ALIAS column, no "
       "Aggregating/SummingMergeTree — is NOT being checked in this build.")
   endif()
+endif()
+
+# =======================
+# Install / export (ENC-1553, purity SPEC D5)
+# =======================
+# Top-level only: a FetchContent consumer builds krn_engine from source and
+# installs nothing of ours. `find_package(krn CONFIG)` gives krn::krn_engine.
+if (_krn_top_level)
+  include(GNUInstallDirs)
+  set(KRN_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/krn")
+  install(TARGETS krn_engine EXPORT krnTargets
+    ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+    INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+  install(DIRECTORY "${PROJECT_SOURCE_DIR}/include/krn"
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+  install(EXPORT krnTargets NAMESPACE krn::
+    DESTINATION "${KRN_INSTALL_CMAKEDIR}")
+  configure_file("${PROJECT_SOURCE_DIR}/cmake/krnConfig.cmake.in"
+    "${PROJECT_BINARY_DIR}/krnConfig.cmake" @ONLY)
+  install(FILES "${PROJECT_BINARY_DIR}/krnConfig.cmake"
+    DESTINATION "${KRN_INSTALL_CMAKEDIR}")
+endif()
+
+# =======================
+# Consumer smoke tests (ENC-1553)
+# =======================
+# The CMake analogue of wt.mjs's assertLinksResolve. Each drives a separate
+# consumer project in a fresh dir under this build tree:
+#   fetchcontent — FetchContent of this repo's HEAD from a file:// URL, with the
+#                  engine's own options set ON in the consumer's cache; asserts
+#                  each library's SOURCES sit under the fetched tree and that no
+#                  other engine target exists. It checks the COMMITTED HEAD.
+#   install      — cmake --install of this build into an empty prefix, then a
+#                  find_package(krn CONFIG) consumer that links krn::krn_engine.
+if (KRN_BUILD_TESTS)
+  foreach (_krn_smoke IN ITEMS fetchcontent install)
+    add_test(NAME krn_consumer_${_krn_smoke}_smoke
+      COMMAND "${CMAKE_COMMAND}"
+              -DMODE=${_krn_smoke}
+              "-DKRN_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
+              "-DKRN_BINARY_DIR=${PROJECT_BINARY_DIR}"
+              "-DKRN_CONFIG=$<CONFIG>"
+              "-DKRN_CXX_COMPILER=${CMAKE_CXX_COMPILER}"
+              "-DKRN_GENERATOR=${CMAKE_GENERATOR}"
+              "-DKRN_RAPIDJSON_ROOT=${RAPIDJSON_INCLUDE_DIR}"
+              -P "${PROJECT_SOURCE_DIR}/tests/consumer/run_consumer_smoke.cmake")
+    set_tests_properties(krn_consumer_${_krn_smoke}_smoke PROPERTIES TIMEOUT 900)
+  endforeach()
 endif()
