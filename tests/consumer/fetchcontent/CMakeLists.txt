@@ -88,7 +88,8 @@ string(REPLACE "," ";" _expected "${KRN_SMOKE_EXPECTED_TARGETS}")
 list(SORT _expected)
 _check("_all STREQUAL _expected"
   "(b) engine targets are exactly [${_expected}]; got [${_all}]")
-foreach (_t IN ITEMS krn_connector_market krn_server krn_engine_server krn_tests krn_data
+foreach (_t IN ITEMS krn_connector_market krn_server krn_engine_server krn_tests
+                     krn_market_tests krn_data
                      krn_ingest krn_data_tests krn krn_isolation_control
                      krn_benchmarks gtest gtest_main benchmark)
   _check("NOT TARGET ${_t}" "(b) no target ${_t}")

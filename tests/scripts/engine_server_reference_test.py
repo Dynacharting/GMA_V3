@@ -10,8 +10,10 @@ closed form of ReferenceConnector's inputs (sample_n = 100 + n):
     reference.sum   S_n = sum_{i<=n} (100 + i)
     reference.sumsq Q_n = sum_{i<=n} (100 + i)^2
 
-Warm-up values (n <= 3) arrive as null. Then it sends SIGTERM and requires
-exit 0 with the "stopped" log line.
+Warm-up values (n in 1..3) are NaN. Today the server writes NaN as an empty
+JSON value (`"value":}`, ENC-1584); that exact frame is counted as a warm-up
+frame and accepted only for the first 3 updates per key. Then it sends SIGTERM
+and requires exit 0 with the "stopped" log line.
 
 Usage: engine_server_reference_test.py <path-to-krn_engine_server>
 """
@@ -19,6 +21,7 @@ Usage: engine_server_reference_test.py <path-to-krn_engine_server>
 import base64
 import json
 import os
+import re
 import signal
 import socket
 import struct
@@ -32,6 +35,7 @@ READ_TIMEOUT_S = 20
 WANT_PER_KEY = 5
 BASE = 100.0
 WARMUP = 3
+NAN_FRAME = re.compile(r'^\{"type":"update","key":(\d+),"streamKey":"REF","value":\}$')
 
 
 def free_port():
@@ -168,7 +172,20 @@ def main():
                 while time.time() < deadline and min(len(v) for v in got.values()) < WANT_PER_KEY:
                     msg = ws.recv_text()
                     print("<<< %s" % msg)
-                    frame = json.loads(msg)
+                    try:
+                        frame = json.loads(msg)
+                    except ValueError:
+                        # ENC-1584: NaN serialises as nothing. Accept only that
+                        # exact shape, and only as a warm-up value.
+                        m = NAN_FRAME.match(msg)
+                        if not m:
+                            problems.append("unparseable frame: %s" % msg)
+                            break
+                        k = int(m.group(1))
+                        nulls[k] = nulls.get(k, 0) + 1
+                        if got.get(k):
+                            problems.append("NaN after a finite value for key %d" % k)
+                        continue
                     if frame.get("type") == "error":
                         problems.append("server error frame: %s" % msg)
                         break
@@ -187,6 +204,10 @@ def main():
                     got[k].append(v)
                 ws.close()
 
+                for k in nulls:
+                    if nulls[k] > WARMUP:
+                        problems.append("key %d: %d warm-up values, at most %d expected"
+                                        % (k, nulls[k], WARMUP))
                 for k, table, name in ((1, sums, "reference.sum"), (2, sumsqs, "reference.sumsq")):
                     if len(got[k]) < WANT_PER_KEY:
                         problems.append("%s: %d values, wanted %d" % (name, len(got[k]), WANT_PER_KEY))
@@ -198,7 +219,7 @@ def main():
                             ns.append(table[v])
                     if ns != sorted(set(ns)):
                         problems.append("%s: tick indices not strictly increasing: %s" % (name, ns))
-                    print("%s: %d values at ticks %s (+%d warm-up nulls)"
+                    print("%s: %d values at ticks %s (+%d warm-up NaN frames)"
                           % (name, len(got[k]), ns, nulls[k]))
 
                 print("$ kill -TERM %d" % proc.pid)
