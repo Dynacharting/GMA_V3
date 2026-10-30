@@ -49,18 +49,26 @@ Event makeSyntheticEvent(const std::string& sym, double counter) {
   return e;
 }
 
-Event makeReferenceEvent(const std::string& sym, double sample) {
+// Carries BOTH computers' input fields (`counter` and the reference input), so
+// a computer reached by the wrong event type would write its keys: only the
+// event type can keep them apart.
+std::shared_ptr<rapidjson::Document> bothInputs(double v) {
   using synthetic::ReferenceComputer;
   auto doc = std::make_shared<rapidjson::Document>();
   doc->SetObject();
+  doc->AddMember("counter", rapidjson::Value(v), doc->GetAllocator());
   const std::string_view in = ReferenceComputer::kInputField;
   doc->AddMember(rapidjson::Value(in.data(), static_cast<rapidjson::SizeType>(in.size()),
                                   doc->GetAllocator()),
-                 rapidjson::Value(sample), doc->GetAllocator());
+                 rapidjson::Value(v), doc->GetAllocator());
+  return doc;
+}
+
+Event makeRoutedEvent(const std::string& sym, std::string_view type, double v) {
   Event e;
-  e.type    = std::string(ReferenceComputer::kEventType);
+  e.type    = std::string(type);
   e.symbol  = sym;
-  e.payload = std::move(doc);
+  e.payload = bothInputs(v);
   return e;
 }
 
@@ -103,11 +111,13 @@ TEST(SyntheticConnectorTest, DispatcherRoutesByEventType) {
 
   // synthetic.tick: synthetic keys written, no reference key. Twice, because
   // ReferenceComputer writes nothing on a stream's first event.
-  dispatcher.onTick(makeSyntheticEvent("SYN", 5.0));
-  dispatcher.onTick(makeSyntheticEvent("SYN", 6.0));
+  // Every event carries both input fields (bothInputs), so only the type routes.
+  const std::string_view kSyn = "synthetic.tick";
+  dispatcher.onTick(makeRoutedEvent("SYN", kSyn, 5.0));
+  dispatcher.onTick(makeRoutedEvent("SYN", kSyn, 6.0));
   // reference.tick on another stream: reference keys written, no synthetic key.
-  dispatcher.onTick(makeReferenceEvent("REF", 7.0));
-  dispatcher.onTick(makeReferenceEvent("REF", 8.0));
+  dispatcher.onTick(makeRoutedEvent("REF", ReferenceComputer::kEventType, 7.0));
+  dispatcher.onTick(makeRoutedEvent("REF", ReferenceComputer::kEventType, 8.0));
   pool.shutdown();
 
   EXPECT_TRUE(store.get("SYN", "synthetic.sin").has_value());
