@@ -9,8 +9,8 @@
 // Because the one requirement here that cannot be met by intention is "no
 // JSON DOM on this path", and a separate file makes it checkable. Every
 // token this file contains is the record path; nothing else is in scope. The
-// check is `RecordPathNamesNoJson` in
-// tests/dispatch/RecordIngressParityTest.cpp, which reads this file and
+// check is `RecordPathIsJsonFreeTest` in
+// tests/dispatch/RecordIngressEngineTest.cpp, which reads this file and
 // `src/core/Dispatcher.cpp` off disk and asserts:
 //
 //   * this file names none of the ~21 JSON-shaped identifiers in
@@ -33,9 +33,8 @@
 
 #include "krn/Dispatcher.hpp"
 
-#include "krn/data/Record.hpp"
 #include "krn/data/SymbolTable.hpp"
-#include "krn/engine/RecordFieldSource.hpp"
+#include "krn/engine/FieldSource.hpp"
 #include "krn/util/Logger.hpp"
 
 #include <atomic>
@@ -48,7 +47,7 @@ void Dispatcher::setSymbolTable(const data::SymbolTable* symbols) {
 }
 
 const std::string& Dispatcher::recordEventType() {
-  // "tick", spelled once. A TickRecord is the resolved form of a tick, so it
+  // "tick", spelled once. A record is the resolved form of a tick, so it
   // must reach exactly the computers `Event{sym, payload}` reaches:
   // `Event::type` defaults to "tick" and MarketConnector registers its
   // computer factory under "tick". A function-local static rather than a
@@ -58,7 +57,8 @@ const std::string& Dispatcher::recordEventType() {
   return kTick;
 }
 
-void Dispatcher::onRecord(const data::TickRecord& rec) {
+void Dispatcher::onRecord(data::SymbolId symbolId,
+                          const engine::FieldSource& fields) {
   const data::SymbolTable* symbols = _symbols.load(std::memory_order_acquire);
   if (!symbols) {
     // No resolver installed. REFUSE rather than degrade: a record names a
@@ -88,7 +88,7 @@ void Dispatcher::onRecord(const data::TickRecord& rec) {
           krn::util::LogLevel::Warn,
           "Dispatcher: onRecord with no SymbolTable installed — every record "
           "on this path is being dropped (logged once per Dispatcher)",
-          { {"symbolId", std::to_string(rec.header.symbolId)} });
+          { {"symbolId", std::to_string(symbolId)} });
     }
     return;
   }
@@ -102,7 +102,7 @@ void Dispatcher::onRecord(const data::TickRecord& rec) {
   // separately measurable — doing it here would merge two data points and
   // misattribute B2. So: expected, in scope as-is, and not to be "fixed"
   // without ENC-1487's numbers in hand.
-  const std::string symbol = symbols->name(rec.header.symbolId);
+  const std::string symbol = symbols->name(symbolId);
   if (symbol.empty()) {
     // THREE ways in, not two. The third was missed by this comment's first
     // revision and is the one a reader would never guess:
@@ -133,17 +133,16 @@ void Dispatcher::onRecord(const data::TickRecord& rec) {
           krn::util::LogLevel::Warn,
           "Dispatcher: onRecord symbolId does not resolve to a ticker — record "
           "dropped (logged once per Dispatcher)",
-          { {"symbolId", std::to_string(rec.header.symbolId)} });
+          { {"symbolId", std::to_string(symbolId)} });
     }
     return;
   }
 
-  // Fields resolved by the normalizer — no DOM, no per-field allocation, no
-  // name lookup by string hash. See include/krn/engine/RecordFieldSource.hpp
-  // for the mapping table, which also *defines* "the equivalent tick" the
-  // parity test drives down the JSON path.
-  const engine::RecordFieldSource fields(rec);
-
+  // Fields resolved by the caller — no DOM, no per-field allocation, no name
+  // lookup by string hash. For a `TickRecord` the source is krn_data's
+  // `RecordFieldSource` (data/include/krn/data/RecordFieldSource.hpp), whose
+  // mapping table also *defines* "the equivalent tick" the parity test drives
+  // down the JSON path.
   ingest(symbol, recordEventType(), fields);
 }
 

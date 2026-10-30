@@ -23,10 +23,10 @@
 # anywhere in krn_engine's or krn_server's TRANSITIVE link closure (the
 # umbrella `krn` target is where a one-level check was blind).
 #
-# The engine-facing PODs are deliberately NOT here — they live in
-# `include/krn/data/Record.hpp`, inside krn_engine, because ENC-1486's
-# `Dispatcher::onRecord` is engine code and has to name the type. The split is
-# explained at the top of that header.
+# The record PODs (`krn/data/TickRecord.hpp`, `BookRecord.hpp`) and the
+# record-to-field adapter (`krn/data/RecordFieldSource.hpp`) are here: since
+# ENC-1557 `Dispatcher::onRecord` takes an `engine::FieldSource`, so the
+# engine names no record type (purity SPEC D4, D10).
 # ===========================================================================
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
@@ -36,6 +36,9 @@ add_library(krn_data STATIC
   "${CMAKE_CURRENT_SOURCE_DIR}/src/Schema.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/include/krn/data/Schema.hpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/include/krn/data/BookRecord.hpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/TickRecord.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/include/krn/data/TickRecord.hpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/include/krn/data/RecordFieldSource.hpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/src/DatabentoAdapter.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/include/krn/data/DatabentoAdapter.hpp"
   # Promoted out of DatabentoAdapterTest.cpp (ENC-1483, begun under the
@@ -63,7 +66,7 @@ add_library(krn_data STATIC
 target_include_directories(krn_data PUBLIC
   "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
-# krn_engine, and not `krn`: this library needs the engine's PODs and
+# krn_engine, and not `krn`: this library needs the engine's FieldSource and
 # SymbolTable, and must not acquire the market connector by accident.
 target_link_libraries(krn_data PUBLIC krn_engine krn::arrow)
 
@@ -99,7 +102,10 @@ krn_apply_warnings(krn_ingest)
 if (KRN_BUILD_TESTS AND TARGET GTest::gtest_main)
   file(GLOB KRN_DATA_TEST_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/tests/*.cpp")
   add_executable(krn_data_tests ${KRN_DATA_TEST_SOURCES})
-  target_link_libraries(krn_data_tests PRIVATE krn_data GTest::gtest_main)
+  # krn_plugin_reference for RecordIngressParityTest's computer (ENC-1557);
+  # never krn_connector_market (purity SPEC D9, D13).
+  target_link_libraries(krn_data_tests PRIVATE
+    krn_data krn_plugin_reference GTest::gtest_main)
   # The DBN fixtures are REAL VENDOR BYTES (data/tests/fixtures/dbn/, see
   # PROVENANCE.md there) and are read from the source tree rather than copied
   # beside the binary: a copy step is one more thing that can silently copy
@@ -107,7 +113,8 @@ if (KRN_BUILD_TESTS AND TARGET GTest::gtest_main)
   # so it holds regardless of the test's working directory, and the fixture
   # test FAILS (never skips) when a file is missing.
   target_compile_definitions(krn_data_tests PRIVATE
-    KRN_DATA_DBN_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/dbn")
+    KRN_DATA_DBN_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/dbn"
+    KRN_TEST_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
   krn_apply_warnings(krn_data_tests)
   add_test(NAME krn_data_tests
     COMMAND krn_data_tests

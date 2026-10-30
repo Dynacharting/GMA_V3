@@ -45,15 +45,13 @@ library" is true of one variant and not of D14. The invariant is unaffected eith
 because it constrains **`krn_engine`**, not the product: `krn_data` is linked into a
 deployment or it is not, and `krn_engine` must build in both cases.
 
-**The engine-facing PODs are deliberately NOT in this directory.** `RecordHeader` and
-`TickRecord` live in
-[`../include/krn/data/Record.hpp`](../include/krn/data/Record.hpp), inside `krn_engine`,
-because ENC-1486 adds `Dispatcher::onRecord(const data::TickRecord&)` and `Dispatcher` *is*
-engine code — the engine has to be able to name a record. They are Arrow-free and
-dependency-free; the `arrow::Schema`s and the codec, which are not, stay here. One
-namespace (`krn::data`), one definition of each type, two libraries. `SymbolTable` sits
-beside the PODs for the same reason: interning happens here in decode, but resolving an id
-back to a ticker happens at an output boundary, and every output boundary is engine code.
+**The record PODs are in this directory (ENC-1557).** `RecordHeader` and `TickRecord` are in
+`include/krn/data/TickRecord.hpp`, and the adapter to the engine's field view in
+`include/krn/data/RecordFieldSource.hpp`: `Dispatcher::onRecord` takes a `data::SymbolId`
+and an `engine::FieldSource`, so the engine names no record type. The PODs stay Arrow-free
+and dependency-free. `SymbolTable` stays in `krn_engine`: interning happens here in
+decode, but resolving an id back to a ticker happens at an output boundary, and every
+output boundary is engine code.
 
 So the invariant worth encoding is **not** "no `krn/data` header is reachable from engine
 code" but:
@@ -101,7 +99,8 @@ control when built: its closure must trip a forbidden pattern (it links `krn::ar
 | file | state |
 |---|---|
 | `include/krn/data/Schema.hpp` + `src/Schema.cpp` | **real** — the three first-slice Arrow schemas, `quotes`, and the column-wise codec |
-| `../include/krn/data/Record.hpp` | **real** — the engine-facing PODs (in `krn_engine`) |
+| `include/krn/data/TickRecord.hpp` + `src/TickRecord.cpp` | **real** — `RecordHeader`, `TickRecord`; in `krn_data` since ENC-1557 |
+| `include/krn/data/RecordFieldSource.hpp` | **real** — `TickRecord` → `engine::FieldSource`, what `Dispatcher::onRecord` takes (ENC-1557) |
 | `include/krn/data/BookRecord.hpp` | **real** — `BookRecord`, `SnapshotRecord`; no engine consumer, so in `krn_data` (ENC-1550) |
 | `../include/krn/data/SymbolTable.hpp` | **real** — ticker/venue interning (in `krn_engine`) |
 | `include/krn/data/DatabentoAdapter.hpp` + `src/DatabentoAdapter.cpp` | **real** — the DBN decoder and the DBN→canonical mapping (ENC-1482) |

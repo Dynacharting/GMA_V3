@@ -10,8 +10,8 @@
 // --------------------
 // `Dispatcher` has two ingress entry points, and must have exactly one body:
 //
-//   Dispatcher::onTick  (const Event&)             — JSON DOM, unchanged
-//   Dispatcher::onRecord(const data::TickRecord&)  — resolved fields, no DOM
+//   Dispatcher::onTick  (const Event&)                       — JSON DOM, unchanged
+//   Dispatcher::onRecord(data::SymbolId, const FieldSource&) — resolved fields, no DOM
 //
 // SPEC D1 is "one implementation of every operator", and the Dispatcher's
 // routing, history, atomic-key and listener-ordering rules are as much an
@@ -27,7 +27,7 @@
 // which is orders of magnitude above a virtual call.
 //
 // NON-OWNING. A FieldSource is a view over something else's storage — a
-// `rapidjson::Document`, a `data::TickRecord` — and is valid only for the
+// `rapidjson::Document`, a krn_data `TickRecord` — and is valid only for the
 // duration of one ingress call. Never store one.
 //
 // NUMERIC ONLY, BY DESIGN. The engine's value path is `double` (and,

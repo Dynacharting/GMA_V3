@@ -6,8 +6,14 @@
 // Design: specs/2026-10-14-krn-data-layer/SPEC.md D1, D3, D9;
 //         docs/data-layer.md §C2, §C6, §6, §8.3.
 //
+// IN krn_data, NOT THE ENGINE (ENC-1557, purity SPEC D4/D10). The engine's
+// ingress takes the `engine::FieldSource` this implements; the caller builds
+// one from a record and hands it, with the record's `header.symbolId`, to
+// `Dispatcher::onRecord`. The namespace stays `krn::engine` (SPEC §4: the
+// prefix moved, the namespaces are left alone).
+//
 // THIS HEADER NAMES NO JSON TYPE, AND THAT IS CHECKED.
-// `tests/dispatch/RecordIngressParityTest.cpp` asserts it textually, with a
+// `data/tests/RecordIngressParityTest.cpp` asserts it textually, with a
 // positive control on `JsonFieldSource.hpp` so the check cannot pass by
 // failing to look (the workspace-root-grep failure, in miniature).
 //
@@ -42,7 +48,7 @@
 //
 // `price`/`size` are gated on `kind == Trade` because `TickRecord` is one
 // struct for a trade and an L1 quote and `kind` says which half is
-// meaningful (include/krn/data/Record.hpp). The quote half is gated on
+// meaningful (krn/data/TickRecord.hpp). The quote half is gated on
 // presence only: a record may legitimately carry both a print and the quote
 // standing at the time.
 //
@@ -73,7 +79,7 @@
 #include <cstdint>
 #include <string>
 
-#include "krn/data/Record.hpp"
+#include "krn/data/TickRecord.hpp"
 #include "krn/engine/FieldSource.hpp"
 
 namespace krn::engine {
