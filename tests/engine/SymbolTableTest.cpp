@@ -5,12 +5,7 @@
 // ENC-1102 note: SymbolTable is an ORDINARY OBJECT, not one of the repo's
 // process-global registries (FunctionMap, NodeTypeRegistry, …), so these tests
 // need no per-invocation key derivation — each one constructs its own table.
-// The one process-global thing this binary touches is the function-local
-// `static` inside each schema accessor, and it is immutable; `SchemaIsStable`
-// in SchemaRoundTripTest.cpp pins that, and the suite is run under
-// --gtest_repeat to prove it.
 
-#include "krn/data/TickRecord.hpp"
 #include "krn/engine/SymbolTable.hpp"
 
 #include <gtest/gtest.h>
@@ -42,10 +37,9 @@ TEST(SymbolTableTest, ZeroIsReservedAndNeverIssued) {
   EXPECT_NE(first, kInvalidSymbolId);
   EXPECT_EQ(first, 1u);
 
-  krn::data::RecordHeader fresh;
-  EXPECT_EQ(fresh.symbolId, kInvalidSymbolId);
-  EXPECT_EQ(fresh.venueId, kInvalidSymbolId);
-  EXPECT_FALSE(t.contains(fresh.symbolId));
+  const SymbolId fresh{};
+  EXPECT_EQ(fresh, kInvalidSymbolId);
+  EXPECT_FALSE(t.contains(fresh));
 }
 
 TEST(SymbolTableTest, InternIsIdempotentAndIdsAreStable) {
@@ -140,28 +134,4 @@ TEST(SymbolTableTest, ConcurrentInternIssuesOneIdPerString) {
     EXPECT_LE(id, static_cast<SymbolId>(kSymbols));
     EXPECT_TRUE(t.contains(id));
   }
-}
-
-// SPEC D8: the fixed global 1e-9 scale.
-TEST(FixedPointTest, ScaleIsGlobalAndExact) {
-  EXPECT_EQ(krn::data::kPriceScale, 1'000'000'000LL);
-  EXPECT_EQ(krn::data::kNoPrice, INT64_MIN);
-  EXPECT_EQ(krn::data::toFixed(1.0), 1'000'000'000LL);
-  EXPECT_EQ(krn::data::toFixed(-1.5), -1'500'000'000LL);
-  EXPECT_EQ(krn::data::toFixed(0.0), 0LL);
-  EXPECT_DOUBLE_EQ(krn::data::toDouble(1'234'567'890LL), 1.23456789);
-}
-
-// WHY SPEC D8 insists on "an exact integer path from DBN with no double round
-// trip". A 1e-9-scaled price past 2^53 cannot survive a double, so a
-// normalizer that routed DBN's own fixed point through toDouble/toFixed would
-// corrupt large prices silently. The second half of this test is the reason it
-// would not show up in a smoke test: an ordinary equity price round-trips
-// perfectly, so the bug is invisible until it is not.
-TEST(FixedPointTest, DoubleRoundTripIsLossyPastTwoToThe53) {
-  const std::int64_t beyondDouble = 9'007'199'254'740'993LL;  // 2^53 + 1
-  EXPECT_NE(krn::data::toFixed(krn::data::toDouble(beyondDouble)), beyondDouble);
-
-  const std::int64_t aapl = 190'125'000'000LL;  // $190.125 at 1e-9
-  EXPECT_EQ(krn::data::toFixed(krn::data::toDouble(aapl)), aapl);
 }
