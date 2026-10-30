@@ -344,14 +344,14 @@ const rapidjson::Document& referencePullRequest() {
       accessorJson(ReferenceComputer::kSumKey) + "}");
   return d;
 }
-// An `Aggregate` over two pulls at the `CompositeRoot` hop, then `diff`:
-// Q_n - S_n, strictly increasing for inputs > 1.
+// An `Aggregate` over two pulls at the `CompositeRoot` hop, with no pipeline:
+// the terminal sees both ports of every tuple, in port order. (A `diff`
+// Worker reads its first value for ever, which is a warm-up NaN here.)
 const rapidjson::Document& referenceFanInRequest() {
   static const rapidjson::Document d = parseRequest(
       clockPrefixJson() + R"("node":{"type":"Aggregate","arity":2,"inputs":[)" +
       accessorJson(ReferenceComputer::kSumSqKey) + "," +
-      accessorJson(ReferenceComputer::kSumKey) +
-      R"(]},"pipeline":[{"type":"Worker","fn":"diff"}]})");
+      accessorJson(ReferenceComputer::kSumKey) + R"(]}})");
   return d;
 }
 
@@ -618,9 +618,9 @@ TEST(ClockCoherentPull, PullOnlyFanInSamplesBothPortsAsOfOneClockTick) {
          "life, and if it is silent this test is measuring nothing";
   std::set<long long> distinct;
   for (double v : oracle.emitted) if (!std::isnan(v)) distinct.insert(std::llround(v * 10000.0));
-  EXPECT_EQ(distinct.size(), kTicks - 1 - ReferenceComputer::kWarmupTicks)
-      << "the joined value must differ on every post-warm-up tick, or a "
-         "mistimed pair could reproduce it: " << render(oracle.emitted);
+  EXPECT_EQ(distinct.size(), 2 * (kTicks - 1 - ReferenceComputer::kWarmupTicks))
+      << "both ports must carry a distinct value on every post-warm-up tick, "
+         "or a mistimed pair could reproduce them: " << render(oracle.emitted);
 
   DriveResult blocked = drive(req, kREF, kTicks, 1, Mode::BlockedPool, {},
                               Source::Reference);
