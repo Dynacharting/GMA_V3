@@ -15,9 +15,9 @@
 // RSI is a simple-average, NOT Wilder; all-flat RSI degenerates to 0, see L5).
 // A wrong production formula now fails a test.
 
-#include "krn/MarketTA.hpp"
+#include "krn/market/MarketTA.hpp"
 #include "krn/AtomicStore.hpp"
-#include "krn/SymbolHistory.hpp"
+#include "krn/market/SymbolHistory.hpp"
 #include "krn/Dispatcher.hpp"
 #include "krn/Event.hpp"
 #include "krn/FunctionRegistry.hpp"

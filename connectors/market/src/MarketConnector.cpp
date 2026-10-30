@@ -15,7 +15,7 @@
 
 #include "krn/AtomicStore.hpp"
 #include "krn/Dispatcher.hpp"
-#include "krn/MarketTA.hpp"
+#include "krn/market/MarketTA.hpp"
 #include "krn/atomic/AtomicProviderRegistry.hpp"
 #include "krn/book/OrderBookManager.hpp"
 #include "krn/engine/ConfigNamespaceRegistry.hpp"
@@ -29,10 +29,10 @@
 #include "krn/ob/FunctionalSnapshotSource.hpp"
 #include "krn/ob/ObMaterializer.hpp"
 #include "krn/ob/ObProvider.hpp"
-#include "krn/server/FeedServer.hpp"
+#include "krn/market/FeedServer.hpp"
 #include "krn/util/Config.hpp"
 #include "krn/util/Logger.hpp"
-#include "krn/ws/WsFeedClient.hpp"
+#include "krn/market/WsFeedClient.hpp"
 
 namespace krn::market {
 

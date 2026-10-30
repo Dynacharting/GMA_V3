@@ -12,7 +12,7 @@
 #include <unordered_set>
 
 #include "krn/AtomicStore.hpp"
-#include "krn/SymbolHistory.hpp"
+#include "krn/market/SymbolHistory.hpp"
 #include "krn/engine/IEventComputer.hpp"
 #include "krn/market/MarketFieldMap.hpp"
 #include "krn/util/Config.hpp"

@@ -340,7 +340,6 @@ set(KRN_ENGINE_HEADERS
   include/krn/StreamValue.hpp
   include/krn/TreeBuilder.hpp
   include/krn/atomic/AtomicProviderRegistry.hpp
-  include/krn/data/SymbolTable.hpp
   include/krn/engine/ConfigNamespaceRegistry.hpp
   include/krn/engine/EngineRegistries.hpp
   include/krn/engine/EventComputerRegistry.hpp
@@ -352,6 +351,7 @@ set(KRN_ENGINE_HEADERS
   include/krn/engine/JsonFieldSource.hpp
   include/krn/engine/NodeTypeRegistry.hpp
   include/krn/engine/Registries.hpp
+  include/krn/engine/SymbolTable.hpp
   include/krn/forum/ConnectorsClient.hpp
   include/krn/nodes/Aggregate.hpp
   include/krn/nodes/AtomicAccessor.hpp
@@ -407,26 +407,26 @@ set(KRN_MARKET_SOURCES
 )
 list(TRANSFORM KRN_MARKET_SOURCES PREPEND "${PROJECT_SOURCE_DIR}/")
 set(KRN_MARKET_HEADERS
-  connectors/market/include/krn/AtomicFunctions.hpp
-  connectors/market/include/krn/MarketTA.hpp
-  connectors/market/include/krn/SymbolHistory.hpp
   connectors/market/include/krn/book/DepthTypes.hpp
   connectors/market/include/krn/book/OrderBook.hpp
   connectors/market/include/krn/book/OrderBookManager.hpp
   connectors/market/include/krn/feed/FeedEvent.hpp
   connectors/market/include/krn/feed/IFeedAdapter.hpp
   connectors/market/include/krn/feed/ItchAdapter.hpp
+  connectors/market/include/krn/market/AtomicFunctions.hpp
+  connectors/market/include/krn/market/FeedServer.hpp
   connectors/market/include/krn/market/MarketConnector.hpp
   connectors/market/include/krn/market/MarketFieldMap.hpp
   connectors/market/include/krn/market/MarketIngress.hpp
+  connectors/market/include/krn/market/MarketTA.hpp
+  connectors/market/include/krn/market/SymbolHistory.hpp
+  connectors/market/include/krn/market/WsFeedClient.hpp
   connectors/market/include/krn/ob/FunctionalSnapshotSource.hpp
   connectors/market/include/krn/ob/ObKey.hpp
   connectors/market/include/krn/ob/ObMaterializer.hpp
   connectors/market/include/krn/ob/ObProvider.hpp
   connectors/market/include/krn/ob/ObSnapshot.hpp
-  connectors/market/include/krn/server/FeedServer.hpp
   connectors/market/include/krn/ta/Indicators.hpp
-  connectors/market/include/krn/ws/WsFeedClient.hpp
 )
 list(TRANSFORM KRN_MARKET_HEADERS PREPEND "${PROJECT_SOURCE_DIR}/")
 
@@ -616,6 +616,7 @@ if (KRN_BUILD_TESTS)
     tests/engine/EventComputerCacheTest.cpp
     tests/engine/IngressFactoryDispatchTest.cpp
     tests/engine/RegistriesTest.cpp
+    tests/engine/SymbolTableTest.cpp
     tests/feed/FeedEventDispatchTest.cpp
     tests/feed/GapFixesTest.cpp
     tests/feed/ItchAdapterTest.cpp
