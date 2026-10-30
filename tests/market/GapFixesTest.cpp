@@ -1,0 +1,253 @@
+// tests/market/GapFixesTest.cpp
+//
+// The market half of tests/feed/GapFixesTest.cpp, moved by ENC-1562:
+//   Fix 6: Allow negative prices in OrderBook
+//   Fix 1: Adapter-controlled subscribe message
+//   Fix 5+7: Richer TickEntry + timestamps
+//   Fix 4: Opt-in TA computation
+
+#include <gtest/gtest.h>
+
+#include "krn/util/Config.hpp"
+#include "krn/Dispatcher.hpp"
+#include "krn/AtomicStore.hpp"
+#include "krn/market/AtomicFunctions.hpp"
+#include "krn/Event.hpp"
+#include "krn/market/SymbolHistory.hpp"
+#include "krn/StreamValue.hpp"
+#include "krn/market/MarketTA.hpp"
+#include "krn/market/MarketFieldMap.hpp"
+#include "krn/rt/ThreadPool.hpp"
+#include "krn/book/OrderBookManager.hpp"
+#include "krn/feed/IFeedAdapter.hpp"
+#include "krn/feed/FeedEvent.hpp"
+#include "krn/nodes/INode.hpp"
+
+#include <rapidjson/document.h>
+
+#include <cmath>
+#include <cstdio>
+#include <fstream>
+#include <limits>
+#include <memory>
+#include <string>
+#include <vector>
+
+using namespace krn;
+
+// ===========================================================================
+// Helpers
+// ===========================================================================
+
+namespace {
+
+static Event makeTick(const std::string& symbol,
+                           std::initializer_list<std::pair<const char*, double>> fields) {
+    auto doc = std::make_shared<rapidjson::Document>();
+    doc->SetObject();
+    auto& a = doc->GetAllocator();
+    for (auto& [k, v] : fields) {
+        doc->AddMember(rapidjson::Value(k, a), rapidjson::Value(v), a);
+    }
+    return Event{symbol, std::move(doc)};
+}
+
+} // anonymous namespace
+
+// ===========================================================================
+// Fix 6: Allow negative prices in OrderBook
+// ===========================================================================
+
+TEST(GapFixesTest, OrderBookRejectsNegativePricesByDefault) {
+    OrderBookManager obm;
+    obm.setTickSize("BOND", 0.01);
+
+    // Negative price should be rejected when allowNegativePrices is false (default).
+    EXPECT_FALSE(obm.onAdd("BOND", 1, Side::Bid, -1.00, 100, 0));
+    EXPECT_FALSE(obm.bestBid("BOND").has_value());
+}
+
+TEST(GapFixesTest, OrderBookAllowsNegativePricesWhenEnabled) {
+    OrderBookManager obm;
+    obm.setTickSize("BOND", 0.01);
+    obm.setAllowNegativePrices(true);
+
+    // Negative price should now be accepted.
+    EXPECT_TRUE(obm.onAdd("BOND", 1, Side::Bid, -1.00, 100, 0));
+
+    auto bb = obm.bestBid("BOND");
+    ASSERT_TRUE(bb.has_value());
+    EXPECT_NEAR(*bb, -1.00, 1e-10);
+}
+
+TEST(GapFixesTest, OrderBookRejectsNanInfEvenWithNegativePrices) {
+    OrderBookManager obm;
+    obm.setTickSize("BOND", 0.01);
+    obm.setAllowNegativePrices(true);
+
+    EXPECT_FALSE(obm.onAdd("BOND", 1, Side::Bid,
+                            std::numeric_limits<double>::quiet_NaN(), 100, 0));
+    EXPECT_FALSE(obm.onAdd("BOND", 2, Side::Bid,
+                            std::numeric_limits<double>::infinity(), 100, 0));
+    EXPECT_FALSE(obm.onAdd("BOND", 3, Side::Bid,
+                            -std::numeric_limits<double>::infinity(), 100, 0));
+
+    // Book should still be empty.
+    EXPECT_FALSE(obm.bestBid("BOND").has_value());
+}
+
+// ===========================================================================
+// Fix 1: Adapter-controlled subscribe message
+// ===========================================================================
+
+TEST(GapFixesTest, DefaultAdapterSubscribeMessage) {
+    // IFeedAdapter has a default subscribeMessage() implementation.
+    // We need a concrete subclass to instantiate it since translate() is pure virtual.
+    struct MinimalAdapter : public feed::IFeedAdapter {
+        std::vector<feed::FeedEvent> translate(const std::string&) override {
+            return {};
+        }
+    };
+
+    MinimalAdapter adapter;
+    std::string msg = adapter.subscribeMessage({"AAPL", "MSFT"});
+
+    // Parse and verify the JSON structure.
+    rapidjson::Document doc;
+    doc.Parse(msg.c_str());
+    ASSERT_FALSE(doc.HasParseError());
+    ASSERT_TRUE(doc.IsObject());
+
+    ASSERT_TRUE(doc.HasMember("action"));
+    EXPECT_STREQ(doc["action"].GetString(), "subscribe");
+
+    ASSERT_TRUE(doc.HasMember("symbols"));
+    ASSERT_TRUE(doc["symbols"].IsArray());
+    ASSERT_EQ(doc["symbols"].Size(), 2u);
+    EXPECT_STREQ(doc["symbols"][0].GetString(), "AAPL");
+    EXPECT_STREQ(doc["symbols"][1].GetString(), "MSFT");
+}
+
+TEST(GapFixesTest, CustomAdapterOverridesSubscribeMessage) {
+    struct CustomAdapter : public feed::IFeedAdapter {
+        std::vector<feed::FeedEvent> translate(const std::string&) override {
+            return {};
+        }
+        std::string subscribeMessage(const std::vector<std::string>& symbols) override {
+            // Custom format: pipe-separated symbols in a simple wrapper.
+            std::string result = "{\"op\":\"sub\",\"channels\":\"";
+            for (size_t i = 0; i < symbols.size(); ++i) {
+                if (i > 0) result += "|";
+                result += symbols[i];
+            }
+            result += "\"}";
+            return result;
+        }
+    };
+
+    CustomAdapter adapter;
+    std::string msg = adapter.subscribeMessage({"BTC", "ETH"});
+
+    rapidjson::Document doc;
+    doc.Parse(msg.c_str());
+    ASSERT_FALSE(doc.HasParseError());
+    ASSERT_TRUE(doc.IsObject());
+
+    ASSERT_TRUE(doc.HasMember("op"));
+    EXPECT_STREQ(doc["op"].GetString(), "sub");
+
+    ASSERT_TRUE(doc.HasMember("channels"));
+    EXPECT_STREQ(doc["channels"].GetString(), "BTC|ETH");
+}
+
+// ===========================================================================
+// Fix 5+7: Richer TickEntry + timestamps
+// ===========================================================================
+
+TEST(GapFixesTest, TickEntryDefaultFields) {
+    TickEntry entry{100.0, 50.0};
+    EXPECT_DOUBLE_EQ(entry.price, 100.0);
+    EXPECT_DOUBLE_EQ(entry.volume, 50.0);
+    EXPECT_DOUBLE_EQ(entry.bid, 0.0);
+    EXPECT_DOUBLE_EQ(entry.ask, 0.0);
+    EXPECT_EQ(entry.timestampNs, 0u);
+}
+
+TEST(GapFixesTest, TickEntryFullConstruction) {
+    TickEntry entry{150.0, 200.0, 149.5, 150.5, 1700000000000000000ULL};
+    EXPECT_DOUBLE_EQ(entry.price, 150.0);
+    EXPECT_DOUBLE_EQ(entry.volume, 200.0);
+    EXPECT_DOUBLE_EQ(entry.bid, 149.5);
+    EXPECT_DOUBLE_EQ(entry.ask, 150.5);
+    EXPECT_EQ(entry.timestampNs, 1700000000000000000ULL);
+}
+
+TEST(GapFixesTest, DispatcherStoresBidAskSpread) {
+    registerBuiltinFunctions();
+    rt::ThreadPool pool(1);
+    AtomicStore store;
+    util::Config cfg;
+
+    // ENC-35: bid/ask fields configured on a connector-owned MarketFieldMap.
+    krn::market::MarketFieldMap fm;
+    fm.bidFields = {"bid"};
+    fm.askFields = {"ask"};
+
+    Dispatcher md(&pool, &store, cfg);
+    md.addComputer(std::make_unique<MarketTickComputer>(cfg, std::move(fm)));
+
+    // Send 2 ticks with bid/ask fields.
+    md.onTick(makeTick("QQQ", {{"lastPrice", 400.0}, {"volume", 100.0},
+                                {"bid", 399.5}, {"ask", 400.5}}));
+    md.onTick(makeTick("QQQ", {{"lastPrice", 401.0}, {"volume", 200.0},
+                                {"bid", 400.0}, {"ask", 401.5}}));
+    pool.shutdown();
+
+    // Verify bid, ask, spread are in the store (from the latest tick).
+    auto bidVal = store.get("QQQ", "bid");
+    ASSERT_TRUE(bidVal.has_value());
+    EXPECT_DOUBLE_EQ(std::get<double>(*bidVal), 400.0);
+
+    auto askVal = store.get("QQQ", "ask");
+    ASSERT_TRUE(askVal.has_value());
+    EXPECT_DOUBLE_EQ(std::get<double>(*askVal), 401.5);
+
+    auto spreadVal = store.get("QQQ", "spread");
+    ASSERT_TRUE(spreadVal.has_value());
+    EXPECT_DOUBLE_EQ(std::get<double>(*spreadVal), 1.5);  // 401.5 - 400.0
+}
+
+// ===========================================================================
+// Fix 4: Opt-in TA computation
+//
+// Note: the taEnabled=false unit-level invariant is covered by
+// MarketFieldMapTest::TaDisabledSkipsTAIndicatorWrites — it invokes
+// MarketTickComputer::compute directly so it isn't shadowed by the
+// process-static default tick computer registered with the
+// EventComputerRegistry by test_bootstrap.
+// ===========================================================================
+
+TEST(GapFixesTest, TaEnabledComputesIndicators) {
+    registerBuiltinFunctions();
+    rt::ThreadPool pool(1);
+    AtomicStore store;
+    util::Config cfg;
+    cfg.taSMA = {5};
+
+    Dispatcher md(&pool, &store, cfg);  // default field-map, taEnabled=true
+
+    // Send 15 ticks so SMA(5) can compute.
+    for (int i = 1; i <= 15; ++i) {
+        md.onTick(makeTick("TA_ON", {{"lastPrice", 100.0 + i}, {"volume", 10.0}}));
+    }
+    pool.shutdown();
+
+    // Base metrics should be present.
+    EXPECT_TRUE(store.get("TA_ON", "lastPrice").has_value());
+
+    // TA indicator SMA(5) should be present.
+    auto sma = store.get("TA_ON", "sma_5");
+    ASSERT_TRUE(sma.has_value());
+    // SMA(5) of last 5 prices: 111, 112, 113, 114, 115 => mean = 113
+    EXPECT_DOUBLE_EQ(std::get<double>(*sma), 113.0);
+}
