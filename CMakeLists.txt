@@ -583,6 +583,7 @@ if (KRN_BUILD_TESTS)
     GIT_TAG        v1.14.0
   )
   set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+  set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)  # cmake --install ships krn only
   FetchContent_MakeAvailable(googletest)
 
   set(KRN_TEST_SOURCES

@@ -16,10 +16,12 @@ message(STATUS "KRN_SMOKE ok: krn_DIR is ${_dir}")
 
 # No include dir may point back into the producer's source or build tree.
 get_target_property(_inc krn::krn_engine INTERFACE_INCLUDE_DIRECTORIES)
+# (The prefix itself sits under the producer's build tree, so it is exempt.)
 foreach (_d IN LISTS _inc)
+  string(FIND "${_d}/" "${_prefix}/" _in_prefix)
   foreach (_bad IN ITEMS "${KRN_SMOKE_SOURCE_DIR}" "${KRN_SMOKE_BINARY_DIR}")
     string(FIND "${_d}" "${_bad}" _q)
-    if (_q EQUAL 0)
+    if (_q EQUAL 0 AND NOT _in_prefix EQUAL 0)
       message(FATAL_ERROR "KRN_SMOKE FAIL: include dir ${_d} is in ${_bad}")
     endif()
   endforeach()
