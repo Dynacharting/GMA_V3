@@ -17,10 +17,10 @@
 //   ON  — each source field gets its own `<field>.<fn>` slot, and Listener push
 //         is unchanged so the WS streaming surface does not move.
 //
-// Field names here are deliberately `alpha`/`beta`, not `price`/`size`: the test
-// binary boots a real MarketConnector (tests/test_bootstrap.cpp), and a
-// market-shaped field name would additionally be picked up by
-// MarketTickComputer and muddy what is being measured.
+// Field names here are deliberately `alpha`/`beta`, not `price`/`size`, so a
+// market computer, had one been registered, would not pick them up. The one
+// case that needs MarketTickComputer's `mean` is in
+// tests/market/AtomicKeyNamespaceMarketTest.cpp (krn_market_tests, ENC-1562).
 
 #include "krn/AtomicStore.hpp"
 #include "krn/Dispatcher.hpp"
@@ -378,72 +378,4 @@ TEST(AtomicKeyNamespaceTest, DefaultConfigIsFlatNamespace) {
 
   EXPECT_TRUE(store.get("NS.SYM", "mean").has_value());
   EXPECT_FALSE(store.get("NS.SYM", "alpha.mean").has_value());
-}
-
-// --- The subtler half of the break: mean / median / spread. ---------------
-//
-// `mean`, `median` and `spread` are registered FunctionMap builtins AND keys
-// that MarketTickComputer writes itself (MarketTA.cpp ~91-92 and ~391), over
-// PRICE history rather than over the listened field's history. Today the
-// computers run before the listener fan-out in onTick, so the Dispatcher's
-// builtin is the last writer and wins the bare key.
-//
-// With namespacing on the Dispatcher vacates that key, and MarketTA's value —
-// a different number, not a missing one — is what an AtomicAccessor on bare
-// `mean` reads. So for these three names the migration is a SILENT VALUE
-// CHANGE, which is strictly worse to debug than a key that stops resolving,
-// and it is the sharpest reason the flag defaults off.
-//
-// It also splits push from pull: a Listener on bare `mean` still receives the
-// Dispatcher's per-field mean while an AtomicAccessor on bare `mean` now reads
-// MarketTA's price mean. Under the default they agree.
-TEST(AtomicKeyNamespaceTest, MarketTAKeepsTheBareKeyAliveWithADifferentValue) {
-  // Listen on `volume`, not on the price field, so the two producers' means
-  // are different numbers by construction:
-  //   MarketTA   mean over prices  [1, 3, 2]    = 2
-  //   Dispatcher mean over volumes [10, 20, 30] = 20
-  const auto drive = [](Dispatcher& md) {
-    md.registerListener("MKT.SYM", "volume", std::make_shared<Recorder>());
-    md.registerListener("MKT.SYM", "mean", std::make_shared<Recorder>());
-    const double prices[]  = {1.0, 3.0, 2.0};
-    const double volumes[] = {10.0, 20.0, 30.0};
-    for (int i = 0; i < 3; ++i) {
-      md.onTick(makeTick("MKT.SYM", {{"lastPrice", prices[i]},
-                                     {"volume", volumes[i]}}));
-    }
-  };
-
-  {
-    rt::ThreadPool pool(1);
-    AtomicStore store;
-    Dispatcher md(&pool, &store, cfgWith(false));
-    drive(md);
-    pool.shutdown();
-
-    auto bare = store.get("MKT.SYM", "mean");
-    ASSERT_TRUE(bare.has_value());
-    EXPECT_DOUBLE_EQ(asDouble(*bare), 20.0)
-        << "with the flag off the Dispatcher's builtin must remain the last "
-           "writer of the bare key, ahead of MarketTA's price mean";
-  }
-  {
-    rt::ThreadPool pool(1);
-    AtomicStore store;
-    Dispatcher md(&pool, &store, cfgWith(true));
-    drive(md);
-    pool.shutdown();
-
-    auto bare = store.get("MKT.SYM", "mean");
-    ASSERT_TRUE(bare.has_value())
-        << "the bare key does NOT go away here — MarketTA still writes it";
-    EXPECT_DOUBLE_EQ(asDouble(*bare), 2.0)
-        << "with the flag on, bare `mean` must read MarketTA's price mean; "
-           "this is a silent value change for anything bound to it";
-
-    auto ns = store.get("MKT.SYM", "volume.mean");
-    ASSERT_TRUE(ns.has_value());
-    EXPECT_DOUBLE_EQ(asDouble(*ns), 20.0)
-        << "the Dispatcher's per-field mean must be reachable under its "
-           "namespaced key";
-  }
 }

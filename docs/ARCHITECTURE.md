@@ -476,16 +476,18 @@ Typical order: `ws-stop-accept=5, metrics-stop=10, ws-close-sessions=40, ob-prov
 
 ## 10. Tests
 
-The entire test binary (`krn_tests`) is one executable; `ctest` runs it. Organization under `tests/`:
+Two gtest executables, both run by `ctest`: `krn_tests` (the engine cases; links no market code) and `krn_market_tests` (`tests/market/` plus the `book/`, `ob/` and `feed/` files that test the market connector; ENC-1562). Organization under `tests/`:
 
 - `engine/` — engine registry unit tests
 - `connectors/` — synthetic connector tests (proves routing invariant)
-- `book/`, `ob/`, `feed/` — market connector
+- `book/`, `ob/`, `feed/` — market connector (in `krn_market_tests`, except `feed/GapFixesTest.cpp`)
+- `market/` — the other market-dependent cases (`krn_market_tests`)
 - `dispatch/`, `nodes/`, `treebuilder/`, `validation/`, `registry/` — engine pipeline
 - `integration/`, `ws/`, `connection/` — end-to-end
-- `test_bootstrap.cpp` — gtest Environment that registers builtins + installs the market tick-computer factory before any test runs
+- `test_bootstrap.cpp` — `krn_tests`' gtest Environment: registers builtins, no connector
+- `market/test_bootstrap.cpp` — `krn_market_tests`': builtins + the market tick-computer factory
 
-`DispatcherRoutesByEventType` in `tests/connectors/SyntheticConnectorTest.cpp` is the regression check for "synthetic and market computers must not interfere." If that fails, the type-routing contract is broken.
+`DispatcherRoutesByEventType` in `tests/connectors/SyntheticConnectorTest.cpp` is the regression check for "two computers on different event types must not interfere": with the synthetic computer and the reference plugin's `ReferenceComputer` both added to one Dispatcher, a `synthetic.tick` event writes no `reference.*` key and a `reference.tick` event writes no `synthetic.*` key. If that fails, the type-routing contract is broken.
 
 ## 11. Known residuals
 
