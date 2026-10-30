@@ -892,7 +892,7 @@ public:
   // `anyTargetSamplesAtClock_` is false and this whole path is unreachable for
   // them; they keep `onValue` exactly as it is.
   bool samplesAtClock() const noexcept override {
-    return false; /*ENC1555-MUT-TB*/
+    return anyTargetSamplesAtClock_;
   }
 
   std::function<void()> bindAtClock(const krn::StreamValue& sv) override {
