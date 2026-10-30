@@ -13,7 +13,7 @@
 //     shape. No row objects, no JSON DOM, no per-field conversion.
 //
 //   * TickRecord / BookRecord / SnapshotRecord — plain PODs, the engine-facing
-//     form. TickRecord is in `include/krn/data/Record.hpp` (krn_engine); the
+//     form. TickRecord is in `krn/data/TickRecord.hpp` (here, ENC-1557); the
 //     book records are in `krn/data/BookRecord.hpp` (here, ENC-1550). The decode
 //     below turns a batch into these COLUMN-WISE, once per batch. That decode
 //     is the single Arrow->scalar boundary in the system
@@ -36,7 +36,7 @@
 //
 
 #include "krn/data/BookRecord.hpp"
-#include "krn/data/Record.hpp"
+#include "krn/data/TickRecord.hpp"
 #include "krn/data/SymbolTable.hpp"
 
 #include <arrow/record_batch.h>

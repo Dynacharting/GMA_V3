@@ -10,7 +10,7 @@
 // in SchemaRoundTripTest.cpp pins that, and the suite is run under
 // --gtest_repeat to prove it.
 
-#include "krn/data/Record.hpp"
+#include "krn/data/TickRecord.hpp"
 #include "krn/data/SymbolTable.hpp"
 
 #include <gtest/gtest.h>
