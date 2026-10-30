@@ -2,14 +2,15 @@
 //
 // The book-side L1 records, moved out of the engine's include/krn/data/Record.hpp
 // (ENC-1550). No engine code names them, so they live in krn_data. RecordHeader,
-// TickRecord and Aggressor stay in Record.hpp, which this header includes.
+// TickRecord and Aggressor followed them in ENC-1557, into krn/data/TickRecord.hpp,
+// which this header includes.
 //
 // Design: specs/2026-10-15-gma-engine-purity/SPEC.md D4, D10.
 
 #include <cstddef>
 #include <cstdint>
 
-#include "krn/data/Record.hpp"
+#include "krn/data/TickRecord.hpp"
 
 namespace krn::data {
 

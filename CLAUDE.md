@@ -158,9 +158,10 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full picture including 
   `cmake -DKRN_BUILD_DATA=OFF` must build and link `krn_server` with no Arrow anywhere,
   while the over-the-wire variant needs Arrow IPC and therefore does ship `krn_data`. Don't
   shorten that to "the client profile omits the library" — that is true of one variant.
-  **The engine-facing PODs are the one thing that crosses**, and they cross deliberately:
-  `include/krn/data/Record.hpp` and `include/krn/data/SymbolTable.hpp` are in `krn_engine`,
-  Arrow-free, because `Dispatcher::onRecord` is engine code and has to name a record. Every
+  **The engine names no record type** (ENC-1557): `Dispatcher::onRecord` takes a
+  `data::SymbolId` and an `engine::FieldSource`, and the record PODs and their adapter are in
+  `krn_data` (`data/include/krn/data/{TickRecord,RecordFieldSource}.hpp`). Only
+  `include/krn/data/SymbolTable.hpp` is still engine-side, Arrow-free. Every
   way of breaking the invariant still compiles and still passes every other test, so it is
   asserted by `tools/check_engine_isolation.py` as the ctest cases `krn_engine_isolation`
   (four checks, refuses to pass on vacuous input) and `krn_engine_isolation_selftest` (runs
@@ -211,7 +212,8 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full picture including 
   table in `src/core/AtomicStore.cpp`.
 - **Two Dispatcher ingress shapes, one body (ENC-1486).** `Dispatcher::onTick(const Event&)`
   (JSON DOM — the legacy TCP feed and `market.wsclient`) and
-  `Dispatcher::onRecord(const data::TickRecord&)` (resolved fields, no DOM) are both
+  `Dispatcher::onRecord(data::SymbolId, const engine::FieldSource&)` (resolved fields, no
+  DOM; krn_data builds the source from a `TickRecord` with `RecordFieldSource`) are both
   three-line adapters over the private
   `ingest(symbol, eventType, const engine::FieldSource&)`. The raw-admission ledger, the
   history buffers, `computeAndStoreAtomics`, the `AtomicStore` keys, the computer sets and
@@ -229,8 +231,9 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full picture including 
   record (`StreamValue` still carries `std::string symbol`); do not remove it without
   ENC-1487's numbers, which measure it as a separate step. **(3)** No event time:
   `header.tsEventNs` is not exposed as a field and the clock nodes are untouched (SPEC D9).
-  Mapping table and the reason for each omission: `include/krn/engine/RecordFieldSource.hpp`.
-  Pinned by `tests/dispatch/RecordIngressParityTest.cpp`, which compares deliveries **in
+  Mapping table and the reason for each omission: `data/include/krn/data/RecordFieldSource.hpp`.
+  Pinned by `data/tests/RecordIngressParityTest.cpp` (in `krn_data_tests`; the engine-only
+  JSON-free and refusal cases are `tests/dispatch/RecordIngressEngineTest.cpp`), which compares deliveries **in
   order** and store contents across the two paths, carries its own negative controls, and
   separately pins the record→field mapping absolutely — the parity half cannot see a bug
   *inside* the mapping, because it derives the equivalent JSON tick through it.

@@ -133,17 +133,19 @@ Key semantics:
 ```cpp
 void onTick  (const Event& tick);                 // JSON DOM — the legacy TCP
                                                   //   feed + market.wsclient
-void onRecord(const data::TickRecord& rec);       // resolved fields, no DOM
+void onRecord(data::SymbolId symbolId,            // resolved fields, no DOM
+              const engine::FieldSource& fields);
 ```
 
 `onTick`'s unit of work is a `shared_ptr<rapidjson::Document>`: it walks every
 member constructing a `std::string` per member per tick for the raw-admission
 ledger, and each computer then probes the DOM by name. For a chart tick that is
 irrelevant; at MBO rates — tens of millions of records per symbol-day — it is
-the dominant cost, not the math. `onRecord` takes a `krn::data::TickRecord`
-(`include/krn/data/Record.hpp`, an Arrow-free POD inside `krn_engine`) whose
-fields the normalizer already resolved, so nothing on that path constructs a
-DOM or a per-field string.
+the dominant cost, not the math. `onRecord` takes a record's interned
+`symbolId` and a `FieldSource` over fields the normalizer already resolved, so
+nothing on that path constructs a DOM or a per-field string. The engine names
+no record type: `krn::data::TickRecord` and its `RecordFieldSource` are in
+`krn_data` (`data/include/krn/data/`, ENC-1557).
 
 Both are three-line adapters over the private
 `ingest(symbol, eventType, const engine::FieldSource&)`, so the raw-admission
@@ -174,7 +176,8 @@ Consequences worth knowing before you touch either:
 
 Design: `specs/2026-10-14-krn-data-layer/SPEC.md` D1/D3/D9,
 `docs/data-layer.md` §C2/§C6/§6. Pinned by
-`tests/dispatch/RecordIngressParityTest.cpp`.
+`data/tests/RecordIngressParityTest.cpp` and
+`tests/dispatch/RecordIngressEngineTest.cpp`.
 
 ## 4. Engine registries (extension points)
 

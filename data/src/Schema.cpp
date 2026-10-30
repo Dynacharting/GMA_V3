@@ -224,7 +224,7 @@ arrow::Result<const ArrayType*> column(const arrow::RecordBatch& batch,
 // so a renamed enumerator is a compile error rather than a silent off-by-one.
 // What they cannot be is self-maintaining: C++ gives no way to ask for an
 // enum's largest enumerator, and these three enums mirror the engine's own
-// (Record.hpp's header comment) one-for-one, so adding a sentinel to them is
+// (TickRecord.hpp's and BookRecord.hpp's comments) one-for-one, so adding a sentinel to them is
 // not available either.
 //
 // SO BE PRECISE ABOUT WHAT IS GUARDED, because the first version of this

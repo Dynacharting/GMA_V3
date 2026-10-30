@@ -27,7 +27,7 @@ struct ComputeContext {
 //
 // COMPUTE TAKES A FieldSource, NOT AN Event (ENC-1486).
 // The Dispatcher has two ingress entry points — `onTick` (JSON DOM) and
-// `onRecord` (`data::TickRecord`, no DOM) — and SPEC
+// `onRecord` (a resolved `FieldSource`, no DOM) — and SPEC
 // specs/2026-10-14-krn-data-layer/SPEC.md D1 requires ONE implementation of
 // every operator, computers included. A second `compute` overload taking a
 // record would be a second implementation of every connector's field

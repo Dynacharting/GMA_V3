@@ -340,7 +340,6 @@ set(KRN_ENGINE_HEADERS
   include/krn/StreamValue.hpp
   include/krn/TreeBuilder.hpp
   include/krn/atomic/AtomicProviderRegistry.hpp
-  include/krn/data/Record.hpp
   include/krn/data/SymbolTable.hpp
   include/krn/engine/ConfigNamespaceRegistry.hpp
   include/krn/engine/EngineRegistries.hpp
@@ -352,7 +351,6 @@ set(KRN_ENGINE_HEADERS
   include/krn/engine/IngressRegistry.hpp
   include/krn/engine/JsonFieldSource.hpp
   include/krn/engine/NodeTypeRegistry.hpp
-  include/krn/engine/RecordFieldSource.hpp
   include/krn/engine/Registries.hpp
   include/krn/forum/ConnectorsClient.hpp
   include/krn/nodes/Aggregate.hpp
@@ -612,7 +610,7 @@ if (KRN_BUILD_TESTS)
     tests/dispatch/ClockCoherentPullTest.cpp
     tests/dispatch/DispatchTest.cpp
     tests/dispatch/InjectedAtomicTest.cpp
-    tests/dispatch/RecordIngressParityTest.cpp
+    tests/dispatch/RecordIngressEngineTest.cpp
     tests/engine/ConnectorLifecycleTest.cpp
     tests/engine/EngineRegistriesShapeTest.cpp
     tests/engine/EventComputerCacheTest.cpp

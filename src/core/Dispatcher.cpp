@@ -145,7 +145,7 @@ void Dispatcher::ingest(const std::string& symbol,
   // high-cardinality path now: A FIELDLESS TICK STILL BURNS A `_rawAdmitted`
   // SYMBOL SLOT. The ledger entry is created before anything is known about
   // how many fields will be admitted, so an all-`kNoPrice`/zero-size
-  // `TickRecord` — which emits nothing — consumes one of `maxSymbols` and can
+  // record — which emits nothing — consumes one of `maxSymbols` and can
   // block raw admission for a later symbol. This is NOT a parity break: a
   // JSON `{}` payload, which is that record's equivalent tick, does exactly
   // the same, and `IdenticalForAFieldlessTick` pins that. It is a resource
