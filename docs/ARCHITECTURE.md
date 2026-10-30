@@ -487,7 +487,7 @@ Two gtest executables, both run by `ctest`: `krn_tests` (the engine cases; links
 - `test_bootstrap.cpp` — `krn_tests`' gtest Environment: registers builtins, no connector
 - `market/test_bootstrap.cpp` — `krn_market_tests`': builtins + the market tick-computer factory
 
-`DispatcherRoutesByEventType` in `tests/connectors/SyntheticConnectorTest.cpp` is the regression check for "synthetic and market computers must not interfere." If that fails, the type-routing contract is broken.
+`DispatcherRoutesByEventType` in `tests/connectors/SyntheticConnectorTest.cpp` is the regression check for "two computers on different event types must not interfere": with the synthetic computer and the reference plugin's `ReferenceComputer` both added to one Dispatcher, a `synthetic.tick` event writes no `reference.*` key and a `reference.tick` event writes no `synthetic.*` key. If that fails, the type-routing contract is broken.
 
 ## 11. Known residuals
 
