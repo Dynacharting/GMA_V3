@@ -37,10 +37,9 @@
 //     for a changed value, one for an extra field, one for a changed
 //     field-emission order. If the comparator ever goes blind, those three go
 //     red, every run, without anyone remembering to re-check.
-//   * The comparison is over a key set derived from `FunctionMap`,
-//     `market::computeAllAtomicValues` and `RecordFieldSource` itself, so a
-//     new field or a new builtin enters the comparison automatically instead
-//     of quietly falling outside it.
+//   * The comparison is total over `AtomicStore::snapshot()`, so a new field,
+//     a new builtin or a new computed key enters the comparison automatically
+//     instead of quietly falling outside it.
 //
 // The one-off proof that the PRODUCTION path is what is being compared — a
 // perturbation of `Dispatcher::ingest` reddening `DeliveriesAreIdenticalInOrder`
@@ -56,9 +55,7 @@
 #include "krn/Dispatcher.hpp"
 #include "krn/Event.hpp"
 #include "krn/FunctionMap.hpp"
-#include "krn/MarketTA.hpp"
 #include "krn/StreamValue.hpp"
-#include "krn/SymbolHistory.hpp"
 #include "krn/data/Record.hpp"
 #include "krn/data/SymbolTable.hpp"
 #include "krn/engine/FieldSource.hpp"
@@ -66,6 +63,7 @@
 #include "krn/engine/JsonFieldSource.hpp"
 #include "krn/engine/RecordFieldSource.hpp"
 #include "krn/nodes/INode.hpp"
+#include "krn/reference/ReferenceComputer.hpp"
 #include "krn/rt/ThreadPool.hpp"
 #include "krn/util/Config.hpp"
 #include "krn/util/Logger.hpp"
@@ -197,6 +195,55 @@ private:
   std::vector<std::string>* sink_;
 };
 
+// ENC-1556: the computed half of the parity set, with no market code. The
+// reference plugin's `ReferenceComputer` (ENC-1555) listens on its own event
+// type and reads `sample`; a record always arrives as "tick" carrying
+// `price`. So this runs the REAL computer on the "tick" route with `sample`
+// read from `price`, then publishes what it stored through
+// `notifyListeners`, the computer-initiated delivery route. Identical on both
+// paths by construction, so any divergence below is the entry points'.
+using synthetic::ReferenceComputer;
+
+class SampleFromPrice final : public engine::FieldSource {
+public:
+  explicit SampleFromPrice(const engine::FieldSource& in) : in_(in) {}
+  bool isObject() const noexcept override { return in_.isObject(); }
+  std::size_t fieldCountHint() const noexcept override { return has(kSample) ? 1 : 0; }
+  bool has(const std::string& name) const override {
+    return name == kSample && in_.has(engine::recordfields::kPrice);
+  }
+  bool tryGetNumber(const std::string& name, double& out) const override {
+    return name == kSample && in_.tryGetNumber(engine::recordfields::kPrice, out);
+  }
+  bool tryGetUint64(const std::string&, std::uint64_t&) const override { return false; }
+  void forEachNumber(engine::NumericFieldSink& sink) const override {
+    double v = 0.0;
+    if (tryGetNumber(kSample, v)) sink.field(kSample, v);
+  }
+  static inline const std::string kSample{ReferenceComputer::kInputField};
+private:
+  const engine::FieldSource& in_;
+};
+
+class ReferenceOnTick final : public engine::IEventComputer {
+public:
+  std::string_view eventType() const override { return "tick"; }
+  void compute(const std::string& symbol,
+               const engine::FieldSource& fields,
+               engine::ComputeContext& ctx) override {
+    const SampleFromPrice view(fields);
+    inner_.compute(symbol, view, ctx);
+    if (!ctx.store || !ctx.dispatcher || !view.has(SampleFromPrice::kSample)) return;
+    for (const auto key : {ReferenceComputer::kSumKey, ReferenceComputer::kSumSqKey}) {
+      const auto v = ctx.store->get(symbol, std::string(key));
+      if (v && std::holds_alternative<double>(*v))
+        ctx.dispatcher->notifyListeners(symbol, std::string(key), std::get<double>(*v));
+    }
+  }
+private:
+  ReferenceComputer inner_;
+};
+
 // ---------------------------------------------------------------------------
 // The rig — one Dispatcher, one store, one single-threaded pool
 // ---------------------------------------------------------------------------
@@ -209,11 +256,12 @@ constexpr char kTicker[] = "PARITY";
 //   * FunctionMap builtins (`mean`, `sum`, `stddev`) — `computeAndStoreAtomics`
 //     only computes a builtin that has a subscriber (ENC-792/M10), so without
 //     these the derived half of the path is never exercised;
-//   * MarketTA pushes (`lastPrice`, `sma_5`) — `notifyListeners` from inside a
-//     connector computer, which is the third of the three delivery routes.
+//   * reference computer pushes (`reference.sum`, `reference.sumsq`) —
+//     `notifyListeners` from inside a computer, the third delivery route.
 const std::vector<std::string>& listenedFields() {
   static const std::vector<std::string> f = {
-      "ask", "bid", "price", "size", "mean", "sum", "stddev", "lastPrice", "sma_5"};
+      "ask", "bid", "price", "size", "mean", "sum", "stddev",
+      std::string(ReferenceComputer::kSumKey), std::string(ReferenceComputer::kSumSqKey)};
   return f;
 }
 
@@ -226,6 +274,7 @@ struct Rig {
       disp.registerListener(kTicker, field, node);
     }
     disp.addComputer(std::make_unique<ComputerProbe>("tick", &computerLog));
+    disp.addComputer(std::make_unique<ReferenceOnTick>());
     symbols.intern("ZZ-PAD");      // burn id 1 so kTicker is not id 1 by luck
     symbolId = symbols.intern(kTicker);
     disp.setSymbolTable(&symbols);
@@ -325,15 +374,17 @@ Event reversedEvent(const std::string& symbol, const data::TickRecord& rec) {
   return Event{symbol, std::move(doc)};
 }
 
-// Four ticks, not one. A single tick cannot see a history buffer, a rolling
-// builtin or the cap bookkeeping; `sma_5` needs depth and `stddev` of one
-// sample is not a test of anything.
+// Five ticks, not one. A single tick cannot see a history buffer, a rolling
+// builtin or the cap bookkeeping; `stddev` of one sample is not a test of
+// anything, and the reference computer is past its warm-up only from the
+// (kWarmupTicks + 2)-th sample.
 std::vector<data::TickRecord> corpus(data::SymbolId sym) {
   return {
       makeRecord(sym, 100.25,  10, 100.20, 100.30),
       makeRecord(sym, 100.50,  25, 100.45, 100.55),
       makeRecord(sym,  99.75, 300,  99.70,  99.80),
       makeRecord(sym, 101.00,   1, 100.95, 101.05),
+      makeRecord(sym, 100.75,  40, 100.70, 100.80),
   };
 }
 
@@ -474,8 +525,6 @@ TEST(RecordIngressParityTest, AtomicStoreContentsAreIdentical) {
            "mean",       // Dispatcher::computeAndStoreAtomics (subscribed builtin)
            "sum",        //   "
            "stddev",     //   "
-           "lastPrice",  // MarketTickComputer's TA suite
-           "sma_5",      //   "
        }) {
     EXPECT_TRUE(storeHas(json.store, required))
         << "JSON path wrote no `" << required << "` — this comparison is no "
@@ -483,6 +532,20 @@ TEST(RecordIngressParityTest, AtomicStoreContentsAreIdentical) {
            "against the record path proves less than it claims";
     EXPECT_TRUE(storeHas(rec.store, required))
         << "record path wrote no `" << required << "`";
+  }
+  // The computed route, past warm-up: a finite value on both paths, so the
+  // equality below compares a derived number and not two NaNs.
+  const auto finiteIn = [](const std::vector<std::string>& rows, const std::string& key) {
+    const std::string at = std::string(kTicker) + " / " + key + " = d:";
+    for (const auto& r : rows)
+      if (r.rfind(at, 0) == 0) return r.find("nan") == std::string::npos;
+    return false;
+  };
+  for (const auto key : {ReferenceComputer::kSumKey, ReferenceComputer::kSumSqKey}) {
+    EXPECT_TRUE(finiteIn(json.store, std::string(key)))
+        << "JSON path wrote no finite `" << key << "`";
+    EXPECT_TRUE(finiteIn(rec.store, std::string(key)))
+        << "record path wrote no finite `" << key << "`";
   }
 
   EXPECT_EQ(json.store, rec.store);
@@ -508,7 +571,7 @@ TEST(RecordIngressParityTest, ComputerInvocationsAreIdentical) {
 
 TEST(RecordIngressParityTest, RecordsRouteToTheTickComputerSet) {
   // A record must reach the computers an `Event{sym, payload}` reaches —
-  // `Event::type` defaults to "tick" and MarketConnector registers there.
+  // `Event::type` defaults to "tick".
   EXPECT_EQ(Dispatcher::recordEventType(), Event{}.type);
   EXPECT_EQ(Dispatcher::recordEventType(), "tick");
 }
