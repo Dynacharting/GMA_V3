@@ -170,8 +170,13 @@ int runHost(int argc, char* argv[], const HostOptions& opts) {
     &krn::FunctionMap::instance(),
     &krn::util::logger(),
   };
-  const std::vector<krn::engine::IConnector*> connectors = opts.connectors;
-  for (auto* c : connectors) c->registerWith(regs);
+  std::vector<std::unique_ptr<krn::engine::IConnector>> owned;
+  std::vector<krn::engine::IConnector*> connectors;
+  for (const auto& make : opts.connectors) {
+    owned.push_back(make());
+    owned.back()->registerWith(regs);
+    connectors.push_back(owned.back().get());
+  }
 
   if (hooks.afterConnectorsRegistered) hooks.afterConnectorsRegistered(argc, argv, cfg);
 

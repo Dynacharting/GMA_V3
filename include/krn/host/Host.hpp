@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -47,11 +48,16 @@ struct HostHooks {
   std::function<void(const util::Config& cfg, std::vector<util::Field>& fields)> listeningFields;
 };
 
+// Builds one connector. Called inside runHost(), so the connector is
+// constructed after the io_context exists and destroyed before it is.
+using ConnectorFactory = std::function<std::unique_ptr<engine::IConnector>()>;
+
 struct HostOptions {
   // Used in diagnostics ("is another <programName> already listening there?").
   std::string programName = "krn";
-  // registerWith() and start() run in this order; stop() in reverse. Not owned.
-  std::vector<engine::IConnector*> connectors;
+  // Each is constructed and registerWith()'d in this order, start()ed in this
+  // order once ingress is up, and stop()ped in reverse.
+  std::vector<ConnectorFactory> connectors;
   HostHooks hooks;
 };
 
