@@ -102,7 +102,7 @@ control when built: its closure must trip a forbidden pattern (it links `krn::ar
 | `include/krn/data/TickRecord.hpp` + `src/TickRecord.cpp` | **real** — `RecordHeader`, `TickRecord`; in `krn_data` since ENC-1557 |
 | `include/krn/data/RecordFieldSource.hpp` | **real** — `TickRecord` → `engine::FieldSource`, what `Dispatcher::onRecord` takes (ENC-1557) |
 | `include/krn/data/BookRecord.hpp` | **real** — `BookRecord`, `SnapshotRecord`; no engine consumer, so in `krn_data` (ENC-1550) |
-| `../include/krn/data/SymbolTable.hpp` | **real** — ticker/venue interning (in `krn_engine`) |
+| `../include/krn/engine/SymbolTable.hpp` | **real** — ticker/venue interning (in `krn_engine`) |
 | `include/krn/data/DatabentoAdapter.hpp` + `src/DatabentoAdapter.cpp` | **real** — the DBN decoder and the DBN→canonical mapping (ENC-1482) |
 | `include/krn/data/DbnEncoder.hpp` + `src/DbnEncoder.cpp` | **real** — a DBN *encoder*, promoted out of the test TU (ENC-1483). It is a non-circularity instrument first and a component second: the layout claims in `DatabentoAdapter.hpp` are believed only because this code reproduces five real vendor files byte for byte |
 | `include/krn/data/DatabentoCsv.hpp` + `src/DatabentoCsv.cpp` | **real** — vendor CSV → the vendor's own PODs → real DBN, plus `metadata.json` and D6 retention (ENC-1483). It stops at `dbn::MboMsg`/`dbn::TradeMsg`: one mapping to canonical form exists and it is the adapter's (D1) |

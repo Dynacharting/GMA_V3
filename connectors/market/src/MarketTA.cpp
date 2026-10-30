@@ -1,6 +1,6 @@
 // Market technical-analysis computations. Moves into
 // libkrn_connector_market in Step 7.
-#include "krn/MarketTA.hpp"
+#include "krn/market/MarketTA.hpp"
 #include "krn/FunctionMap.hpp"
 #include "krn/Dispatcher.hpp"
 #include "krn/Event.hpp"

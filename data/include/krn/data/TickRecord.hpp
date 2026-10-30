@@ -28,7 +28,7 @@
 // MBO rates (tens of millions of records per symbol-day) that single copy is a
 // measurable fraction of total cost — which is what ENC-1487 (B2) measures.
 // Resolve an id back to text only at an output boundary, through
-// `krn::data::SymbolTable` (include/krn/data/SymbolTable.hpp, in krn_engine).
+// `krn::data::SymbolTable` (include/krn/engine/SymbolTable.hpp, in krn_engine).
 //
 
 #include <cstddef>

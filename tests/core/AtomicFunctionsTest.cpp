@@ -1,6 +1,6 @@
-#include "krn/AtomicFunctions.hpp"
+#include "krn/market/AtomicFunctions.hpp"
 #include "krn/AtomicStore.hpp"
-#include "krn/SymbolHistory.hpp"
+#include "krn/market/SymbolHistory.hpp"
 #include "krn/util/Config.hpp"
 #include <gtest/gtest.h>
 #include <string>

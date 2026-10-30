@@ -1,4 +1,4 @@
-#include "krn/data/SymbolTable.hpp"
+#include "krn/engine/SymbolTable.hpp"
 
 #include <mutex>
 

@@ -21,7 +21,7 @@
 #include "krn/AtomicStore.hpp"
 #include "krn/Dispatcher.hpp"
 #include "krn/StreamValue.hpp"
-#include "krn/data/SymbolTable.hpp"
+#include "krn/engine/SymbolTable.hpp"
 #include "krn/engine/FieldSource.hpp"
 #include "krn/nodes/INode.hpp"
 #include "krn/rt/ThreadPool.hpp"

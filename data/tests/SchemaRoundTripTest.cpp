@@ -15,7 +15,7 @@
 #include "krn/data/BookRecord.hpp"
 #include "krn/data/TickRecord.hpp"
 #include "krn/data/Schema.hpp"
-#include "krn/data/SymbolTable.hpp"
+#include "krn/engine/SymbolTable.hpp"
 
 #include <arrow/array/array_base.h>
 #include <arrow/array/array_dict.h>

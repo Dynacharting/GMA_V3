@@ -73,11 +73,11 @@ connectors/market/        # libkrn_connector_market (depends on krn_engine)
     market/MarketConnector.hpp
     book/ ob/ ta/         # OB engine, TA indicator suite
     feed/                 # IFeedAdapter, ItchAdapter, FeedEvent
-    server/FeedServer.hpp # TCP feed server
-    ws/WsFeedClient.hpp
-    MarketTA.hpp          # MarketTickComputer + computeAllAtomicValues
-    SymbolHistory.hpp     # TickEntry
-    AtomicFunctions.hpp   # Transitional umbrella (TA + builtins)
+    market/FeedServer.hpp # TCP feed server
+    market/WsFeedClient.hpp
+    market/MarketTA.hpp   # MarketTickComputer + computeAllAtomicValues
+    market/SymbolHistory.hpp # TickEntry
+    market/AtomicFunctions.hpp # Transitional umbrella (TA + builtins)
   src/                    # Implementations mirrored
 
 plugins/reference/        # libkrn_plugin_reference (demo; linked only into tests)
@@ -153,7 +153,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full picture including 
   **The engine names no record type** (ENC-1557): `Dispatcher::onRecord` takes a
   `data::SymbolId` and an `engine::FieldSource`, and the record PODs and their adapter are in
   `krn_data` (`data/include/krn/data/{TickRecord,RecordFieldSource}.hpp`). Only
-  `include/krn/data/SymbolTable.hpp` is still engine-side, Arrow-free. Every
+  `include/krn/engine/SymbolTable.hpp` is still engine-side, Arrow-free. Every
   way of breaking the invariant still compiles and still passes every other test, so it is
   asserted by `tools/check_engine_isolation.py` as the ctest cases `krn_engine_isolation`
   (four checks, refuses to pass on vacuous input) and `krn_engine_isolation_selftest` (runs

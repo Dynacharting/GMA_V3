@@ -127,7 +127,7 @@
 #include "krn/data/BookRecord.hpp"
 #include "krn/data/TickRecord.hpp"
 #include "krn/data/Schema.hpp"
-#include "krn/data/SymbolTable.hpp"
+#include "krn/engine/SymbolTable.hpp"
 
 #include <arrow/result.h>
 #include <arrow/status.h>
