@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <cstdint>
 #include <deque>
 #include <functional>
 #include <map>
@@ -26,12 +27,13 @@
 
 namespace krn {
 
-// ENC-1486. The record ingress path's parameter types. Forward-declared
-// rather than included: they are PODs in `krn_engine` (include/krn/data/),
-// Arrow-free by construction, and `Dispatcher` only needs to name them.
+// ENC-1486. The record ingress path's symbol resolver, forward-declared:
+// `Dispatcher` only names it. `SymbolId` restates SymbolTable.hpp's alias (a
+// redeclaration of the same alias is legal). Since ENC-1557 the engine names
+// no record type at all: `onRecord` takes a `FieldSource`.
 namespace data {
-struct TickRecord;
-class  SymbolTable;
+class SymbolTable;
+using SymbolId = std::uint32_t;
 }  // namespace data
 
 /**
@@ -148,8 +150,14 @@ public:
   // ledger, and every `IEventComputer` then probes it by name. For a chart
   // tick that is irrelevant. At MBO rates — tens of millions of records per
   // symbol-day — it is the dominant cost, not the math
-  // (docs/data-layer.md §C6). A `data::TickRecord` arrives with its fields
-  // already resolved, so this path constructs no DOM and no per-field string.
+  // (docs/data-layer.md §C6). A record arrives with its fields already
+  // resolved, so this path constructs no DOM and no per-field string.
+  //
+  // THE ENGINE NAMES NO RECORD TYPE (ENC-1557, purity SPEC D4). The caller
+  // hands over the record's interned `symbolId` and an `engine::FieldSource`
+  // over its fields — for a `krn::data::TickRecord` that is krn_data's
+  // `RecordFieldSource` (data/include/krn/data/RecordFieldSource.hpp).
+  // Resolving the id, and refusing an unresolvable one, stays here.
   //
   // THE JSON PATH IS UNCHANGED AND STAYS. The legacy TCP feed server and
   // `market.wsclient` ingress keep using `onTick`. Two ingress shapes is a
@@ -177,15 +185,15 @@ public:
   // a field and the clock nodes are untouched — SPEC D9 /
   // docs/data-layer.md §C1, explicitly post-measurement. B1/B2 use a
   // non-windowed graph precisely so they need none of it. See
-  // include/krn/engine/RecordFieldSource.hpp for the full field mapping and
+  // data/include/krn/data/RecordFieldSource.hpp for the full field mapping and
   // for what each omission is protecting.
   //
   // PRECONDITIONS. `setSymbolTable()` must have been called with a table that
-  // knows `rec.header.symbolId`; otherwise this is a no-op (there is no stream
+  // knows `symbolId`; otherwise this is a no-op (there is no stream
   // key to route on, and routing under "" would be wrong rather than
   // degraded). Single-threaded ingress is a precondition here for exactly the
   // reason it is on `onTick` — see that method's ORDERED DELIVERY note.
-  void onRecord(const data::TickRecord& rec);
+  void onRecord(data::SymbolId symbolId, const engine::FieldSource& fields);
 
   // ENC-1486. Installs the `symbolId` -> ticker resolver the record path needs.
   // Non-owning; the table must outlive every `onRecord` call. Set once at
@@ -194,7 +202,7 @@ public:
   void setSymbolTable(const data::SymbolTable* symbols);
 
   // ENC-1486. The event type a record routes to, i.e. which
-  // `IEventComputer`s see it. A `TickRecord` IS the resolved form of a
+  // `IEventComputer`s see it. A record IS the resolved form of a
   // `tick`, so it must reach exactly the computers an `Event{sym, payload}`
   // reaches — `Event::type` defaults to "tick" and `MarketConnector`
   // registers its computer factory under "tick". Deliberately NOT
