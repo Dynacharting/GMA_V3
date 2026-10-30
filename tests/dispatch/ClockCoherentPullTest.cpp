@@ -74,16 +74,16 @@
 //  4. `PullOnlyFanInSamplesBothPortsAsOfOneClockTick` — the `CompositeRoot`
 //     half: a join whose two ports are both pull nodes.
 //
-// Tests 1-4 drive the reference plugin's `ReferenceComputer` (ENC-1555,
-// SPEC specs/2026-10-15-gma-engine-purity D13) through inline requests; 5 and
-// 6 are about the corpus.
-//
 //  5. `EveryCorpusAtomicAccessorSitsAtAClockHop` — the structural census that
 //     says WHY the adjacency rule is sufficient for this corpus (95 of 95), so
 //     the green above is not a claim about one entry.
 //
 //  6. `NoCorpusEntryEmitsADifferentSequenceUnderLiveIngress` — the same
 //     comparison driven across all 272 entries.
+//
+// Tests 1-4 drive the reference plugin's `ReferenceComputer` (ENC-1555,
+// SPEC specs/2026-10-15-gma-engine-purity D13) through inline requests; 5 and
+// 6 are about the corpus.
 
 #include "krn/AtomicStore.hpp"
 #include "krn/Dispatcher.hpp"
@@ -596,7 +596,8 @@ TEST(ClockCoherentPull, LiveIngressSequenceEqualsThePerTickTruth) {
 // ═══ 4. THE FAN-IN HALF — `CompositeRoot` FORWARDS THE BIND ════════════════
 //
 // The request declares an `Aggregate` whose two inputs are both
-// `AtomicAccessor`s (the shape of corpus ids 111-115, 192, 200). They have no Dispatcher subscription of their own, so
+// `AtomicAccessor`s (the shape of corpus ids 111-115, 192, 200). They have
+// no Dispatcher subscription of their own, so
 // ENC-1290's clock rule is what makes them fire at all — through
 // `CompositeRoot::onValue`, one hop past the head `Listener`.
 //
