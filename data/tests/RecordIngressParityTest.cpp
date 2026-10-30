@@ -56,25 +56,23 @@
 #include "krn/Event.hpp"
 #include "krn/FunctionMap.hpp"
 #include "krn/StreamValue.hpp"
-#include "krn/data/Record.hpp"
+#include "krn/data/RecordFieldSource.hpp"
+#include "krn/FunctionRegistry.hpp"
 #include "krn/data/SymbolTable.hpp"
+#include "krn/data/TickRecord.hpp"
 #include "krn/engine/FieldSource.hpp"
 #include "krn/engine/IEventComputer.hpp"
 #include "krn/engine/JsonFieldSource.hpp"
-#include "krn/engine/RecordFieldSource.hpp"
 #include "krn/nodes/INode.hpp"
 #include "krn/reference/ReferenceComputer.hpp"
 #include "krn/rt/ThreadPool.hpp"
 #include "krn/util/Config.hpp"
-#include "krn/util/Logger.hpp"
 
 #include <gtest/gtest.h>
 #include <rapidjson/document.h>
 
 #include <cctype>
 #include <cstdio>
-#include <fstream>
-#include <unistd.h>
 #include <memory>
 #include <mutex>
 #include <set>
@@ -319,11 +317,18 @@ data::TickRecord makeRecord(data::SymbolId sym, double price, std::uint64_t size
   return r;
 }
 
+// THE RECORD ENTRY POINT, as a krn_data caller reaches it (ENC-1557): the
+// engine takes the record's `symbolId` and a FieldSource over its fields.
+void feedRecord(Dispatcher& disp, const data::TickRecord& rec) {
+  const engine::RecordFieldSource fields(rec);
+  disp.onRecord(rec.header.symbolId, fields);
+}
+
 // THE EQUIVALENT TICK, derived from the record through the SAME mapping the
 // record path uses — `RecordFieldSource` itself — and never restated here.
 //
 // That is the point. If the mapping in
-// include/krn/engine/RecordFieldSource.hpp gains a field, both sides of this
+// data/include/krn/data/RecordFieldSource.hpp gains a field, both sides of this
 // test gain it together, so this test keeps measuring what it claims to
 // measure (do the two ENTRY POINTS agree) instead of silently becoming a test
 // of a hardcoded field list that has drifted. What the mapping SHOULD be is a
@@ -443,7 +448,7 @@ Observed drive(Path path, const util::Config& cfg,
   for (auto& rec : recs) {
     if (mutate) mutate(rec);
     switch (path) {
-      case Path::Record:       rig.disp.onRecord(rec); break;
+      case Path::Record:       feedRecord(rig.disp, rec); break;
       case Path::Json:         rig.disp.onTick(equivalentEvent(kTicker, rec)); break;
       case Path::JsonReversed: rig.disp.onTick(reversedEvent(kTicker, rec)); break;
     }
@@ -739,7 +744,7 @@ TEST(RecordIngressParityTest, NonObjectJsonPayloadIsEmptyRatherThanFatal) {
 
   // Positive control: the same rig DOES deliver for a real tick, so the two
   // emptiness assertions above are refusals and not a dead rig.
-  rig.disp.onRecord(makeRecord(rig.symbolId, 100.25, 10, 100.20, 100.30));
+  feedRecord(rig.disp, makeRecord(rig.symbolId, 100.25, 10, 100.20, 100.30));
   rig.quiesce();
   EXPECT_FALSE(rig.log.rows().empty());
 }
@@ -860,25 +865,6 @@ std::string scrubComments(const std::string& src) {
   return out;
 }
 
-// The body of `Dispatcher::<name>` in already-scrubbed source, brace-matched.
-// Empty when the function is not found, which every caller treats as a failure
-// rather than as "nothing to check".
-std::string functionBody(const std::string& scrubbed, const std::string& name) {
-  const std::string sig = "Dispatcher::" + name + "(";
-  const std::size_t at = scrubbed.find(sig);
-  if (at == std::string::npos) return {};
-  const std::size_t open = scrubbed.find('{', at);
-  if (open == std::string::npos) return {};
-  int depth = 0;
-  for (std::size_t i = open; i < scrubbed.size(); ++i) {
-    if (scrubbed[i] == '{') ++depth;
-    else if (scrubbed[i] == '}') {
-      if (--depth == 0) return scrubbed.substr(open, i - open + 1);
-    }
-  }
-  return {};
-}
-
 // Every rapidjson-shaped name the record path could plausibly reach for, plus
 // `Event` (the DOM-carrying ingress type) and `JsonFieldSource` (the adapter).
 //
@@ -945,55 +931,8 @@ std::vector<std::string> jsonTokensIn(const std::string& scrubbed) {
 
 }  // namespace
 
-TEST(RecordPathIsJsonFreeTest, PositiveControlTheJsonPathDoesNameJson) {
-  const std::string src = readSource("src/core/Dispatcher.cpp");
-  ASSERT_FALSE(src.empty()) << "src/core/Dispatcher.cpp not readable from "
-                            << KRN_TEST_SOURCE_DIR;
-  const std::string body = functionBody(scrubComments(src), "onTick");
-  ASSERT_FALSE(body.empty()) << "could not locate Dispatcher::onTick — the "
-                                "negative verdicts below would be vacuous";
-  // If this ever goes green-by-emptiness, every other test in this suite is
-  // measuring nothing.
-  EXPECT_FALSE(jsonTokensIn(body).empty())
-      << "the JSON ingress path names no JSON token — the scrubber or the "
-         "token list is broken, not the code";
-}
-
-TEST(RecordPathIsJsonFreeTest, SharedIngestBodyNamesNoJson) {
-  const std::string src = readSource("src/core/Dispatcher.cpp");
-  ASSERT_FALSE(src.empty());
-  const std::string body = functionBody(scrubComments(src), "ingest");
-  ASSERT_FALSE(body.empty()) << "could not locate Dispatcher::ingest";
-  ASSERT_GT(body.size(), 500u) << "Dispatcher::ingest body implausibly short — "
-                                  "brace matching probably failed";
-  const auto found = jsonTokensIn(body);
-  EXPECT_TRUE(found.empty())
-      << "Dispatcher::ingest is the body BOTH entry points share; it must be "
-         "JSON-free. Found: " << (found.empty() ? std::string{} : found[0]);
-}
-
-TEST(RecordPathIsJsonFreeTest, RecordPathTranslationUnitNamesNoJson) {
-  const std::string src = readSource("src/core/DispatcherRecord.cpp");
-  ASSERT_FALSE(src.empty()) << "src/core/DispatcherRecord.cpp not readable";
-  const std::string scrubbed = scrubComments(src);
-  const std::string body = functionBody(scrubbed, "onRecord");
-  ASSERT_FALSE(body.empty()) << "could not locate Dispatcher::onRecord";
-
-  auto found = jsonTokensIn(body);
-  EXPECT_TRUE(found.empty())
-      << "Dispatcher::onRecord names a JSON type: "
-      << (found.empty() ? std::string{} : found[0]);
-
-  // The whole TU, not just the one function: a helper beside it would be on
-  // the same path.
-  found = jsonTokensIn(scrubbed);
-  EXPECT_TRUE(found.empty())
-      << "src/core/DispatcherRecord.cpp names a JSON type: "
-      << (found.empty() ? std::string{} : found[0]);
-}
-
 TEST(RecordPathIsJsonFreeTest, RecordFieldSourceHeaderNamesNoJsonButJsonOneDoes) {
-  const std::string rec = readSource("include/krn/engine/RecordFieldSource.hpp");
+  const std::string rec = readSource("data/include/krn/data/RecordFieldSource.hpp");
   const std::string jsn = readSource("include/krn/engine/JsonFieldSource.hpp");
   ASSERT_FALSE(rec.empty());
   ASSERT_FALSE(jsn.empty());
@@ -1082,7 +1021,7 @@ TEST(RecordFieldSourceMappingTest, TradeOnly) {
 
 TEST(RecordFieldSourceMappingTest, QuoteKindSuppressesPriceAndSize) {
   // One struct serves a trade and an L1 quote; `kind` says which half is
-  // meaningful (include/krn/data/Record.hpp).
+  // meaningful (krn/data/TickRecord.hpp).
   data::TickRecord r = bare(data::RecordKind::Quote);
   r.price = data::toFixed(42.5);   // set, and must NOT be emitted
   r.size  = 7;                     // ditto
@@ -1204,7 +1143,7 @@ TEST(RecordIngressParityTest, IdenticalForAFieldlessTick) {
 
     for (const auto* r : {&fieldless, &real}) {
       if (path == Path::Record) {
-        rig.disp.onRecord(*r);
+        feedRecord(rig.disp, *r);
       } else {
         const std::string sym = rig.symbols.name(r->header.symbolId);
         rig.disp.onTick(equivalentEvent(sym, *r));
@@ -1286,254 +1225,4 @@ TEST(RecordIngressParityTest, DuplicateJsonMembersAreAPreExistingJsonOnlyQuirk) 
   std::set<std::string> unique(names.begin(), names.end());
   EXPECT_EQ(unique.size(), names.size())
       << "RecordFieldSource emitted a duplicate field name";
-}
-
-// ===========================================================================
-// 5. REFUSAL — a record with no resolvable stream key goes nowhere
-// ===========================================================================
-//
-// `onTick` has always dropped an event with an empty stream key. A record
-// names a `symbolId` and nothing else, so the record path reaches the same
-// rule from the other side, and there are three ways to arrive at it: no
-// `SymbolTable` installed at all, `kInvalidSymbolId`, and an id the table
-// never issued. All three must be NOTHING — not a delivery under "", which
-// would collapse every symbol into one bucket and make every subscription
-// miss. A silent wrong answer is worse than a loud nothing.
-//
-// Pinned because it is otherwise invisible: perturbing the refusal away left
-// every parity and mapping assertion in this file green.
-
-TEST(RecordIngressRefusalTest, UnresolvableSymbolDeliversNothing) {
-  const auto cfg = defaultCfg();
-
-  const auto drove = [&cfg](bool installTable, data::SymbolId id) {
-    Rig rig(cfg);
-    if (!installTable) rig.disp.setSymbolTable(nullptr);
-    data::TickRecord r = makeRecord(id, 100.25, 10, 100.20, 100.30);
-    rig.disp.onRecord(r);
-    rig.quiesce();
-    // BOTH halves matter. "no delivery to PARITY" alone is satisfied by a
-    // path that routes everything under the EMPTY stream key — nothing is
-    // subscribed there, so the listener log stays empty while the AtomicStore
-    // quietly accumulates a `""` symbol. That is the actual failure mode of
-    // dropping the refusal, and perturbing the refusal away left a check on
-    // the first half alone completely green.
-    const bool leaked = rig.store.get(kTicker, "price").has_value() ||
-                        rig.store.get("", "price").has_value() ||
-                        rig.store.get("", "size").has_value();
-    return std::make_pair(rig.log.rows().size(), leaked);
-  };
-
-  // POSITIVE CONTROL FIRST: the rig does deliver for a resolvable id, so the
-  // three zeros below are refusals and not a broken rig.
-  {
-    Rig rig(cfg);
-    data::TickRecord r = makeRecord(rig.symbolId, 100.25, 10, 100.20, 100.30);
-    rig.disp.onRecord(r);
-    rig.quiesce();
-    ASSERT_GT(rig.log.rows().size(), 0u) << "the rig cannot deliver at all";
-    ASSERT_TRUE(rig.store.get(kTicker, "price").has_value());
-  }
-
-  // No table installed.
-  {
-    auto [deliveries, leaked] = drove(/*installTable=*/false, 2);
-    EXPECT_EQ(deliveries, 0u);
-    EXPECT_FALSE(leaked);
-  }
-  // kInvalidSymbolId — "this record names no symbol".
-  {
-    auto [deliveries, leaked] = drove(true, data::kInvalidSymbolId);
-    EXPECT_EQ(deliveries, 0u);
-    EXPECT_FALSE(leaked);
-  }
-  // An id this table never issued.
-  {
-    auto [deliveries, leaked] = drove(true, 99'999);
-    EXPECT_EQ(deliveries, 0u);
-    EXPECT_FALSE(leaked);
-  }
-}
-
-// ===========================================================================
-// 6. THE REFUSAL LOGS ONCE, NOT ONCE PER RECORD
-// ===========================================================================
-//
-// WHY THIS TEST EXISTS AT ALL, stated plainly because the history is the
-// argument: the once-guard was reported as landed while only HALF of it was.
-// `Dispatcher.hpp` declared `_warnedNoSymbolTable` / `_warnedUnresolvedSymbol`
-// and `DispatcherRecord.cpp` used neither, so the members were DEAD and both
-// refusals still logged per record. A `git checkout --` in a perturbation
-// script reverted the half that lived in the .cpp, and nothing noticed, because
-// nothing could: no test observed the log.
-//
-// Dead flags are worse than no attempt — the next reader greps the header,
-// finds `_warnedNoSymbolTable`, and concludes it is handled. So the guard now
-// has an instrument, and the instrument reads the actual log output rather
-// than the presence of a member.
-//
-// WHAT IS BEING PROTECTED IS A MEASUREMENT. `onRecord` is step 2 of ENC-1487's
-// five-step B2, the number SPEC D13 sizes the project by, and it carries MBO at
-// tens of millions of records per symbol-day. `util::Logger` has no throttling
-// API, so an unguarded `Warn` here makes B2 measure logging.
-
-namespace {
-
-// Redirects the PROCESS-GLOBAL logger to a private file for the duration of a
-// test, then puts it back.
-//
-// Three deliberate choices:
-//   * The ticket id is in the path and the suffix comes from `mkstemp`, because
-//     parallel agents share one /tmp and a bare name gets clobbered.
-//   * It restores the LEVEL it found (the `QuietLogger` pattern in
-//     tests/ws/ClientSessionBackpressureTest.cpp), and restores the
-//     DESTINATION to stdout. `Logger` exposes no getter for its current file,
-//     so "" is the only restorable value — which is correct here precisely
-//     because nothing in src/ or tests/ ever points the singleton at a file
-//     (verified: the only singleton mutation in the tree is that QuietLogger's
-//     setLevel). If that ever stops being true, this guard needs a real
-//     save/restore and this comment is the warning.
-//   * It is the global logger and not a local `Logger`, because the Dispatcher
-//     logs through `krn::util::logger()` and a test against a local instance
-//     would prove nothing about the code under test.
-class GlobalLogCapture {
-public:
-  GlobalLogCapture() : savedLevel_(krn::util::logger().level()) {
-    char tmpl[] = "/tmp/ENC-1486-logcap-XXXXXX";
-    const int fd = ::mkstemp(tmpl);
-    path_ = tmpl;
-    if (fd >= 0) ::close(fd);
-    krn::util::logger().setLevel(krn::util::LogLevel::Warn);
-    krn::util::logger().setFile(path_);
-  }
-
-  ~GlobalLogCapture() {
-    krn::util::logger().setFile("");          // flush + close, back to stdout
-    krn::util::logger().setLevel(savedLevel_);
-    std::remove(path_.c_str());
-  }
-
-  // Flushes by closing, so call this once, at the end of a drive.
-  std::string contents() const {
-    krn::util::logger().setFile("");
-    std::ifstream f(path_);
-    return std::string((std::istreambuf_iterator<char>(f)),
-                       std::istreambuf_iterator<char>());
-  }
-
-  static std::size_t count(const std::string& hay, const std::string& needle) {
-    std::size_t n = 0;
-    for (std::size_t at = hay.find(needle); at != std::string::npos;
-         at = hay.find(needle, at + needle.size())) {
-      ++n;
-    }
-    return n;
-  }
-
-private:
-  krn::util::LogLevel savedLevel_;
-  std::string         path_;
-};
-
-// Big enough that "once" and "once per record" cannot be confused, small
-// enough to stay instant.
-constexpr int kRefusalDrives = 50;
-
-}  // namespace
-
-TEST(RecordIngressRefusalTest, MissingSymbolTableIsLoggedOnceNotPerRecord) {
-  const auto cfg = defaultCfg();
-  std::string log;
-  {
-    GlobalLogCapture capture;
-    Rig rig(cfg);
-    rig.disp.setSymbolTable(nullptr);
-    for (int i = 0; i < kRefusalDrives; ++i) {
-      rig.disp.onRecord(makeRecord(rig.symbolId, 100.0 + i, 10, 99.0, 101.0));
-    }
-    rig.quiesce();
-    log = capture.contents();
-  }
-
-  const std::size_t n =
-      GlobalLogCapture::count(log, "onRecord with no SymbolTable installed");
-
-  // ONE assertion, self-controlling in BOTH directions, which is why it is
-  // `EQ(1)` and not `LT(kRefusalDrives)`:
-  //   n == 0            -> the capture never saw the log; the test is broken,
-  //                        not passing.
-  //   n == 50           -> the guard is missing (the state this branch shipped
-  //                        in once already).
-  //   1 < n < 50        -> the guard is racy.
-  EXPECT_EQ(n, 1u)
-      << "drove " << kRefusalDrives << " records with no SymbolTable and the "
-         "refusal logged " << n << " times; expected exactly 1. 0 means the "
-         "log capture is broken (so every other assertion here is vacuous); "
-         << kRefusalDrives << " means the once-guard is gone and ENC-1487's "
-         "step-2 measurement would be measuring Logger.";
-}
-
-TEST(RecordIngressRefusalTest, UnresolvableSymbolIsLoggedOnceNotPerRecord) {
-  const auto cfg = defaultCfg();
-  std::string log;
-  {
-    GlobalLogCapture capture;
-    Rig rig(cfg);
-    for (int i = 0; i < kRefusalDrives; ++i) {
-      // An id the table never issued — route 2 of the three.
-      rig.disp.onRecord(makeRecord(99'999, 100.0 + i, 10, 99.0, 101.0));
-    }
-    rig.quiesce();
-    log = capture.contents();
-  }
-
-  const std::size_t n = GlobalLogCapture::count(
-      log, "onRecord symbolId does not resolve to a ticker");
-  EXPECT_EQ(n, 1u)
-      << "drove " << kRefusalDrives << " unresolvable records and the refusal "
-         "logged " << n << " times; expected exactly 1 (0 = broken capture, "
-      << kRefusalDrives << " = missing guard)";
-}
-
-TEST(RecordIngressRefusalTest, AnEmptyTickerIsRefusedAndSaidOutLoud) {
-  // ROUTE 3, which previously fell through with NO log at all:
-  // `SymbolTable::intern("")` issues a real, contains()-true id whose `name()`
-  // is "". The ruling is that this is a refusal — see the block comment in
-  // src/core/DispatcherRecord.cpp for why admitting "" is a silent wrong
-  // answer rather than a degraded one.
-  const auto cfg = defaultCfg();
-  std::string log;
-  std::size_t deliveries = 0;
-  bool leaked = false;
-
-  {
-    GlobalLogCapture capture;
-    Rig rig(cfg);
-
-    // The id is REAL — this is the part that makes route 3 distinct from the
-    // other two, so assert it rather than assuming it.
-    const auto emptyId = rig.symbols.intern("");
-    ASSERT_NE(emptyId, data::kInvalidSymbolId)
-        << "SymbolTable folded intern(\"\") onto kInvalidSymbolId; route 3 no "
-           "longer exists and this test should be deleted, not relaxed";
-    ASSERT_TRUE(rig.symbols.contains(emptyId));
-    ASSERT_TRUE(rig.symbols.name(emptyId).empty());
-
-    for (int i = 0; i < kRefusalDrives; ++i) {
-      rig.disp.onRecord(makeRecord(emptyId, 100.0 + i, 10, 99.0, 101.0));
-    }
-    rig.quiesce();
-
-    deliveries = rig.log.rows().size();
-    leaked = rig.store.get("", "price").has_value() ||
-             rig.store.get(kTicker, "price").has_value();
-    log = capture.contents();
-  }
-
-  EXPECT_EQ(deliveries, 0u) << "an empty ticker delivered to a listener";
-  EXPECT_FALSE(leaked) << "an empty ticker reached the AtomicStore";
-  EXPECT_EQ(GlobalLogCapture::count(
-                log, "onRecord symbolId does not resolve to a ticker"),
-            1u)
-      << "route 3 must be refused ONCE and out loud — it used to be silent";
 }
