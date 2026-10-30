@@ -16,6 +16,7 @@
 int main(int argc, char* argv[]) {
   krn::host::HostOptions opts;
   opts.programName = "krn_engine_server";
+  opts.connectors.push_back([] { return std::make_unique<krn::synthetic::ReferenceConnector>(); });
   opts.connectors.push_back([] { return std::make_unique<krn::synthetic::SyntheticConnector>(); });
   return krn::host::hostMain(argc, argv, opts);
 }
