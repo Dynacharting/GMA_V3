@@ -29,17 +29,18 @@ cmake --build . -j$(nproc)
 ./build/krn_server 9002 krn.conf   # custom wsPort + INI config (krn.conf sets wsPort=4000,
                                    #   but argv[1]=9002 wins over the file)
 ./build/krn_server 9002 krn.conf 9005  # also override feedPort
+./build/krn_engine_server 9002 krn.conf  # krn_host + the reference plugin only (ENC-1559)
 
 # Run tests
 cd build && ctest --output-on-failure
 ```
 
 **Consuming the engine (ENC-1553).** Under `FetchContent` / `add_subdirectory` the root
-`CMakeLists.txt` defines only the engine library targets (`krn_engine`, alias
-`krn::krn_engine`, and the reference connector) — no tests, data layer, market connector,
+`CMakeLists.txt` defines only the engine library targets (`krn_engine`, `krn_host`,
+aliases `krn::krn_engine` / `krn::krn_host`, and the reference connector) — no tests, data layer, market connector,
 server, install rules or isolation gate, whatever the consumer's cache says, and without
 writing to that cache. `cmake --install` plus `find_package(krn CONFIG)` gives
-`krn::krn_engine`. Both are pinned by the ctest cases `krn_consumer_fetchcontent_smoke`
+`krn::krn_engine` and `krn::krn_host`. Both are pinned by the ctest cases `krn_consumer_fetchcontent_smoke`
 (which checks the **committed** `HEAD`, fetched over `file://`) and `krn_consumer_install_smoke`.
 
 ## Project Structure
@@ -74,7 +75,8 @@ include/krn/              # Engine public headers (libkrn_engine)
   #  see connectors/market/include/krn/market/MarketFieldMap.hpp)
 
 src/                      # Engine implementations (mirrors include/ layout)
-  main.cpp                # Composition root — boots engine, wires connectors
+  main.cpp                # krn_server: krn_host + the market connector
+  host/Host.cpp           # krn_host: the engine composition (ENC-1559)
 
 connectors/market/        # libkrn_connector_market (depends on krn_engine)
   include/krn/
