@@ -478,10 +478,12 @@ endif()
 # pull in explicitly. Adding a connector requires (a) this library target and
 # (b) one `registerWith` call at the composition root; no engine edits.
 set(KRN_SYNTHETIC_SOURCES
+  plugins/reference/src/ReferenceComputer.cpp
   plugins/reference/src/SyntheticConnector.cpp
 )
 list(TRANSFORM KRN_SYNTHETIC_SOURCES PREPEND "${PROJECT_SOURCE_DIR}/")
 set(KRN_SYNTHETIC_HEADERS
+  plugins/reference/include/krn/reference/ReferenceComputer.hpp
   plugins/reference/include/krn/reference/SyntheticConnector.hpp
 )
 list(TRANSFORM KRN_SYNTHETIC_HEADERS PREPEND "${PROJECT_SOURCE_DIR}/")
@@ -496,15 +498,10 @@ target_link_libraries(krn_plugin_reference PUBLIC krn_engine)
 # krn_server, krn_tests and the benchmarks were silent. krn_server/krn_tests/
 # benchmarks are wired at their definition sites below.
 krn_apply_warnings(krn_engine)
-<<<<<<< HEAD
 if (TARGET krn_connector_market)
   krn_apply_warnings(krn_connector_market)
 endif()
-krn_apply_warnings(krn_connector_synthetic)
-=======
-krn_apply_warnings(krn_connector_market)
 krn_apply_warnings(krn_plugin_reference)
->>>>>>> origin/master
 
 if (WIN32)
   add_definitions(-D_WIN32_WINNT=0x0A00 -DNOMINMAX)

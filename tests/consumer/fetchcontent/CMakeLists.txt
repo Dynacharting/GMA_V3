@@ -31,19 +31,32 @@ endmacro()
 # ---- the fetched tree is a clone at the tag, not the checkout itself ----
 file(REAL_PATH "${krn_SOURCE_DIR}" _krn_src)
 file(REAL_PATH "${KRN_SMOKE_CHECKOUT}" _checkout)
-string(FIND "${_krn_src}/" "${_checkout}/" _pos)
-_check("NOT _pos EQUAL 0" "fetched tree ${_krn_src} is not the engine checkout")
+# A clone inside the checkout's build dir is legitimate (`cmake -B build`), so
+# compare identity, not prefix: a different directory with its own repository.
+foreach (_w IN ITEMS krn_src checkout)
+  execute_process(COMMAND git -C "${_${_w}}" rev-parse --path-format=absolute
+      --git-common-dir
+    OUTPUT_VARIABLE _${_w}_git OUTPUT_STRIP_TRAILING_WHITESPACE)
+endforeach()
+_check("NOT _krn_src STREQUAL _checkout"
+  "fetched tree ${_krn_src} is not the engine checkout ${_checkout}")
+_check("NOT _krn_src_git STREQUAL \"\" AND NOT _krn_src_git STREQUAL _checkout_git"
+  "fetched tree has its own repository (${_krn_src_git} vs ${_checkout_git})")
 execute_process(COMMAND git -C "${_krn_src}" rev-parse HEAD
   OUTPUT_VARIABLE _head OUTPUT_STRIP_TRAILING_WHITESPACE RESULT_VARIABLE _rc)
 _check("_rc EQUAL 0 AND _head STREQUAL KRN_SMOKE_TAG"
   "fetched tree is at ${KRN_SMOKE_TAG} (HEAD ${_head})")
 
-# ---- (a) krn_engine's SOURCES all sit under the fetched tree ----
-_check("TARGET krn_engine" "krn_engine exists")
-if (TARGET krn_engine)
-  get_target_property(_srcs krn_engine SOURCES)
+# ---- (a) every engine library target's SOURCES sit under the fetched tree ----
+string(REPLACE "," ";" _libs "${KRN_SMOKE_EXPECTED_TARGETS}")
+foreach (_lib IN LISTS _libs)
+  _check("TARGET ${_lib}" "${_lib} exists")
+  if (NOT TARGET ${_lib})
+    continue()
+  endif()
+  get_target_property(_srcs ${_lib} SOURCES)
   list(LENGTH _srcs _n)
-  _check("_n GREATER 0" "(a) krn_engine has ${_n} SOURCES")
+  _check("_n GREATER 0" "(a) ${_lib} has ${_n} SOURCES")
   set(_outside "")
   foreach (_s IN LISTS _srcs)
     file(REAL_PATH "${_s}" _rs BASE_DIRECTORY "${_krn_src}")
@@ -51,6 +64,10 @@ if (TARGET krn_engine)
     if (NOT _p EQUAL 0)
       list(APPEND _outside "${_rs}")
     endif()
+  endforeach()
+  _check("_outside STREQUAL \"\""
+    "(a) every ${_lib} SOURCE is under the fetched tree; outside: [${_outside}]")
+endforeach()
   endforeach()
   _check("_outside STREQUAL \"\""
     "(a) every krn_engine SOURCE is under the fetched tree; outside: [${_outside}]")
