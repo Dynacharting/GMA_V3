@@ -71,8 +71,12 @@
 //  3. `LiveIngressSequenceEqualsThePerTickTruth` — the gate in the shape
 //     production runs, at three pool widths, with the luck probability stated.
 //
-//  4. `PullOnlyFanInSamplesBothPortsAsOfOneClockTick` — corpus 111, the
-//     `CompositeRoot` half: a join whose two ports are both pull nodes.
+//  4. `PullOnlyFanInSamplesBothPortsAsOfOneClockTick` — the `CompositeRoot`
+//     half: a join whose two ports are both pull nodes.
+//
+// Tests 1-4 drive the reference plugin's `ReferenceComputer` (ENC-1555,
+// SPEC specs/2026-10-15-gma-engine-purity D13) through inline requests; 5 and
+// 6 are about the corpus.
 //
 //  5. `EveryCorpusAtomicAccessorSitsAtAClockHop` — the structural census that
 //     says WHY the adjacency rule is sufficient for this corpus (95 of 95), so
@@ -88,6 +92,7 @@
 #include "krn/TreeBuilder.hpp"
 #include "krn/nodes/AtomicAccessor.hpp"
 #include "krn/nodes/INode.hpp"
+#include "krn/reference/ReferenceComputer.hpp"
 #include "krn/rt/ThreadPool.hpp"
 
 #include "../support/CorpusPath.hpp"
@@ -110,6 +115,7 @@
 #include <set>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <vector>
 
 using namespace krn;
@@ -152,30 +158,32 @@ rapidjson::Document& corpusDoc() {
   return doc;
 }
 
-const rapidjson::Value* corpusRequest(int corpusId) {
-  rapidjson::Document& d = corpusDoc();
-  if (d.IsNull() || d.HasParseError() || !d.IsArray()) return nullptr;
-  for (auto& e : d.GetArray()) {
-    if (!e.IsObject() || !e.HasMember("corpus_id") || !e["corpus_id"].IsInt()) continue;
-    if (e["corpus_id"].GetInt() != corpusId) continue;
-    return e.HasMember("request") ? &e["request"] : nullptr;
-  }
-  return nullptr;
-}
-
 // ─── Ticks ─────────────────────────────────────────────────────────────────
 // `lastPrice` plus a bid/ask pair around it, and `volume`, so every corpus
 // field the sweep may bind is actually carried. `ev.type` is left at its
 // default, "tick" — the production event type MarketTickComputer registers for.
-void tick(krn::Dispatcher& d, const std::string& symbol, double price) {
+//
+// `Source::Reference` instead sends the reference computer's own event type
+// carrying only its input field.
+using krn::synthetic::ReferenceComputer;
+enum class Source { Corpus, Reference };
+
+void tick(krn::Dispatcher& d, const std::string& symbol, double price,
+          Source src = Source::Corpus) {
   auto payload = std::make_shared<rapidjson::Document>();
   payload->SetObject();
   auto& al = payload->GetAllocator();
-  payload->AddMember("lastPrice", price,         al);
-  payload->AddMember("bid",       price - 0.01,  al);
-  payload->AddMember("ask",       price + 0.01,  al);
-  payload->AddMember("volume",    100.0 + price, al);
   krn::Event ev;
+  if (src == Source::Reference) {
+    const std::string_view in = ReferenceComputer::kInputField;
+    payload->AddMember(rapidjson::StringRef(in.data(), in.size()), price, al);
+    ev.type = std::string(ReferenceComputer::kEventType);
+  } else {
+    payload->AddMember("lastPrice", price,         al);
+    payload->AddMember("bid",       price - 0.01,  al);
+    payload->AddMember("ask",       price + 0.01,  al);
+    payload->AddMember("volume",    100.0 + price, al);
+  }
   ev.symbol  = symbol;
   ev.payload = payload;
   d.onTick(ev);
@@ -231,7 +239,8 @@ DriveResult drive(const rapidjson::Value& request,
           std::size_t ticks,
           unsigned threads,
           Mode mode,
-          std::pair<std::string, std::string> probe = {}) {
+          std::pair<std::string, std::string> probe = {},
+          Source src = Source::Corpus) {
   DriveResult out;
   AtomicStore store;
   auto pool = std::make_shared<rt::ThreadPool>(threads);
@@ -239,6 +248,8 @@ DriveResult drive(const rapidjson::Value& request,
   gThreadPool = pool;
 
   Dispatcher dispatcher(pool.get(), &store);
+  if (src == Source::Reference)
+    dispatcher.addComputer(std::make_unique<ReferenceComputer>());
   tree::Deps deps;
   deps.store      = &store;
   deps.pool       = pool.get();
@@ -266,7 +277,7 @@ DriveResult drive(const rapidjson::Value& request,
   }
 
   for (std::size_t n = 0; n < ticks; ++n) {
-    for (const auto& s : symbols) tick(dispatcher, s, 100.0 + double(n));
+    for (const auto& s : symbols) tick(dispatcher, s, 100.0 + double(n), src);
     if (!probe.first.empty()) {
       auto v = store.get(probe.first, probe.second);
       if (v.has_value()) {
@@ -302,11 +313,47 @@ std::vector<double> truthSequence(const DriveResult& r) {
   return out;
 }
 
-// corpus 51: {streamKey AAPL, field lastPrice, node AtomicAccessor(AAPL,sma_5)}
-constexpr int         kCorpus51  = 51;
-constexpr std::size_t kTicks     = 12;
-const std::vector<std::string> kAAPL{"AAPL"};
-const std::pair<std::string, std::string> kProbe51{"AAPL", "sma_5"};
+constexpr std::size_t kTicks = 12;
+
+// ─── The reference requests (tests 1-4) ────────────────────────────────────
+// Clocked by the reference input field; the pull reads `ReferenceComputer`
+// output. Under the 100+n inputs `drive` sends, every post-warm-up value of
+// either key is larger than any input, and the two keys never meet, so a pull
+// bound to the wrong key or the raw input is as visible as a stale one.
+const std::vector<std::string> kREF{"REF"};
+const std::pair<std::string, std::string> kProbeRef{
+    "REF", std::string(ReferenceComputer::kSumKey)};
+
+rapidjson::Document parseRequest(const std::string& json) {
+  rapidjson::Document d;
+  d.Parse(json.c_str());
+  return d;
+}
+std::string accessorJson(std::string_view field) {
+  return R"({"type":"AtomicAccessor","streamKey":"REF","field":")" +
+         std::string(field) + R"("})";
+}
+std::string clockPrefixJson() {
+  return R"({"key":1,"streamKey":"REF","field":")" +
+         std::string(ReferenceComputer::kInputField) + R"(",)";
+}
+// One pull at the head of `node`.
+const rapidjson::Document& referencePullRequest() {
+  static const rapidjson::Document d = parseRequest(
+      clockPrefixJson() + R"("node":)" +
+      accessorJson(ReferenceComputer::kSumKey) + "}");
+  return d;
+}
+// An `Aggregate` over two pulls at the `CompositeRoot` hop, with no pipeline:
+// the terminal sees both ports of every tuple, in port order. (A `diff`
+// Worker reads its first value for ever, which is a warm-up NaN here.)
+const rapidjson::Document& referenceFanInRequest() {
+  static const rapidjson::Document d = parseRequest(
+      clockPrefixJson() + R"("node":{"type":"Aggregate","arity":2,"inputs":[)" +
+      accessorJson(ReferenceComputer::kSumSqKey) + "," +
+      accessorJson(ReferenceComputer::kSumKey) + R"(]}})");
+  return d;
+}
 
 // ─── Structural census (test 5) ────────────────────────────────────────────
 // Where does an `AtomicAccessor` sit in a request? The two CLOCK HOPS — the
@@ -371,19 +418,19 @@ std::vector<std::string> requestStreamKeys(const rapidjson::Value& v,
 // than "the oracle is broken".
 //
 // Two claims. (a) There is a per-tick truth and reading it is deterministic:
-// the store's `sma_5` after each of 12 ticks is the same sequence on every
-// run. (b) That truth is NOT TRIVIAL — 8 distinct finite values and a 3-tick
-// NaN prefix, with tick 0 holding no `sma_5` at all. A constant truth would
-// make every test below pass under any sampling rule whatsoever.
+// the store's reference value after each of 12 ticks is the same sequence on
+// every run. (b) That truth has the shape `ReferenceComputer` DECLARES — tick 0
+// absent, a `kWarmupTicks` NaN prefix, then a distinct finite value per tick.
+// A constant truth would make every test below pass under any sampling rule.
 TEST(ClockCoherentPull, PerTickTruthIsReadFromTheStoreAndIsStableAcrossRuns) {
   using namespace enc1335;
-  const rapidjson::Value* req = corpusRequest(kCorpus51);
-  ASSERT_NE(req, nullptr) << "corpus_id 51 not found: "
-                          << krn::testsupport::corpusNotFoundDiagnostic();
+  const rapidjson::Document& req = referencePullRequest();
+  ASSERT_FALSE(req.HasParseError());
 
   std::vector<double> first;
   for (int rep = 0; rep < 5; ++rep) {
-    DriveResult r = drive(*req, kAAPL, kTicks, /*threads=*/1, Mode::DrainEachTick, kProbe51);
+    DriveResult r = drive(req, kREF, kTicks, /*threads=*/1, Mode::DrainEachTick,
+                          kProbeRef, Source::Reference);
     ASSERT_FALSE(r.threw) << r.error;
     ASSERT_EQ(r.storeAfterEachTick.size(), kTicks);
     const auto truth = truthSequence(r);
@@ -406,24 +453,36 @@ TEST(ClockCoherentPull, PerTickTruthIsReadFromTheStoreAndIsStableAcrossRuns) {
   // (b) anti-vacuity: the truth must be able to tell two sampling rules apart.
   std::size_t nans = 0, absent = 0;
   std::set<long long> distinctFinite;
-  for (const auto& v : {0}) { (void)v; }
+  bool increasing = true, touchesAnInput = false;
   {
-    DriveResult r = drive(*corpusRequest(kCorpus51), kAAPL, kTicks, 1,
-                  Mode::DrainEachTick, kProbe51);
+    DriveResult r = drive(req, kREF, kTicks, 1, Mode::DrainEachTick, kProbeRef,
+                          Source::Reference);
+    std::optional<double> prev;
     for (const auto& v : r.storeAfterEachTick) {
       if (!v.has_value())          ++absent;
       else if (std::isnan(*v))     ++nans;
-      else distinctFinite.insert(std::llround(*v * 10000.0));
+      else {
+        distinctFinite.insert(std::llround(*v * 10000.0));
+        if (prev && !(*v > *prev)) increasing = false;
+        prev = *v;
+        for (std::size_t n = 0; n < kTicks; ++n)
+          if (*v == 100.0 + double(n)) touchesAnInput = true;
+      }
     }
   }
-  EXPECT_EQ(absent, 1u) << "tick 0 writes no sma_5 (one price, period 5), so "
-                           "exactly one tick must have no value to sample";
-  EXPECT_EQ(nans, 3u)   << "ticks 1-3 write a NaN sma_5; that NaN is part of "
-                           "the truth and must not be smoothed away";
-  EXPECT_GE(distinctFinite.size(), 8u)
-      << "the per-tick truth must take at least 8 DISTINCT values over "
-      << kTicks << " ticks, or a wrong sampling rule could reproduce it by "
-         "accident. Distinct values seen: " << distinctFinite.size();
+  constexpr std::size_t kWarmup = ReferenceComputer::kWarmupTicks;
+  EXPECT_EQ(absent, 1u) << "tick 0 writes nothing, so exactly one tick must "
+                           "have no value to sample";
+  EXPECT_EQ(nans, kWarmup) << "the warm-up ticks write NaN; that NaN is part of "
+                              "the truth and must not be smoothed away";
+  EXPECT_EQ(distinctFinite.size(), kTicks - 1 - kWarmup)
+      << "every post-warm-up tick must carry a DISTINCT value, or a wrong "
+         "sampling rule could reproduce the truth by accident";
+  EXPECT_GE(distinctFinite.size(), 8u);
+  EXPECT_TRUE(increasing) << "the declared sequence is strictly increasing";
+  EXPECT_FALSE(touchesAnInput)
+      << "a truth value equals a raw input, so a pull of the input field "
+         "would be indistinguishable from a pull of the computed key";
 }
 
 // ═══ 2. THE DETERMINISTIC GATE ═════════════════════════════════════════════
@@ -435,7 +494,7 @@ TEST(ClockCoherentPull, PerTickTruthIsReadFromTheStoreAndIsStableAcrossRuns) {
 // before one of them runs. Then the barrier is released.
 //
 // Under execution-time sampling every delivery reads the store after the last
-// write, so every arrival is the LAST tick's `sma_5` — 11 copies of 109.0.
+// write, so every arrival is the LAST tick's value — 11 copies of it.
 // Under clock-time sampling each delivery carries the value its own tick
 // wrote.
 //
@@ -444,14 +503,16 @@ TEST(ClockCoherentPull, PerTickTruthIsReadFromTheStoreAndIsStableAcrossRuns) {
 // nothing was ever overwritten — which is the way a gate like this fails open.
 TEST(ClockCoherentPull, EveryClockQueuedBeforeAnyRuns_StillCarriesItsOwnTicksSample) {
   using namespace enc1335;
-  const rapidjson::Value* req = corpusRequest(kCorpus51);
-  ASSERT_NE(req, nullptr) << krn::testsupport::corpusNotFoundDiagnostic();
+  const rapidjson::Document& req = referencePullRequest();
+  ASSERT_FALSE(req.HasParseError());
 
-  DriveResult oracle = drive(*req, kAAPL, kTicks, 1, Mode::DrainEachTick, kProbe51);
+  DriveResult oracle = drive(req, kREF, kTicks, 1, Mode::DrainEachTick, kProbeRef,
+                             Source::Reference);
   ASSERT_FALSE(oracle.threw) << oracle.error;
   const auto truth = truthSequence(oracle);
 
-  DriveResult blocked = drive(*req, kAAPL, kTicks, 1, Mode::BlockedPool, kProbe51);
+  DriveResult blocked = drive(req, kREF, kTicks, 1, Mode::BlockedPool, kProbeRef,
+                              Source::Reference);
   ASSERT_FALSE(blocked.threw) << blocked.error;
 
   // The store genuinely advanced while the deliveries sat in the queue.
@@ -459,7 +520,7 @@ TEST(ClockCoherentPull, EveryClockQueuedBeforeAnyRuns_StillCarriesItsOwnTicksSam
   ASSERT_TRUE(blocked.storeAfterEachTick.back().has_value());
   ASSERT_TRUE(truth.size() >= 2);
   EXPECT_TRUE(sameValue(*blocked.storeAfterEachTick.back(), truth.back()))
-      << "the store's final sma_5 must be the last tick's, or the premise of "
+      << "the store's final value must be the last tick's, or the premise of "
          "this gate (that later writes happened before any delivery ran) is "
          "false";
 
@@ -503,10 +564,11 @@ TEST(ClockCoherentPull, EveryClockQueuedBeforeAnyRuns_StillCarriesItsOwnTicksSam
 // sampling rule is wrong almost everywhere. Test 2 removes the "essentially".
 TEST(ClockCoherentPull, LiveIngressSequenceEqualsThePerTickTruth) {
   using namespace enc1335;
-  const rapidjson::Value* req = corpusRequest(kCorpus51);
-  ASSERT_NE(req, nullptr) << krn::testsupport::corpusNotFoundDiagnostic();
+  const rapidjson::Document& req = referencePullRequest();
+  ASSERT_FALSE(req.HasParseError());
 
-  DriveResult oracle = drive(*req, kAAPL, kTicks, 1, Mode::DrainEachTick, kProbe51);
+  DriveResult oracle = drive(req, kREF, kTicks, 1, Mode::DrainEachTick, kProbeRef,
+                             Source::Reference);
   ASSERT_FALSE(oracle.threw) << oracle.error;
   const auto truth = truthSequence(oracle);
   ASSERT_GE(truth.size(), 2u);
@@ -514,7 +576,8 @@ TEST(ClockCoherentPull, LiveIngressSequenceEqualsThePerTickTruth) {
   constexpr int kReps = 4;
   for (unsigned threads : {1u, 2u, 4u}) {
     for (int rep = 0; rep < kReps; ++rep) {
-      DriveResult live = drive(*req, kAAPL, kTicks, threads, Mode::LiveBurst, kProbe51);
+      DriveResult live = drive(req, kREF, kTicks, threads, Mode::LiveBurst, kProbeRef,
+                               Source::Reference);
       ASSERT_FALSE(live.threw) << live.error;
       EXPECT_TRUE(sameSequence(live.emitted, truth))
           << "threads=" << threads << " rep=" << rep
@@ -532,8 +595,8 @@ TEST(ClockCoherentPull, LiveIngressSequenceEqualsThePerTickTruth) {
 
 // ═══ 4. THE FAN-IN HALF — `CompositeRoot` FORWARDS THE BIND ════════════════
 //
-// corpus 111 declares an `Aggregate` whose two inputs are both
-// `AtomicAccessor`s. They have no Dispatcher subscription of their own, so
+// The request declares an `Aggregate` whose two inputs are both
+// `AtomicAccessor`s (the shape of corpus ids 111-115, 192, 200). They have no Dispatcher subscription of their own, so
 // ENC-1290's clock rule is what makes them fire at all — through
 // `CompositeRoot::onValue`, one hop past the head `Listener`.
 //
@@ -544,16 +607,23 @@ TEST(ClockCoherentPull, LiveIngressSequenceEqualsThePerTickTruth) {
 // one shape where it also corrupts the pairing.
 TEST(ClockCoherentPull, PullOnlyFanInSamplesBothPortsAsOfOneClockTick) {
   using namespace enc1335;
-  const rapidjson::Value* req = corpusRequest(111);
-  ASSERT_NE(req, nullptr) << krn::testsupport::corpusNotFoundDiagnostic();
+  const rapidjson::Document& req = referenceFanInRequest();
+  ASSERT_FALSE(req.HasParseError());
 
-  DriveResult oracle = drive(*req, requestStreamKeys(*req), kTicks, 1, Mode::DrainEachTick);
+  DriveResult oracle = drive(req, kREF, kTicks, 1, Mode::DrainEachTick, {},
+                             Source::Reference);
   ASSERT_FALSE(oracle.threw) << oracle.error;
   ASSERT_FALSE(oracle.emitted.empty())
-      << "corpus 111's pull-only join must EMIT — ENC-1290 clocked it into "
+      << "the pull-only join must EMIT — ENC-1290 clocked it into "
          "life, and if it is silent this test is measuring nothing";
+  std::set<long long> distinct;
+  for (double v : oracle.emitted) if (!std::isnan(v)) distinct.insert(std::llround(v * 10000.0));
+  EXPECT_EQ(distinct.size(), 2 * (kTicks - 1 - ReferenceComputer::kWarmupTicks))
+      << "both ports must carry a distinct value on every post-warm-up tick, "
+         "or a mistimed pair could reproduce them: " << render(oracle.emitted);
 
-  DriveResult blocked = drive(*req, requestStreamKeys(*req), kTicks, 1, Mode::BlockedPool);
+  DriveResult blocked = drive(req, kREF, kTicks, 1, Mode::BlockedPool, {},
+                              Source::Reference);
   ASSERT_FALSE(blocked.threw) << blocked.error;
   EXPECT_TRUE(sameSequence(blocked.emitted, oracle.emitted))
       << "every clock was queued before any delivery ran, so both ports must "
