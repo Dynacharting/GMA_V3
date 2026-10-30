@@ -5,32 +5,15 @@
 // Design: specs/2026-10-14-krn-data-layer/SPEC.md D3, D8;
 //         docs/data-layer.md §5.3, §8.3.
 //
-// WHY THIS FILE IS UNDER include/ AND NOT UNDER data/
-// ---------------------------------------------------
-// `krn_data` depends on `krn_engine`; `krn_engine` depends on neither it nor
-// any connector, and **Arrow and the ClickHouse client must never become
-// engine dependencies** (SPEC D14, docs/data-layer.md §4 rule 6) — the
-// live-only variant of D14's client profile omits `krn_data` entirely and must
-// still link. (D14's other client variant reads a central L1 over the wire, so
-// it does ship `krn_data`; the invariant constrains `krn_engine`, not the
-// deployment.)
-//
-// But the engine has to be able to *name* a record: ENC-1486 adds
-// `Dispatcher::onRecord(const TickRecord&)`, and `Dispatcher` is engine code.
-// So the split is:
-//
-//   include/krn/data/Record.hpp   (THIS FILE, in krn_engine)
-//       The PODs. Arrow-free, ClickHouse-free, dependency-free — <cstdint>
-//       and nothing else. Plain aggregates of fixed-width fields.
-//
-//   data/include/krn/data/Schema.hpp   (in krn_data)
-//       The arrow::Schema for each table, and the column-wise codec between
-//       a RecordBatch and these PODs. That is where Arrow is linked and where
-//       it stops.
-//
-// Both halves live in namespace `krn::data`, which is deliberate: the type is
-// one type, in one namespace, with one definition. The library boundary is a
-// *dependency* boundary, not a naming one.
+// WHERE THIS FILE LIVES
+// ---------------------
+// It was `include/krn/data/Record.hpp`, inside `krn_engine`, while
+// `Dispatcher::onRecord` took a `TickRecord`. Since ENC-1557 `onRecord` takes
+// an `engine::FieldSource`, so no engine code names a record and the PODs
+// live in `krn_data` (purity SPEC D4, D10). The adapter from a record to the
+// engine's field view is `krn/data/RecordFieldSource.hpp`, beside this file.
+// The PODs stay Arrow-free and dependency-free — <cstdint>/<cstddef> only;
+// `krn/data/Schema.hpp` is where Arrow is linked and where it stops.
 //
 // PRICES ARE int64 AT A FIXED GLOBAL SCALE (kPriceScale, 1e-9), matching
 // Databento DBN exactly (SPEC D8). NOT per-symbol: `OrderBookManager`'s
@@ -45,9 +28,10 @@
 // MBO rates (tens of millions of records per symbol-day) that single copy is a
 // measurable fraction of total cost — which is what ENC-1487 (B2) measures.
 // Resolve an id back to text only at an output boundary, through
-// `krn::data::SymbolTable` (include/krn/data/SymbolTable.hpp).
+// `krn::data::SymbolTable` (include/krn/data/SymbolTable.hpp, in krn_engine).
 //
 
+#include <cstddef>
 #include <cstdint>
 
 namespace krn::data {
@@ -79,7 +63,7 @@ std::int64_t toFixed(double px) noexcept;
 // replacing them, so the decode is a cast and not a lookup table.
 // ---------------------------------------------------------------------------
 
-// Mirrors krn::Aggressor (same header).
+// Mirrors krn::Aggressor (connectors/market/include/krn/book/OrderBook.hpp).
 enum class Aggressor : std::uint8_t { Unknown = 0, Buy = 1, Sell = 2 };
 
 enum class RecordKind : std::uint8_t {
@@ -163,5 +147,38 @@ struct TickRecord {
 
   std::uint16_t flags = 0;        // provider condition flags, passed through
 };
+
+// Layout, pinned (ENC-1557): the move out of the engine must not change one
+// byte, and these are what the Arrow codec and the DBN decode assume.
+static_assert(sizeof(Aggressor) == 1 && static_cast<int>(Aggressor::Unknown) == 0 &&
+              static_cast<int>(Aggressor::Buy) == 1 &&
+              static_cast<int>(Aggressor::Sell) == 2);
+static_assert(sizeof(RecordKind) == 1 && static_cast<int>(RecordKind::Trade) == 0 &&
+              static_cast<int>(RecordKind::Quote) == 1 &&
+              static_cast<int>(RecordKind::BookEvent) == 2 &&
+              static_cast<int>(RecordKind::BookSnapshot) == 3);
+static_assert(alignof(RecordHeader) == 8);
+static_assert(offsetof(RecordHeader, tsEventNs) == 0 &&
+              offsetof(RecordHeader, tsRecvNs) == 8 &&
+              offsetof(RecordHeader, providerSeq) == 16 &&
+              offsetof(RecordHeader, sessionId) == 24 &&
+              offsetof(RecordHeader, symbolId) == 28 &&
+              offsetof(RecordHeader, venueId) == 32 &&
+              offsetof(RecordHeader, instrumentId) == 36);
+static_assert(sizeof(TickRecord) == 128 && alignof(TickRecord) == 8);
+static_assert(offsetof(TickRecord, header) == 0 && offsetof(TickRecord, kind) == 40 &&
+              offsetof(TickRecord, price) == 48 && offsetof(TickRecord, size) == 56 &&
+              offsetof(TickRecord, aggressor) == 64 &&
+              offsetof(TickRecord, bookNeutral) == 65 &&
+              offsetof(TickRecord, tradeId) == 72 && offsetof(TickRecord, bidPx) == 80 &&
+              offsetof(TickRecord, askPx) == 88 && offsetof(TickRecord, bidSz) == 96 &&
+              offsetof(TickRecord, askSz) == 104 && offsetof(TickRecord, bidCt) == 112 &&
+              offsetof(TickRecord, askCt) == 116 && offsetof(TickRecord, flags) == 120);
+static_assert(sizeof(TickRecord::price) == 8 && sizeof(TickRecord::size) == 8 &&
+              sizeof(TickRecord::tradeId) == 8 && sizeof(TickRecord::bidPx) == 8 &&
+              sizeof(TickRecord::askPx) == 8 && sizeof(TickRecord::bidSz) == 8 &&
+              sizeof(TickRecord::askSz) == 8 && sizeof(TickRecord::bidCt) == 4 &&
+              sizeof(TickRecord::askCt) == 4 && sizeof(TickRecord::flags) == 2 &&
+              sizeof(TickRecord::bookNeutral) == 1);
 
 } // namespace krn::data

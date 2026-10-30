@@ -1,8 +1,5 @@
 #include "krn/data/SymbolTable.hpp"
 
-#include "krn/data/Record.hpp"
-
-#include <cmath>
 #include <mutex>
 
 namespace krn::data {
@@ -53,19 +50,6 @@ void SymbolTable::clear() {
   std::unique_lock lk(mu_);
   names_.clear();
   ids_.clear();
-}
-
-// ---------------------------------------------------------------------------
-// Record.hpp's one out-of-line function lives here rather than in its own
-// translation unit: it is two lines and Record.hpp is otherwise header-only.
-// ---------------------------------------------------------------------------
-
-std::int64_t toFixed(double px) noexcept {
-  // Rounds half away from zero, matching std::llround. Providers that hand
-  // over fixed point (Databento DBN is already 1e-9) must never come through
-  // here — SPEC D8's "exact integer path with no double round trip" is about
-  // precisely this function not being on the DBN path.
-  return static_cast<std::int64_t>(std::llround(px * static_cast<double>(kPriceScale)));
 }
 
 } // namespace krn::data

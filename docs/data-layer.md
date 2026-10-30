@@ -413,6 +413,11 @@ One column-wise function producing `TickRecord` / `BookRecord`. Two details:
 - **No DOM is constructed anywhere.** This is `onRecord` (C2), and it is a net *reduction*
   in per-tick work versus the shipped JSON ingress.
 
+*Superseded by ENC-1557 (purity SPEC D4):* `onRecord` now takes a `data::SymbolId` and an
+`engine::FieldSource`, so the PODs moved to `data/include/krn/data/TickRecord.hpp` and the
+adapter to `data/include/krn/data/RecordFieldSource.hpp`, both in `krn_data`. The paragraph
+below is the ENC-1481 record.
+
 **Where the two halves live — settled by ENC-1481.** The PODs are in
 `include/krn/data/Record.hpp`, i.e. inside **`krn_engine`**, not under `data/`. C2's
 `Dispatcher::onRecord(const data::TickRecord&)` is engine code and has to be able to name

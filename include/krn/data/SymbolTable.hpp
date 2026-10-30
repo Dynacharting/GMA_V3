@@ -10,13 +10,13 @@
 // batch. But *resolution*, id -> text, happens at an output boundary, and
 // every output boundary is engine code: `StreamValue` carries
 // `std::string symbol`, so the moment ENC-1486's `Dispatcher::onRecord` turns a
-// `TickRecord` into a `StreamValue` it needs the ticker back. The engine cannot
+// record into a `StreamValue` it needs the ticker back. The engine cannot
 // depend on `krn_data` (SPEC D14), so a table living there would force a second
 // implementation of interning on the engine side — the same class of mistake
 // D1 refuses for operator math. One table, one definition, in the library both
 // halves may legally name.
 //
-// It is Arrow-free and ClickHouse-free, like Record.hpp beside it.
+// It is Arrow-free and ClickHouse-free.
 //
 // ID 0 IS RESERVED. `RecordHeader` default-constructs symbolId/venueId to 0, so
 // if interning started at 0 a zero-initialized header would name whichever
