@@ -1068,7 +1068,7 @@ endif()
 # consumer project in a fresh dir under this build tree:
 #   fetchcontent — FetchContent of this repo's HEAD from a file:// URL, with the
 #                  engine's own options set ON in the consumer's cache; asserts
-#                  krn_engine's SOURCES sit under the fetched tree and that no
+#                  each library's SOURCES sit under the fetched tree and that no
 #                  other engine target exists. It checks the COMMITTED HEAD.
 #   install      — cmake --install of this build into an empty prefix, then a
 #                  find_package(krn CONFIG) consumer that links krn::krn_engine.
