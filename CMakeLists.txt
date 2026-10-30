@@ -478,10 +478,12 @@ endif()
 # pull in explicitly. Adding a connector requires (a) this library target and
 # (b) one `registerWith` call at the composition root; no engine edits.
 set(KRN_SYNTHETIC_SOURCES
+  plugins/reference/src/ReferenceComputer.cpp
   plugins/reference/src/SyntheticConnector.cpp
 )
 list(TRANSFORM KRN_SYNTHETIC_SOURCES PREPEND "${PROJECT_SOURCE_DIR}/")
 set(KRN_SYNTHETIC_HEADERS
+  plugins/reference/include/krn/reference/ReferenceComputer.hpp
   plugins/reference/include/krn/reference/SyntheticConnector.hpp
 )
 list(TRANSFORM KRN_SYNTHETIC_HEADERS PREPEND "${PROJECT_SOURCE_DIR}/")
