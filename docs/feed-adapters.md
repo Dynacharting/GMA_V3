@@ -199,7 +199,7 @@ This is GMA's own protocol — it's already source-agnostic. External vendor fee
 | `connectors/market/include/krn/feed/ItchAdapter.hpp` | ITCH adapter header |
 | `connectors/market/src/feed/ItchAdapter.cpp` | ITCH adapter implementation |
 | `connectors/market/include/krn/market/MarketFieldMap.hpp` | Configurable field mapping (replaces `SourceProfile`) |
-| `connectors/market/include/krn/ws/WsFeedClient.hpp` | WebSocket transport (adapter-agnostic) |
+| `connectors/market/include/krn/market/WsFeedClient.hpp` | WebSocket transport (adapter-agnostic) |
 | `connectors/market/src/ws/WsFeedClient.cpp` | Transport implementation + event dispatch |
 | `tests/feed/ItchAdapterTest.cpp` | ITCH adapter unit tests |
 | `tests/connectors/MarketFieldMapTest.cpp` | `MarketFieldMap` field-mapping tests |

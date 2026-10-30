@@ -37,7 +37,7 @@
 
 #include "krn/data/BookRecord.hpp"
 #include "krn/data/TickRecord.hpp"
-#include "krn/data/SymbolTable.hpp"
+#include "krn/engine/SymbolTable.hpp"
 
 #include <arrow/record_batch.h>
 #include <arrow/result.h>

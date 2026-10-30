@@ -9,11 +9,11 @@
 // each tick, but it no-ops when the test's payload doesn't carry the
 // default field names — leaving the custom computer's writes intact.
 
-#include "krn/AtomicFunctions.hpp"
+#include "krn/market/AtomicFunctions.hpp"
 #include "krn/AtomicStore.hpp"
 #include "krn/Dispatcher.hpp"
 #include "krn/Event.hpp"
-#include "krn/MarketTA.hpp"
+#include "krn/market/MarketTA.hpp"
 #include "krn/StreamValue.hpp"
 #include "krn/market/MarketFieldMap.hpp"
 #include "krn/nodes/INode.hpp"

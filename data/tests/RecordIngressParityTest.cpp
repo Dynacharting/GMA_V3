@@ -68,7 +68,7 @@
 #include "krn/StreamValue.hpp"
 #include "krn/data/RecordFieldSource.hpp"
 #include "krn/FunctionRegistry.hpp"
-#include "krn/data/SymbolTable.hpp"
+#include "krn/engine/SymbolTable.hpp"
 #include "krn/data/TickRecord.hpp"
 #include "krn/engine/FieldSource.hpp"
 #include "krn/engine/IEventComputer.hpp"

@@ -10,7 +10,7 @@ THE INVARIANT, in the wording that actually matters:
     or the krn_data library target.
 
 Not "no krn/data header is reachable from engine code" -- that phrasing is
-wrong, and the distinction is load-bearing.  `include/krn/data/SymbolTable.hpp`
+wrong, and the distinction is load-bearing.  `include/krn/engine/SymbolTable.hpp`
 lives inside the engine's own include tree on purpose (ENC-1486's record
 ingress resolves a symbolId through it, and Dispatcher IS engine code).  What
 the engine must not be able to name is Arrow, or a header that exists only
@@ -356,7 +356,7 @@ def check_a_includes(root: str, sources: list[str], foreign_roots: list[str],
             else:
                 # A header that resolves under data/ or a connector but NOT
                 # under the engine's own include/ is a layering violation.
-                # `krn/data/SymbolTable.hpp` resolves under include/, so it passes;
+                # `krn/engine/SymbolTable.hpp` resolves under include/, so it passes;
                 # `krn/data/Schema.hpp` does not, so it does not.
                 if os.path.exists(os.path.join(engine_include, inc)):
                     continue
@@ -817,12 +817,12 @@ def selftest() -> int:
 
     with tempfile.TemporaryDirectory(prefix="enc1481-isolation-") as tmp:
         # A miniature repo with the real shape: an engine include tree that
-        # legitimately holds krn/data/SymbolTable.hpp, and a data/include tree that
+        # legitimately holds krn/engine/SymbolTable.hpp, and a data/include tree that
         # holds krn/data/Schema.hpp.
-        os.makedirs(os.path.join(tmp, "include", "krn", "data"))
+        os.makedirs(os.path.join(tmp, "include", "krn", "engine"))
         os.makedirs(os.path.join(tmp, "data", "include", "krn", "data"))
         os.makedirs(os.path.join(tmp, "src", "core"))
-        open(os.path.join(tmp, "include", "krn", "data", "SymbolTable.hpp"), "w").close()
+        open(os.path.join(tmp, "include", "krn", "engine", "SymbolTable.hpp"), "w").close()
         open(os.path.join(tmp, "data", "include", "krn", "data", "Schema.hpp"), "w").close()
 
         os.makedirs(os.path.join(tmp, "connectors", "market", "include", "krn", "market"))
@@ -831,7 +831,7 @@ def selftest() -> int:
 
         good = os.path.join(tmp, "src", "core", "Ok.cpp")
         with open(good, "w", encoding="utf-8") as fh:
-            fh.write('#include "krn/data/SymbolTable.hpp"\n#include <vector>\n')
+            fh.write('#include "krn/engine/SymbolTable.hpp"\n#include <vector>\n')
 
         os.makedirs(os.path.join(tmp, "plugins", "reference", "include", "krn", "reference"))
         open(os.path.join(tmp, "plugins", "reference", "include", "krn",
