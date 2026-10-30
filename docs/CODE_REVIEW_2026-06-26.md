@@ -6,7 +6,7 @@ and validated. Work was split across five parallel review streams:
 
 1. Engine Core & Runtime  — `src/core`, `src/rt`, `src/util`, engine headers
 2. Nodes, Server, WS & Composition — `src/nodes`, `src/server`, `src/ws`, `src/forum`, `main.cpp`
-3. Connectors — `connectors/market/**`, `connectors/synthetic/**`
+3. Connectors — `connectors/market/**`, `plugins/reference/**`
 4. Build & Validation — actual build + `ctest`, warnings, CMake/Docker/tooling
 5. Test-quality & Docs — test suite soundness + doc/code consistency
 
@@ -275,7 +275,7 @@ a large numerator yields `inf`, contradicting `Expr.hpp:33`. The `FunctionMap` b
 `EPSILON` guard (`BuiltinFunctions.cpp:146-149`) — inconsistent. Add an epsilon guard.
 
 ### L4 — `SyntheticConnector` timer lambda is a self-referential `shared_ptr` cycle (leak) — CONFIRMED
-`connectors/synthetic/src/SyntheticConnector.cpp:64-65` — `*selfRef = [...selfRef...]{...}`
+`plugins/reference/src/SyntheticConnector.cpp:64-65` — `*selfRef = [...selfRef...]{...}`
 keeps the lambda + captured state alive for process lifetime even after `stop()`. Demo/test-only
 connector, so low. Capture a `weak_ptr` and lock inside.
 
@@ -315,7 +315,7 @@ H4), hence latent. Add a clamp.
 
 ### L12 (build) — `-Wall -Wextra` applied to only 2 of 6 targets — CONFIRMED
 Warning flags cover `krn_engine` and `krn_connector_market`, **not** `krn_server` (main.cpp),
-`krn_connector_synthetic`, `krn_tests`, or benchmarks. Warnings in the composition root and
+`krn_plugin_reference`, `krn_tests`, or benchmarks. Warnings in the composition root and
 test code are invisible. Also: no CI, so `KRN_WARNINGS_AS_ERRORS` (default OFF) never runs.
 
 ### L13 (build) — `[-Wreorder]` member-init order mismatch in `FeedServer` — CONFIRMED

@@ -19,7 +19,7 @@ class Dispatcher;
 namespace krn::synthetic {
 
 // Demo connector that proves the engine/connector boundary: it lives entirely
-// under connectors/synthetic/ and touches zero files outside this directory.
+// under plugins/reference/ and touches zero files outside this directory.
 // Emits synthetic events of type "synthetic.tick" every tickMs milliseconds
 // carrying a monotonic counter; installs a computer that writes sin()/cos() of
 // the counter to AtomicStore under keys "synthetic.sin" and "synthetic.cos".

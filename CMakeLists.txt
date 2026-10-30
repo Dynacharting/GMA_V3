@@ -478,28 +478,33 @@ endif()
 # pull in explicitly. Adding a connector requires (a) this library target and
 # (b) one `registerWith` call at the composition root; no engine edits.
 set(KRN_SYNTHETIC_SOURCES
-  connectors/synthetic/src/SyntheticConnector.cpp
+  plugins/reference/src/SyntheticConnector.cpp
 )
 list(TRANSFORM KRN_SYNTHETIC_SOURCES PREPEND "${PROJECT_SOURCE_DIR}/")
 set(KRN_SYNTHETIC_HEADERS
-  connectors/synthetic/include/krn/synthetic/SyntheticConnector.hpp
+  plugins/reference/include/krn/reference/SyntheticConnector.hpp
 )
 list(TRANSFORM KRN_SYNTHETIC_HEADERS PREPEND "${PROJECT_SOURCE_DIR}/")
-add_library(krn_connector_synthetic STATIC
+add_library(krn_plugin_reference STATIC
   ${KRN_SYNTHETIC_SOURCES} ${KRN_SYNTHETIC_HEADERS})
-target_include_directories(krn_connector_synthetic PUBLIC
-  "${PROJECT_SOURCE_DIR}/connectors/synthetic/include")
-target_link_libraries(krn_connector_synthetic PUBLIC krn_engine)
+target_include_directories(krn_plugin_reference PUBLIC
+  "${PROJECT_SOURCE_DIR}/plugins/reference/include")
+target_link_libraries(krn_plugin_reference PUBLIC krn_engine)
 
 # Warnings — apply to every first-party target (ENC-806 / L12). Previously only
-# krn_engine + krn_connector_market got -Wall/-Wextra; krn_connector_synthetic,
+# krn_engine + krn_connector_market got -Wall/-Wextra; krn_plugin_reference,
 # krn_server, krn_tests and the benchmarks were silent. krn_server/krn_tests/
 # benchmarks are wired at their definition sites below.
 krn_apply_warnings(krn_engine)
+<<<<<<< HEAD
 if (TARGET krn_connector_market)
   krn_apply_warnings(krn_connector_market)
 endif()
 krn_apply_warnings(krn_connector_synthetic)
+=======
+krn_apply_warnings(krn_connector_market)
+krn_apply_warnings(krn_plugin_reference)
+>>>>>>> origin/master
 
 if (WIN32)
   add_definitions(-D_WIN32_WINNT=0x0A00 -DNOMINMAX)
@@ -583,6 +588,7 @@ if (KRN_BUILD_TESTS)
     GIT_TAG        v1.14.0
   )
   set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+  set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)  # cmake --install ships krn only
   FetchContent_MakeAvailable(googletest)
 
   set(KRN_TEST_SOURCES
@@ -686,7 +692,7 @@ if (KRN_BUILD_TESTS)
     Threads::Threads
     RapidJSON::rapidjson
     GTest::gtest_main
-    krn_connector_synthetic
+    krn_plugin_reference
   )
   krn_apply_warnings(krn_tests)
 

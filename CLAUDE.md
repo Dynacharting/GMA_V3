@@ -34,6 +34,14 @@ cmake --build . -j$(nproc)
 cd build && ctest --output-on-failure
 ```
 
+**Consuming the engine (ENC-1553).** Under `FetchContent` / `add_subdirectory` the root
+`CMakeLists.txt` defines only the engine library targets (`krn_engine`, alias
+`krn::krn_engine`, and the reference connector) — no tests, data layer, market connector,
+server, install rules or isolation gate, whatever the consumer's cache says, and without
+writing to that cache. `cmake --install` plus `find_package(krn CONFIG)` gives
+`krn::krn_engine`. Both are pinned by the ctest cases `krn_consumer_fetchcontent_smoke`
+(which checks the **committed** `HEAD`, fetched over `file://`) and `krn_consumer_install_smoke`.
+
 ## Project Structure
 
 ```
@@ -80,8 +88,8 @@ connectors/market/        # libkrn_connector_market (depends on krn_engine)
     AtomicFunctions.hpp   # Transitional umbrella (TA + builtins)
   src/                    # Implementations mirrored
 
-connectors/synthetic/     # libkrn_connector_synthetic (demo; linked only into tests)
-  include/krn/synthetic/SyntheticConnector.hpp
+plugins/reference/        # libkrn_plugin_reference (demo; linked only into tests)
+  include/krn/reference/SyntheticConnector.hpp
   src/SyntheticConnector.cpp
 
 data/                     # libkrn_data — L1 data/query layer (ENC-1481; see data/README.md)
@@ -114,7 +122,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full picture including 
 ## Tech Stack
 
 - **C++20** (`-DCMAKE_CXX_STANDARD=20`)
-- **CMake 3.20+** — produces `libkrn_engine.a`, `libkrn_connector_market.a`, `libkrn_connector_synthetic.a`, `libkrn_data.a`, `krn_server`, `krn_tests`, `krn_data_tests`
+- **CMake 3.20+** — produces `libkrn_engine.a`, `libkrn_connector_market.a`, `libkrn_plugin_reference.a`, `libkrn_data.a`, `krn_server`, `krn_tests`, `krn_data_tests`
 - **Apache Arrow** (`krn_data` only) — found with `find_package(Arrow CONFIG)`, else built
   from source by `data/cmake/KrnDataArrow.cmake`. A cold configure downloads a 17 MB
   archive (2m33s on this link) and the build costs 45s Debug / 63s Release on 16 cores;

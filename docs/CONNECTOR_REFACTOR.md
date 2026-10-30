@@ -353,8 +353,8 @@ Each step independently buildable + testable. `ctest --output-on-failure` must s
 - **Tests:** `tests/feed/FeedEventDispatchTest.cpp` moves to `connectors/market/tests/`.
 
 ### Step 10 — ship a trivial demonstration connector
-- `connectors/synthetic/SyntheticConnector.cpp`: event type `"synthetic.tick"`, a computer that emits a sine wave to `AtomicStore`, an ingress source that schedules itself on `Interval`. ~150 LOC.
-- Proves the zero-core-changes invariant: connector's code is entirely under `connectors/synthetic/`; `main.cpp` gets one new line.
+- `plugins/reference/src/SyntheticConnector.cpp`: event type `"synthetic.tick"`, a computer that emits a sine wave to `AtomicStore`, an ingress source that schedules itself on `Interval`. ~150 LOC.
+- Proves the zero-core-changes invariant: connector's code is entirely under `plugins/reference/`; `main.cpp` gets one new line.
 - **Tests:** add `tests/connectors/SyntheticConnectorTest.cpp`, `tests/integration/TwoConnectorsTest.cpp`.
 
 ### Step 11 — cleanup
@@ -372,7 +372,7 @@ Each step independently buildable + testable. `ctest --output-on-failure` must s
 
 ### Proving "zero core changes to add a connector"
 - `SyntheticConnector` (Step 10) is the proof.
-- CI check: grep-fail if `connectors/synthetic/` references `krn::market` or `krn::ob`.
+- CI check: grep-fail if `plugins/reference/` references `krn::market` or `krn::ob`.
 - CI check: when a commit adds only `connectors/<new>/` contents, `git diff --stat` against `src/` + `include/` must show **only** `src/main.cpp` with a ≤3-line delta.
 
 ### Dispatcher + TA correctness regression
