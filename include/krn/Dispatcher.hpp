@@ -169,7 +169,7 @@ public:
   // raw-admission ledger, the history buffers, `computeAndStoreAtomics`, the
   // `AtomicStore` keys, the computer sets and `deliver()`'s ordering are one
   // implementation reached two ways (SPEC D1). Pinned by
-  // tests/dispatch/RecordIngressParityTest.cpp, which drives one logical tick
+  // data/tests/RecordIngressParityTest.cpp, which drives one logical tick
   // down both paths and compares deliveries IN ORDER and store contents.
   //
   // THE SYMBOL IS STILL HEAP-COPIED HERE, deliberately. `StreamValue` carries
