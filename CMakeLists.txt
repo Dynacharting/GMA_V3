@@ -749,11 +749,8 @@ if (KRN_BUILD_TESTS)
     krn_plugin_reference
   )
   krn_apply_warnings(krn_market_tests)
-  add_custom_command(TARGET krn_market_tests POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-      "${PROJECT_SOURCE_DIR}/tests/treebuilder/corpus_requests.json"
-      "$<TARGET_FILE_DIR:krn_market_tests>/corpus_requests.json"
-    COMMENT "Copying corpus_requests.json next to krn_market_tests")
+  # The corpus is found through KRN_TEST_SOURCE_DIR (tests/support/CorpusPath.hpp);
+  # no second POST_BUILD copy into the directory krn_tests already copies into.
   target_compile_definitions(krn_market_tests PRIVATE
     KRN_TEST_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
   add_test(NAME krn_market_tests
