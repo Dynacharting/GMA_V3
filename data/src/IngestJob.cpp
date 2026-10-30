@@ -5,7 +5,7 @@
 #include "krn/data/IngestJob.hpp"
 
 #include "krn/data/DatabentoAdapter.hpp"
-#include "krn/data/SymbolTable.hpp"
+#include "krn/engine/SymbolTable.hpp"
 
 #include <algorithm>
 #include <charconv>

@@ -11,7 +11,7 @@
 // --gtest_repeat to prove it.
 
 #include "krn/data/TickRecord.hpp"
-#include "krn/data/SymbolTable.hpp"
+#include "krn/engine/SymbolTable.hpp"
 
 #include <gtest/gtest.h>
 

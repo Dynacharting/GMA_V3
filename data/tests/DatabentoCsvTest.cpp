@@ -21,7 +21,7 @@
 
 #include "krn/data/DatabentoAdapter.hpp"
 #include "krn/data/IngestJob.hpp"
-#include "krn/data/SymbolTable.hpp"
+#include "krn/engine/SymbolTable.hpp"
 #include "krn/data/Verdict.hpp"
 
 #include <gtest/gtest.h>
