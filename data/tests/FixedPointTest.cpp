@@ -5,6 +5,7 @@
 // Design: specs/2026-10-14-krn-data-layer/SPEC.md D8.
 
 #include "krn/data/TickRecord.hpp"
+#include "krn/engine/SymbolTable.hpp"
 
 #include <gtest/gtest.h>
 
