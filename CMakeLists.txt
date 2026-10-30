@@ -878,7 +878,9 @@ endif()
 # THE CHECKED ROOTS are krn_engine, krn_server and krn_tests. krn_tests is
 # there because data/CMakeLists.txt names "the engine test suite is built
 # against an Arrow-free include path" as the thing being protected, and a
-# prose claim with no check behind it is what finding 1 was about.
+# prose claim with no check behind it is what finding 1 was about. krn_tests
+# alone is also barred from krn_connector_market (ENC-1562); the market cases
+# build as krn_market_tests, which is not a checked root.
 #
 # THE POSITIVE CONTROL IS krn_isolation_control (ENC-1507, purity SPEC Q7).
 # Its closure must trip a forbidden pattern, or the patterns match nothing in
