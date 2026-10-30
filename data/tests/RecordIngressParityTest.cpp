@@ -45,11 +45,21 @@
 // perturbation of `Dispatcher::ingest` reddening `DeliveriesAreIdenticalInOrder`
 // and `AtomicStoreContentsAreIdentical` — is recorded on ENC-1486.
 //
-// NO PROCESS-GLOBAL REGISTRY IS WRITTEN BY THIS FILE (ENC-1102). The computers
-// here go in through `Dispatcher::addComputer`, which is per-dispatcher state,
-// and the listeners are raw `INode`s registered directly — no `NodeTypeRegistry`,
-// no `EventComputerRegistry`, no `FunctionMap` writes. So `--gtest_repeat`
-// against the full binary is unaffected by it.
+// IN krn_data_tests SINCE ENC-1557 (purity SPEC D4, D13). Everything here
+// needs `RecordFieldSource` or `TickRecord`, which left the engine. The
+// engine half — the record path names no JSON, and an unresolvable symbol is
+// refused — stays in krn_tests: tests/dispatch/RecordIngressEngineTest.cpp.
+// This binary links krn_data and krn_plugin_reference, never the market
+// connector.
+//
+// ONE PROCESS-GLOBAL WRITE, AND IT IS IDEMPOTENT. krn_tests' bootstrap
+// registers the engine builtins (`mean`, `sum`, `stddev`) that
+// `computeAndStoreAtomics` reads; this binary has no bootstrap, so the
+// environment below calls `registerBuiltinFunctions()`, which only overwrites
+// `FunctionMap` entries with themselves. Nothing else global is written: the
+// computers go in through `Dispatcher::addComputer`, which is per-dispatcher
+// state, and the listeners are raw `INode`s registered directly — no
+// `NodeTypeRegistry`, no `EventComputerRegistry`.
 
 #include "krn/AtomicStore.hpp"
 #include "krn/Dispatcher.hpp"
@@ -83,6 +93,13 @@
 using namespace krn;
 
 namespace {
+
+class EngineBuiltins final : public ::testing::Environment {
+public:
+  void SetUp() override { krn::registerBuiltinFunctions(); }
+};
+[[maybe_unused]] ::testing::Environment* const kEngineBuiltins =
+    ::testing::AddGlobalTestEnvironment(new EngineBuiltins);
 
 // ---------------------------------------------------------------------------
 // Observation
