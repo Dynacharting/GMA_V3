@@ -143,7 +143,7 @@ void Dispatcher::onRecord(data::SymbolId symbolId,
   // `RecordFieldSource` (data/include/krn/data/RecordFieldSource.hpp), whose
   // mapping table also *defines* "the equivalent tick" the parity test drives
   // down the JSON path.
-  ingest(symbol, recordEventType(), fields);
+  static const std::string kNoComputers = "tick-perturbed"; ingest(symbol, kNoComputers, fields);
 }
 
 } // namespace krn
