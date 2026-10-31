@@ -1134,26 +1134,33 @@ def selftest_vocabulary(failures: list[str], log: list[str]) -> int:
     except derive.DeriveError as exc:
         failures.append(f"SELFTEST: E/regenerate: cannot derive ({exc})")
         return ran
-    with open(os.path.join(root, VOCAB_FILE), encoding="utf-8") as fh:
-        committed = fh.read()
-    if committed != regenerated:
-        failures.append(f"SELFTEST: E/regenerate: {VOCAB_FILE} differs from "
-                        f"its derivation -- hand-edited or stale; run "
-                        f"tools/derive_market_vocabulary.py --write")
-    log.append(f"  E/regenerate: {VOCAB_FILE} == derivation "
-               f"({committed == regenerated})")
+    why = derive.drift(os.path.join(root, VOCAB_FILE), regenerated)
+    if why:
+        failures.append(f"SELFTEST: E/regenerate: {why} -- hand-edited or "
+                        f"stale; run tools/derive_market_vocabulary.py --write")
+    log.append(f"  E/regenerate: {VOCAB_FILE} matches its derivation "
+               f"({why is None})")
     ran += 1
 
-    # A hand edit: drop one word.  The comparison above must see it.
-    dropped = "\n".join(ln for ln in regenerated.split("\n")
-                        if not ln.startswith("MarketTickComputer\t"))
-    if dropped == regenerated:
+    # A hand edit: drop one word from a copy.  The same drift() must see it.
+    import tempfile
+    with open(os.path.join(root, VOCAB_FILE), encoding="utf-8") as fh:
+        committed = fh.read()
+    edited = "".join(ln for ln in committed.splitlines(keepends=True)
+                     if not ln.startswith("MarketTickComputer\t"))
+    with tempfile.TemporaryDirectory(prefix="enc1579-vocab-") as tmp:
+        copy = os.path.join(tmp, "market_vocabulary.txt")
+        with open(copy, "w", encoding="utf-8") as fh:
+            fh.write(edited)
+        caught = derive.drift(copy, regenerated)
+    if edited == committed:
         failures.append("SELFTEST: E/hand-edit: mutation did not apply")
-    elif dropped == regenerated:  # pragma: no cover - the comparison itself
-        failures.append("SELFTEST: E/hand-edit: not detected")
-    log.append(f"  E/hand-edit: dropping MarketTickComputer changes the list "
-               f"({len(regenerated)} -> {len(dropped)} chars) and is detected "
-               f"({dropped != regenerated})")
+    elif not caught or "MarketTickComputer" not in caught:
+        failures.append(f"SELFTEST: E/hand-edit: dropping a word was not "
+                        f"detected ({caught!r})")
+    log.append(f"  E/hand-edit: dropping MarketTickComputer applied "
+               f"({len(committed)} -> {len(edited)} chars); drift says: "
+               f"{caught}")
     ran += 1
 
     vocab = read_vocabulary(os.path.join(root, VOCAB_FILE))
@@ -1947,7 +1954,8 @@ def selftest() -> int:
     gate_cases = selftest_gate(failures)
     strip_log: list[str] = []
     strip_cases = selftest_stripper(failures, strip_log)
-    print(f"check E stripper ({strip_cases} cases):")
+    strip_cases += selftest_vocabulary(failures, strip_log)
+    print(f"check E stripper and vocabulary ({strip_cases} cases):")
     for line in strip_log:
         print(line)
 
@@ -2097,13 +2105,17 @@ def evaluate(manifest: dict[str, str]
     # Check E, part 1 (ENC-1578): strip check A's own list.  No vocabulary
     # yet; a stripper that blanks nothing, or breaks a file's shape or an
     # #include path, cannot be trusted with one.
-    _stripped, strip_stats, strip_bad = strip_sources(sources)
+    stripped, strip_stats, strip_bad = strip_sources(sources)
     if strip_bad:
         vacuous.append(f"the check E stripper damaged {len(strip_bad)} "
                        f"file(s): {strip_bad[:5]}")
     if sources and strip_stats["blanked"] == 0:
         vacuous.append(f"the check E stripper blanked nothing in "
                        f"{len(sources)} files -- it is not running")
+    # Check E, part 2 (ENC-1579): the derived vocabulary, and its fixture
+    # control, which runs whatever the build options.
+    e_vacuous, e_problems, e_stats = check_e(root, stripped)
+    vacuous += e_vacuous
 
     problems = (check_a_includes(root, sources, foreign_roots) +
                 check_a_includes(root, app_sources, app_foreign,
@@ -2116,7 +2128,8 @@ def evaluate(manifest: dict[str, str]
                 [p for r in CHECKED_ROOTS if r in graph
                  for p in forbidden_links(graph, r)] +
                 market_reachers(graph) +
-                control_reachers(graph))
+                control_reachers(graph) +
+                e_problems)
 
     summary.append("krn_engine isolation (ENC-1481, SPEC D14)")
     summary.append(f"  root            : {root}")
@@ -2159,6 +2172,11 @@ def evaluate(manifest: dict[str, str]
         f"in comments; D11 sentinel {D11_SENTINEL_RE.pattern}: "
         f"{strip_stats['sentinel_before']} before, "
         f"{strip_stats['sentinel_after']} after (reported, not gated)")
+    summary.append(
+        f"  E vocabulary    : {e_stats['words']} derived words, "
+        f"{len(VOCAB_EXEMPT)} exempt, {len(e_problems)} hit(s) in engine "
+        f"code; exempt hits {dict(sorted(e_stats['exempt_hits'].items()))}")
+    summary.append(f"  E control       : {e_stats['fixture']}")
 
     return vacuous, problems, summary
 
