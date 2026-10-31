@@ -38,17 +38,15 @@ FOUR CHECKS, each closing a different route in:
                dependency.  See CHECK B IS THE WEAKEST OF THE FOUR below.
   C  link      nothing matching krn_data / arrow / parquet / clickhouse is
                reachable from krn_engine's link libraries — TRANSITIVELY.
-  D  profile   nothing matching them is reachable from krn_host's,
-               krn_engine_server's or (while it is built) krn_server's either,
-               which is what makes the LIVE-ONLY VARIANT of SPEC D14's client
-               profile actually buildable rather than
-               nominally so.  `krn_tests` is checked on the same rule, because
-               krn-data's data/CMakeLists.txt names "the engine test suite is built
-               against an Arrow-free include path" as the thing being
-               protected, and a prose claim with no check behind it is what
-               this whole file is a reaction to.  krn_engine, krn_host,
-               krn_engine_server and krn_tests are also barred from
-               krn_connector_market (ENC-1561, ENC-1562).
+  D  profile   nothing matching them is reachable from krn_host's or
+               krn_engine_server's either, which is what makes the LIVE-ONLY
+               VARIANT of SPEC D14's client profile actually buildable rather
+               than nominally so.  `krn_tests` is checked on the same rule,
+               because krn-data's data/CMakeLists.txt names "the engine test
+               suite is built against an Arrow-free include path" as the thing
+               being protected.  No graphed target may reach
+               krn_connector_market: it and krn_server are krn-common's since
+               ENC-1570, so the ban is no longer per root (ENC-1561, ENC-1562).
 
   E  lexical   (purity SPEC D11.3; part 1, ENC-1578, is the stripper only)
                check A's own file list with comments and literal bodies
@@ -87,8 +85,8 @@ What B is NOT is the load-bearing check.  Vendoring Arrow under some
 unrecognised name would get past it; it would not get past A (no engine
 translation unit may include an Arrow/Parquet/ClickHouse/DuckDB header, matched
 on the include text, not on a directory name) or C/D (nothing matching those
-names anywhere in the TRANSITIVE link closure of krn_engine, krn_server or
-krn_tests).  B is a cheap structural sanity check on one target property; A and
+names anywhere in the TRANSITIVE link closure of krn_engine, krn_host,
+krn_engine_server or krn_tests).  B is a cheap structural sanity check on one target property; A and
 C/D carry the invariant.  Read a B failure as "the engine's include path grew
 something it should not have", never as the only thing standing between the
 engine and Arrow.
@@ -103,12 +101,11 @@ from the gate's own output.
 
 C AND D WALK THE CLOSURE, AND HAVE TO.  They read a *link graph* out of the
 manifest, not one target's own property, because the direct property is the
-wrong place to look.  `krn_server` links the `krn` umbrella and nothing else
-(`link.krn_server=krn|Boost::system|Threads::Threads|RapidJSON::rapidjson`),
-so a single `target_link_libraries(krn INTERFACE krn_data)` -- or `krn::arrow`
-on `krn_connector_market`, which `krn` also pulls in -- makes
-the live-only variant unlinkable while krn_engine's and krn_server's OWN
-properties stay spotless.  That is precisely the "one line and nothing would
+wrong place to look.  `krn_engine_server` links `krn_host` and the reference
+plugin (`link.krn_engine_server=krn_host|krn_plugin_reference`), so a single
+`target_link_libraries(krn_host PUBLIC krn_data)` -- or `krn::arrow` on the
+plugin -- makes the live-only variant unlinkable while krn_engine_server's OWN
+property stays spotless.  That is precisely the "one line and nothing would
 say so" failure this file exists to close, so a one-level check does not close
 it.  CMake emits one row per first-party target (`link.<target>` /
 `interface_link.<target>`); anything not named by a row is a leaf and is only
@@ -130,16 +127,16 @@ including vacuous input and a missing or silent control.  "Could not check"
 and "checked and clean" are never the same exit code.  A violation outranks
 vacuity: a found violation is a finding whatever else is missing.
 
-`src/main.cpp` IS NOT ENGINE CODE and is checked by a weaker rule.  The root
-CMakeLists removes it from krn_engine's sources and compiles it into
-`krn_server` against the `krn` umbrella, so it legitimately includes
-`krn/market/MarketConnector.hpp` -- which the first run of this script flagged,
-correctly, as a connector header reached from `src/`.  It still must not reach
-Arrow or `data/`, because krn_server has to link without Arrow.
+THERE IS NO COMPOSITION ROOT IN src/ ANY MORE.  `src/main.cpp` was krn_server's
+and was checked by a weaker rule; it left with krn_server for krn-common
+(ENC-1570), so everything under src/ and include/ is engine code again.
 
 `apps/` (krn_engine_server's sources, ENC-1561) is scanned by a middle rule:
 it composes the reference plugin, so `plugins/*/include` is allowed, but it is
-the connector-free server, so data/ and `connectors/*/include` are not.
+the connector-free server, so `connectors/*/include` is not.  With no
+`connectors/` in this repo its foreign-root list is EMPTY, on purpose (see
+app_foreign_roots): the forbidden include prefixes still apply to apps/, and a
+connector re-added under `connectors/` is enumerated and barred again.
 
 The file list for check A comes from CMake's own
 `$<TARGET_PROPERTY:krn_engine,SOURCES>`, not from this script re-deriving the
@@ -189,19 +186,16 @@ FORBIDDEN_LINK_PATTERNS = (
     re.compile(r"duckdb", re.IGNORECASE),
 )
 
-# Per-root bans (purity SPEC D11.1): the market connector leaves this repo, so
-# the engine, the host and the engine server must not reach it (ENC-1561), nor
-# the engine test binary (ENC-1562).  krn_server and krn_market_tests are the
-# market half; they are not in the table.
+# The market connector (purity SPEC D11.1).  It left this repo with krn_server
+# and krn_market_tests (ENC-1570), so there is no market half: NO graphed
+# target may reach it, checked root or not (market_reachers).  A name is
+# enough -- the real target is gone, so a link to one is an IMPORTED stub or a
+# re-added target, and either is the violation.
 MARKET_CONNECTOR_LINK = re.compile(r"(?:^|[:/])krn_connector_market$")
-ROOT_FORBIDDEN_LINKS = {r: (MARKET_CONNECTOR_LINK,) for r in
-                        ("krn_engine", "krn_host", "krn_engine_server",
-                         "krn_tests")}
 
-# Roots that must have a manifest row (ENC-1561, D11.2).  krn_server is checked
-# while it is built and is not required: it leaves with the market connector.
+# The checked roots (ENC-1561, D11.2).  All but krn_tests must have a row.
+CHECKED_ROOTS = ("krn_engine", "krn_host", "krn_engine_server", "krn_tests")
 REQUIRED_ROOTS = ("krn_engine", "krn_host", "krn_engine_server")
-SERVER_ROOT = "krn_server"
 
 # The positive control (ENC-1507).  Must match root CMakeLists.txt.
 CONTROL_TARGET = "krn_isolation_control"
@@ -225,7 +219,7 @@ FORBIDDEN_VENDOR_RE = re.compile(
     r"arrow|parquet|gandiva|clickhouse|duckdb|krn_data", re.IGNORECASE)
 
 # Floors for the anti-vacuity assertions.  The margin has to be real, not
-# claimed: the engine is **99** source/header files once src/main.cpp is
+# claimed: the engine was **99** source/header files once src/main.cpp was
 # excluded (measured 2026-10-14 -- `find src include -type f` is 101, of which
 # one is src/util/krn.conf and one is the composition root, and the gate prints
 # the 99 it actually scanned).  The 50 that stood here was advertised as "well
@@ -283,8 +277,6 @@ def dedupe(items: list[str]) -> list[str]:
 
 SOURCE_SUFFIXES = (".cpp", ".hpp", ".h", ".cc", ".cxx", ".ipp")
 
-# Compiled into krn_server, not krn_engine -- see the docstring.
-COMPOSITION_ROOT = os.path.join("src", "main.cpp")
 # krn_engine_server's tree (ENC-1561).
 APPS_DIR = "apps"
 
@@ -303,12 +295,10 @@ def walk_tree(root: str, sub: str) -> list[str]:
 def walk_engine_trees(root: str) -> list[str]:
     """Every source/header under the two trees krn_engine is globbed from.
 
-    Not connectors/, not data/, not tests/.  The composition root is excluded
-    because CMake excludes it from the target.
+    Not apps/, plugins/ or tests/.  Nothing is excluded: src/main.cpp left
+    with krn_server (ENC-1570), so a file of that name is engine code.
     """
-    found = walk_tree(root, "src") + walk_tree(root, "include")
-    composition = os.path.realpath(os.path.join(root, COMPOSITION_ROOT))
-    return sorted(f for f in found if f != composition)
+    return sorted(walk_tree(root, "src") + walk_tree(root, "include"))
 
 
 def check_cmake_sources_stay_in_the_engine_trees(
@@ -320,17 +310,10 @@ def check_cmake_sources_stay_in_the_engine_trees(
     from data/ or connectors/, the walk above would never see it and A would
     pass while the layering had already been broken.
     """
-    composition = os.path.realpath(os.path.join(root, COMPOSITION_ROOT))
     problems: list[str] = []
     for src in cmake_sources:
         real = os.path.realpath(src)
         if not real.endswith(SOURCE_SUFFIXES):
-            continue
-        if real == composition:
-            problems.append(
-                f"{target} compiles src/main.cpp -- the composition root "
-                "belongs to krn_server, and pulling it into the engine library "
-                "drags the market connector in with it")
             continue
         if real not in walked:
             problems.append(
@@ -360,7 +343,15 @@ def non_engine_header_roots(root: str) -> list[str]:
 
 
 def app_foreign_roots(root: str, foreign: list[str]) -> list[str]:
-    """The roots apps/ may not reach: `foreign` minus plugins/*/include."""
+    """The roots apps/ may not reach: `foreign` minus plugins/*/include.
+
+    EMPTY IN THIS REPO, AND THAT IS INTENDED (ENC-1570).  It is every
+    `connectors/*/include`, and connectors/market left for krn-common.  Kept
+    rather than dropped because it is enumerated: a connector re-added under
+    connectors/ is barred from apps/ with no edit here, which check E's
+    vocabulary (ENC-1579) does not cover yet.  The selftest pins both the empty
+    list and that the forbidden include prefixes still bite on apps/.
+    """
     plugins = os.path.realpath(os.path.join(root, "plugins"))
     return [r for r in foreign if not _under(os.path.realpath(r), plugins)]
 
@@ -370,8 +361,8 @@ def check_a_includes(root: str, sources: list[str], foreign_roots: list[str],
     """No file in `sources` includes a forbidden header or a foreign-only one.
 
     `foreign_roots` is the set of include trees this file may not reach into.
-    For engine proper that is every connector and plugin; for the composition
-    root it is none, since main.cpp's whole job is to wire connectors up.
+    For engine proper that is every connector and plugin; for apps/ it is
+    every connector (app_foreign_roots).
     """
     engine_include = os.path.join(root, "include")
     problems: list[str] = []
@@ -393,7 +384,7 @@ def check_a_includes(root: str, sources: list[str], foreign_roots: list[str],
                     problems.append(
                         f"{os.path.relpath(path, root)}:{lineno}: {label} "
                         f"includes <{inc}> -- Arrow/ClickHouse must never become "
-                        f"a krn_engine or krn_server dependency (SPEC D14)")
+                        f"a krn_engine or krn_engine_server dependency (SPEC D14)")
                     break
             else:
                 # A header that resolves under data/ or a connector but NOT
