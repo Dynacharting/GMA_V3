@@ -109,7 +109,7 @@ property stays spotless.  That is precisely the "one line and nothing would
 say so" failure this file exists to close, so a one-level check does not close
 it.  CMake emits one row per first-party target (`link.<target>` /
 `interface_link.<target>`); anything not named by a row is a leaf and is only
-pattern-matched.  The selftest pins both the umbrella case and, as a labelled
+pattern-matched.  The selftest pins both the intermediate (krn_host) case and, as a labelled
 contrast, the fact that a one-level read would have passed it.
 
 POSITIVE CONTROL.  (ENC-1507, purity SPEC Q7.)  The root CMakeLists declares
