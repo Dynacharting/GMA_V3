@@ -4,10 +4,9 @@ cmake_minimum_required(VERSION 3.20)
 project(krn_consumer_fetchcontent LANGUAGES CXX)
 
 # The consumer's OWN options, spelled like the engine's. The driver passes
-# -D...=ON for all three; the engine must not act on them and must not change
+# -D...=ON for both; the engine must not act on them and must not change
 # them for the consumer.
 option(KRN_BUILD_TESTS "the consumer's own option" OFF)
-option(KRN_BUILD_DATA "the consumer's own option" OFF)
 option(KRN_BUILD_BENCHMARKS "the consumer's own option" OFF)
 
 include(FetchContent)
@@ -70,7 +69,7 @@ foreach (_lib IN LISTS _libs)
 endforeach()
 
 # ---- (b) the engine defines its library targets and nothing else ----
-# Every directory the engine added (data/, googletest's, ...) is walked.
+# Every directory the engine added (googletest's, ...) is walked.
 set(_dirs "${krn_SOURCE_DIR}")
 set(_all "")
 set(_imported "")
@@ -89,8 +88,7 @@ list(SORT _expected)
 _check("_all STREQUAL _expected"
   "(b) engine targets are exactly [${_expected}]; got [${_all}]")
 foreach (_t IN ITEMS krn_connector_market krn_server krn_engine_server krn_tests
-                     krn_market_tests krn_data
-                     krn_ingest krn_data_tests krn krn_isolation_control
+                     krn_market_tests krn krn_isolation_control
                      krn_benchmarks gtest gtest_main benchmark)
   _check("NOT TARGET ${_t}" "(b) no target ${_t}")
 endforeach()
@@ -102,7 +100,7 @@ _check("NOT \"arrow::arrow_control_probe\" IN_LIST _imported"
   "(b) the isolation control stub arrow::arrow_control_probe is not defined")
 
 # ---- (c) the consumer's own cache and scope are untouched ----
-foreach (_o IN ITEMS KRN_BUILD_TESTS KRN_BUILD_DATA KRN_BUILD_BENCHMARKS)
+foreach (_o IN ITEMS KRN_BUILD_TESTS KRN_BUILD_BENCHMARKS)
   _check("$CACHE{${_o}} AND ${_o}"
     "(c) consumer's ${_o} still ON (cache '$CACHE{${_o}}', scope '${${_o}}')")
 endforeach()
