@@ -473,13 +473,13 @@ One gtest executable, `krn_tests` (links no market code), plus script and gate c
 
 - `engine/` — engine registry unit tests
 - `connectors/` — reference and synthetic connector tests (proves routing invariant)
-- `dispatch/`, `nodes/`, `treebuilder/`, `validation/`, `registry/`, `core/` — engine pipeline
+- `dispatch/`, `nodes/`, `treebuilder/`, `validation/`, `registry/`, `core/`, `context/`, `mapping/`, `feed/`, `forum/` — engine pipeline
 - `integration/`, `ws/`, `connection/`, `server/` — end-to-end
 - `consumer/` — the `FetchContent` and `find_package` consumer smoke projects
 - `scripts/` — `krn_engine_server_reference` and `krn_port_conflict_ws`
 - `test_bootstrap.cpp` — `krn_tests`' gtest Environment: registers builtins, no connector
 
-The market connector's tests (`book/`, `ob/`, `feed/`, `market/`) are krn-common's `krn_common_tests`; the data layer's are krn-data's `krn_data_tests`.
+The market connector's tests (its `book/`, `ob/`, `feed/` and `market/`) are krn-common's `krn_common_tests`; the data layer's are krn-data's `krn_data_tests`.
 
 `DispatcherRoutesByEventType` in `tests/connectors/SyntheticConnectorTest.cpp` is the regression check for "two computers on different event types must not interfere": with the synthetic computer and the reference plugin's `ReferenceComputer` both added to one Dispatcher, a `synthetic.tick` event writes no `reference.*` key and a `reference.tick` event writes no `synthetic.*` key. If that fails, the type-routing contract is broken.
 
