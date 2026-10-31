@@ -18,6 +18,7 @@ class EventComputerRegistry;
 class EventTypeRegistry;
 class IngressRegistry;
 class NodeTypeRegistry;
+class ProtocolIngressRegistry;
 
 // Handle passed to every IConnector::registerWith() call. Bundles every
 // long-lived engine piece a connector may need during boot.
@@ -25,7 +26,7 @@ class NodeTypeRegistry;
 // The first six fields (cfg / pool / store / dispatcher / shutdown / io)
 // are real per-instance objects owned by main() (or a test fixture).
 //
-// The next eight fields point at the engine's extension-point registries.
+// The next nine fields point at the engine's extension-point registries.
 // Most of those registries store all state in private static maps and only
 // expose static methods; the pointer is then "informational" — connectors
 // may dereference it to call static methods through the singleton tag, or
@@ -50,6 +51,7 @@ struct EngineRegistries {
   AtomicProviderRegistry*    providers  { nullptr };
   FunctionMap*               functions  { nullptr };
   util::Logger*              log        { nullptr };
+  ProtocolIngressRegistry*   protocols  { nullptr };
 };
 
 } // namespace krn::engine

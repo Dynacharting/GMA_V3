@@ -13,3 +13,4 @@
 #include "krn/engine/NodeTypeRegistry.hpp"
 #include "krn/engine/IngressRegistry.hpp"
 #include "krn/engine/ConfigNamespaceRegistry.hpp"
+#include "krn/engine/ProtocolIngressRegistry.hpp"
