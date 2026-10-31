@@ -932,10 +932,14 @@ else()
     set(_krn_data_gate_note
       " krn_engine_isolation still runs, on its krn_isolation_control positive control.")
   endif()
-  message(STATUS
-    "krn_data: DISABLED (KRN_BUILD_DATA=OFF) — SPEC D14's live-only client "
-    "variant. No Arrow is fetched or built, and krn_data_tests is not "
-    "registered with ctest.${_krn_data_gate_note}")
+  # Top-level only (ENC-1585): a consumer such as krn-data registers its own
+  # krn_data_tests, so this line would read as false in its log.
+  if (_krn_top_level)
+    message(STATUS
+      "krn_data: DISABLED (KRN_BUILD_DATA=OFF) — SPEC D14's live-only client "
+      "variant. No Arrow is fetched or built, and krn_data_tests is not "
+      "registered with ctest.${_krn_data_gate_note}")
+  endif()
 endif()
 
 # =======================
@@ -1091,9 +1095,14 @@ ${_krn_iso_link_rows}")
               --selftest)
     set_tests_properties(krn_engine_isolation_selftest PROPERTIES TIMEOUT 120)
   else()
-    message(WARNING
-      "krn_engine_isolation test SKIPPED: no Python3 interpreter. The SPEC D14 "
-      "engine-isolation invariant is NOT being checked in this build.")
+    # An error, not a warning (ENC-1585): a skip here left ctest green with
+    # two fewer cases and the invariant unchecked, the same failure as a
+    # missing root above.
+    message(FATAL_ERROR
+      "krn_engine_isolation cannot run: no Python3 interpreter found "
+      "(Python3_EXECUTABLE='${Python3_EXECUTABLE}'). The SPEC D14 / purity "
+      "SPEC D11 invariant would not be checked, so this is an error under "
+      "KRN_BUILD_TESTS=ON. Install python3 or pass -DPython3_EXECUTABLE=<path>.")
   endif()
 endif()
 
