@@ -22,7 +22,7 @@ versions pinned in `package-lock.json`.
 ## Usage
 
 ```bash
-node smoke.js [--url ws://localhost:8080] [--duration 30] [--verbose]
+node smoke.js [--url ws://localhost:8080] [--duration 30] [--verbose] [--target market|engine]
 ```
 
 | Flag         | Default                | Description                          |
@@ -30,10 +30,16 @@ node smoke.js [--url ws://localhost:8080] [--duration 30] [--verbose]
 | `--url`      | `ws://localhost:8080`  | GMA WebSocket server URL             |
 | `--duration` | `30`                   | Seconds to collect updates           |
 | `--verbose`  | off                    | Log every individual update received |
+| `--target`   | `market`               | Key set: `market` for `krn_server` (NEXO/VALT), `engine` for `krn_engine_server` (REF/SYN) |
+
+Each server gets its own key set, chosen explicitly, because `krn_engine_server`
+serves no market streams. Every key in the chosen set is gated; none is skipped.
+Pointing a key set at the wrong server fails (0 keys with values).
 
 ## What It Tests
 
-The script subscribes to ~20 keys across 6 tiers:
+With `--target market` the script subscribes to 23 keys across 6 tiers
+(`--target engine` sends 10 keys over the same tiers):
 
 | Tier | Pattern          | Keys   | What it validates                        |
 |------|------------------|--------|------------------------------------------|
@@ -42,7 +48,7 @@ The script subscribes to ~20 keys across 6 tiers:
 | 3    | AtomicAccessor   | 30-32  | Store reads (TA, order book)             |
 | 4    | Interval         | 40-41  | Timer-driven polling                     |
 | 5    | Multi-symbol     | 50-52  | Independent symbol routing               |
-| 6    | Aggregate        | 60     | Batched N-tick aggregation               |
+| 6    | Aggregate        | 60     | Fan-in join; `arity` equals `inputs`     |
 
 ## Launch Sequence
 
@@ -87,14 +93,19 @@ node tools/smoke-test/smoke.js --url ws://localhost:8080 --duration 30
   ...
 
 [smoke] === SUMMARY ===
-[smoke] Duration: 30s | Total updates: 842 | Keys with data: 20/20
+[smoke] Target: market | Duration: 30s | Total updates: 842
+[smoke] Keys with values: 23/23 | Asserted rejections: 0/0
 [smoke] PASS
 ```
 
 ## Exit Codes
 
-- **0** — All keys received at least one update (PASS)
-- **1** — One or more keys received no updates (FAIL)
+- **0** — PASS: every key received a non-null value, or was refused as its
+  `expectReject` pattern says (and got no update)
+- **1** — FAIL: a key got no value, a key got an error, an expected rejection
+  did not happen, an error or update named no key that was sent, or the
+  server closed early
+- **2** — unknown `--target`
 
 ## Run logs
 
