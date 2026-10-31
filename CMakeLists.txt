@@ -375,10 +375,8 @@ target_include_directories(krn_plugin_reference PUBLIC
   "${PROJECT_SOURCE_DIR}/plugins/reference/include")
 target_link_libraries(krn_plugin_reference PUBLIC krn_engine)
 
-# Warnings — apply to every first-party target (ENC-806 / L12). Previously only
-# krn_engine + krn_connector_market got -Wall/-Wextra; krn_plugin_reference,
-# krn_server, krn_tests and the benchmarks were silent. krn_server/krn_tests/
-# benchmarks are wired at their definition sites below.
+# Warnings — apply to every first-party target (ENC-806 / L12). The servers,
+# krn_tests and the benchmarks are wired at their definition sites below.
 krn_apply_warnings(krn_engine)
 krn_apply_warnings(krn_plugin_reference)
 
@@ -391,9 +389,8 @@ endif()
 # =======================
 # krn_host is the engine composition every server binary shares (src/host/,
 # include/krn/host/). It is an engine library target: defined in consumed mode
-# too, and exported as krn::krn_host. The executables are top-level only.
-# Defined BEFORE the Release block so that block can see them (ENC-1583: it
-# used to test `TARGET krn_server` before krn_server existed).
+# too, and exported as krn::krn_host. The executable is top-level only.
+# Defined BEFORE the Release block so that block can see them (ENC-1583).
 add_library(krn_host STATIC
   "${PROJECT_SOURCE_DIR}/src/host/Host.cpp"
   "${PROJECT_SOURCE_DIR}/include/krn/host/Host.hpp")
@@ -465,8 +462,7 @@ if (KRN_BUILD_TESTS)
   FetchContent_MakeAvailable(googletest)
 
   # krn_tests: the engine suite. Its bootstrap registers no connector, and it
-  # links krn_engine, not the `krn` umbrella, so no market code reaches it
-  # (ENC-1562; krn_engine_isolation check D enforces it).
+  # links krn_engine (ENC-1562; krn_engine_isolation check D enforces it).
   set(KRN_TEST_SOURCES
     tests/connection/ConnectionTest.cpp
     tests/connectors/SyntheticConnectorTest.cpp
@@ -703,29 +699,26 @@ endif()
 # line would make the live-only variant impossible and nothing would say so.
 #
 # ONE ROW PER FIRST-PARTY TARGET, BECAUSE THE CHECK WALKS THE CLOSURE.
-# krn_server links the `krn` umbrella and nothing else, so reading only
-# krn_engine's and krn_server's own LINK_LIBRARIES is blind to exactly the line
-# that breaks the invariant: `target_link_libraries(krn INTERFACE krn_data)`,
-# or `krn::arrow` on a connector `krn` pulls in. Both leave the two roots'
-# properties unchanged and both make the live-only variant unlinkable. The
-# checker therefore reads a link GRAPH — `link.<target>` /
-# `interface_link.<target>` — and walks it transitively from krn_engine and
-# krn_server. Add a first-party library target here when you add one; a target
-# with no row is treated as a leaf and only pattern-matched, which is correct
-# for system and imported libraries and wrong for ours.
+# krn_engine_server links krn_host and the reference plugin, so reading only
+# its own LINK_LIBRARIES is blind to exactly the line that breaks the
+# invariant: `target_link_libraries(krn_host PUBLIC krn_data)`, or `krn::arrow`
+# on the plugin. Both leave the root's own property unchanged and both make
+# the live-only variant unlinkable. The checker therefore reads a link GRAPH —
+# `link.<target>` / `interface_link.<target>` — and walks it transitively.
+# Add a first-party library target here when you add one; a target with no row
+# is treated as a leaf and only pattern-matched, which is correct for system
+# and imported libraries and wrong for ours.
 #
-# THE CHECKED ROOTS are krn_engine, krn_host, krn_engine_server, krn_server
-# and krn_tests (ENC-1561, purity SPEC D11.2). krn_tests is
-# there because krn-data's data/CMakeLists.txt names "the engine test suite is built
-# against an Arrow-free include path" as the thing being protected, and a
-# prose claim with no check behind it is what finding 1 was about. All but
-# krn_server are also barred from krn_connector_market (D11.1); the market
-# cases build as krn_market_tests, which is not a checked root.
+# THE CHECKED ROOTS are krn_engine, krn_host, krn_engine_server and krn_tests
+# (ENC-1561, purity SPEC D11.2). krn_tests is there because krn-data's
+# data/CMakeLists.txt names "the engine test suite is built against an
+# Arrow-free include path" as the thing being protected. No target in this
+# repo may reach krn_connector_market (D11.1): it and krn_server are
+# krn-common's since ENC-1570, so the ban covers every graphed target.
 #
 # A MISSING ROOT IS A CONFIGURE ERROR under KRN_BUILD_TESTS=ON (D11.2). It
 # used to be a warning, and a missing src/main.cpp then dropped ctest from
-# seven cases to three, green. krn_server is listed until the market server
-# leaves this repo (D12 step 22); that ticket deletes it from the list.
+# seven cases to three, green.
 #
 # THE POSITIVE CONTROL IS krn_isolation_control (ENC-1507, purity SPEC Q7).
 # Its closure must trip a forbidden pattern, or the patterns match nothing in
@@ -749,7 +742,7 @@ endif()
 # command line because the properties are generator expressions, and because a
 # resolved list on an add_test COMMAND would be split into separate arguments
 # at every semicolon.
-set(_krn_iso_roots krn_engine krn_host krn_engine_server krn_server)
+set(_krn_iso_roots krn_engine krn_host krn_engine_server)
 set(_krn_iso_missing "")
 foreach (_krn_iso_r IN LISTS _krn_iso_roots)
   if (NOT TARGET ${_krn_iso_r})
