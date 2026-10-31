@@ -1074,11 +1074,14 @@ def selftest_stripper(failures: list[str], log: list[str]) -> int:
            False, sink=sink, out=noop_log)
     mutant("deliberate-absent", "int a; // Hit\n", "/* Hit */", "Hit", "Hit",
            False, sink=sink, out=noop_log)
-    if len(sink) != 2:
+    # Refused FOR BEING A NO-OP.  The verdict-must-flip rule also rejects a
+    # no-op, so a bare count would pass with the applied check deleted.
+    refused = [f for f in sink if "did not change the text" in f]
+    if len(refused) != 2 or len(sink) != 2:
         failures.append(f"SELFTEST: E/no-op-mutant-is-rejected: a no-op "
-                        f"substitution was not refused: {sink}")
-    log.append(f"  E/no-op-mutant-is-rejected: {len(sink)} of 2 no-op "
-               f"mutants refused")
+                        f"substitution was not refused as one: {sink}")
+    log.append(f"  E/no-op-mutant-is-rejected: {len(refused)} of 2 no-op "
+               f"mutants refused as no-ops")
     ran += 1
     return ran
 
