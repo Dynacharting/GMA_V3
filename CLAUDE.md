@@ -94,12 +94,7 @@ plugins/reference/        # libkrn_plugin_reference (demo; linked only into test
   include/krn/reference/SyntheticConnector.hpp
   src/SyntheticConnector.cpp
 
-data/                     # libkrn_data — L1 data/query layer (ENC-1481; see data/README.md)
-  include/krn/data/Schema.hpp   # the three L1 arrow::Schemas + the column-wise codec
-  src/Schema.cpp                #   (the rest of include/krn/data/ is still a design sketch)
-  cmake/KrnDataArrow.cmake      # find_package(Arrow) else FetchContent, trimmed hard
-  schema/clickhouse.sql         # L1 DDL
-  tests/                        # krn_data_tests — a SEPARATE binary from krn_tests
+# data/ (krn_data, krn_data_tests) moved to krn-data (ENC-1573)
 
 tests/                    # GoogleTest suites
   engine/                 # Registry tests
@@ -126,45 +121,26 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full picture including 
 ## Tech Stack
 
 - **C++20** (`-DCMAKE_CXX_STANDARD=20`)
-- **CMake 3.20+** — produces `libkrn_engine.a`, `libkrn_connector_market.a`, `libkrn_plugin_reference.a`, `libkrn_data.a`, `krn_server`, `krn_tests`, `krn_market_tests`, `krn_data_tests`
-- **Apache Arrow** (`krn_data` only) — found with `find_package(Arrow CONFIG)`, else built
-  from source by `data/cmake/KrnDataArrow.cmake`. A cold configure downloads a 17 MB
-  archive (2m33s on this link) and the build costs 45s Debug / 63s Release on 16 cores;
-  measured numbers and the full `ARROW_*=OFF` rationale are in `docs/data-layer.md` §15.1.
-  **`KRN_BUILD_DATA` defaults to `KRN_BUILD_TESTS`**, so a bare
-  `cmake -B build -DCMAKE_BUILD_TYPE=Release` fetches no Arrow at all and still builds
-  `krn_server`, while `-DKRN_BUILD_TESTS=ON` builds and tests the data layer. An explicit
-  `-DKRN_BUILD_DATA=ON|OFF` always wins and the configure says which way it resolved.
-  `-DKRN_DATA_ARROW_FORCE_FETCH=ON` skips `find_package` when an installed Arrow is
-  present but unusable — **it only exists when the data layer is in the build**, because it
-  is declared in `data/cmake/KrnDataArrow.cmake`, so pass it with `-DKRN_BUILD_DATA=ON` or
-  alongside `-DKRN_BUILD_TESTS=ON`. On its own with tests off it is an unused-variable
-  warning and nothing else. Conversely, `KRN_BUILD_DATA=OFF` while `KRN_BUILD_TESTS=ON`
-  now emits a `CMake Warning`: `krn_data_tests` is absent, so a green `ctest` there
-  excludes the data layer. (The isolation gate still has its control; see below.) That is
-  intended for D14's live-only variant and is a stale cache otherwise — `option()` writes
-  `KRN_BUILD_DATA` on a build dir's first configure and a later `-DKRN_BUILD_TESTS=ON`
-  does not move it.
+- **CMake 3.20+** — produces `libkrn_engine.a`, `libkrn_connector_market.a`, `libkrn_plugin_reference.a`, `krn_server`, `krn_tests`, `krn_market_tests`
 - **Boost.Asio / Beast** — networking + WebSocket
 - **RapidJSON** — JSON parsing and validation
 - **GoogleTest** — unit + integration tests
 
 ## Code Conventions
 
-- Engine code under `include/krn/` + `src/`; connector code under `connectors/<name>/`;
-  data-layer code under `data/`
+- Engine code under `include/krn/` + `src/`; connector code under `connectors/<name>/`
 - Engine CMake target (`krn_engine`) must not depend on any connector headers
 - **`krn_engine` must not depend on Arrow, the ClickHouse client, or `krn_data` (ENC-1481).**
   `krn_data` depends on `krn_engine`, never the reverse. This is a shipping constraint, not
   taste — and the constraint is about **`krn_engine`**, not about the product. The
   data-layer SPEC's D14 client profile reads *"live-only **or** reads a central L1 over the
   wire with no local store"*: the **live-only** variant omits the library, so
-  `cmake -DKRN_BUILD_DATA=OFF` must build and link `krn_server` with no Arrow anywhere,
+  `krn_server` must build and link with no Arrow anywhere,
   while the over-the-wire variant needs Arrow IPC and therefore does ship `krn_data`. Don't
   shorten that to "the client profile omits the library" — that is true of one variant.
   **The engine names no record type** (ENC-1557): `Dispatcher::onRecord` takes a
   `data::SymbolId` and an `engine::FieldSource`, and the record PODs and their adapter are in
-  `krn_data` (`data/include/krn/data/{TickRecord,RecordFieldSource}.hpp`). Only
+  `krn_data` (krn-data's `data/include/krn/data/{TickRecord,RecordFieldSource}.hpp`). Only
   `include/krn/engine/SymbolTable.hpp` is still engine-side, Arrow-free. Every
   way of breaking the invariant still compiles and still passes every other test, so it is
   asserted by `tools/check_engine_isolation.py` as the ctest cases `krn_engine_isolation`
@@ -176,7 +152,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full picture including 
   roots' own link properties stay clean. CMake emits a `link.<target>` manifest row per
   first-party target — add one when you add a library target. **The positive control is
   `krn_isolation_control`** (ENC-1507), a scan-only target in the root `CMakeLists.txt` that
-  exists in every configuration, `KRN_BUILD_DATA=OFF` included. The gate exits 0 pass,
+  exists in every configuration and is the gate's only control. The gate exits 0 pass,
   1 violation, 2 could not run, and a missing or silent control is 2. Never link the control
   into a real target; the gate fails if anything does.
   **Its roots are `krn_engine`, `krn_host`, `krn_engine_server` and (until it leaves) `krn_server`**
@@ -239,8 +215,8 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full picture including 
   record (`StreamValue` still carries `std::string symbol`); do not remove it without
   ENC-1487's numbers, which measure it as a separate step. **(3)** No event time:
   `header.tsEventNs` is not exposed as a field and the clock nodes are untouched (SPEC D9).
-  Mapping table and the reason for each omission: `data/include/krn/data/RecordFieldSource.hpp`.
-  Pinned by `data/tests/RecordIngressParityTest.cpp` (in `krn_data_tests`; the engine-only
+  Mapping table and the reason for each omission: krn-data's `data/include/krn/data/RecordFieldSource.hpp`.
+  Pinned by krn-data's `data/tests/RecordIngressParityTest.cpp` (in `krn_data_tests`; the engine-only
   JSON-free and refusal cases are `tests/dispatch/RecordIngressEngineTest.cpp`), which compares deliveries **in
   order** and store contents across the two paths, carries its own negative controls, and
   separately pins the record→field mapping absolutely — the parity half cannot see a bug

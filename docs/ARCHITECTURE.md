@@ -145,7 +145,7 @@ the dominant cost, not the math. `onRecord` takes a record's interned
 `symbolId` and a `FieldSource` over fields the normalizer already resolved, so
 nothing on that path constructs a DOM or a per-field string. The engine names
 no record type: `krn::data::TickRecord` and its `RecordFieldSource` are in
-`krn_data` (`data/include/krn/data/`, ENC-1557).
+`krn_data` (krn-data's `data/include/krn/data/`, ENC-1557).
 
 Both are three-line adapters over the private
 `ingest(symbol, eventType, const engine::FieldSource&)`, so the raw-admission
@@ -176,7 +176,7 @@ Consequences worth knowing before you touch either:
 
 Design: `specs/2026-10-14-krn-data-layer/SPEC.md` D1/D3/D9,
 `docs/data-layer.md` §C2/§C6/§6. Pinned by
-`data/tests/RecordIngressParityTest.cpp` and
+krn-data's `data/tests/RecordIngressParityTest.cpp` and
 `tests/dispatch/RecordIngressEngineTest.cpp`.
 
 ## 4. Engine registries (extension points)
