@@ -35,6 +35,11 @@ public:
   explicit ReferenceConnector(Options opts);
   ~ReferenceConnector() override;
 
+  // ENC-1575: the namespace of ReferenceComputer's keys. They are written into
+  // the store and never pushed, so registerWith() declares the namespace
+  // pipeline-only and a Listener on `reference.sum` is refused.
+  static constexpr std::string_view kPipelineOnlyNamespace = "reference";
+
   std::string_view name() const override { return "reference"; }
   void registerWith(engine::EngineRegistries& reg) override;
   void start() override;

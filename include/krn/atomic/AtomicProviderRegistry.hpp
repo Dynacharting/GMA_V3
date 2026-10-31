@@ -4,6 +4,7 @@
 #include <functional>
 #include <optional>
 #include <mutex>
+#include <unordered_set>
 
 namespace krn {
 
@@ -60,7 +61,41 @@ public:
     }
   }
 
+  // ENC-1575: a namespace a plugin declares PIPELINE-ONLY is written into the
+  // AtomicStore but never pushed through Dispatcher::notifyListeners, so a
+  // Listener bound to one of its keys would register and never fire. Listener
+  // refuses such keys at construction. Independent of registerNamespace(): a
+  // namespace may be flagged with or without a provider.
+  //
+  // `ns` is a whole namespace (no '.'); returns false, and flags nothing, for
+  // an empty or dotted one.
+  static bool markPipelineOnly(const std::string& ns) {
+    if (ns.empty() || ns.find('.') != std::string::npos) return false;
+    std::lock_guard<std::mutex> lk(mx());
+    pipelineOnly().insert(ns);
+    return true;
+  }
+
+  static bool unmarkPipelineOnly(const std::string& ns) {
+    std::lock_guard<std::mutex> lk(mx());
+    return pipelineOnly().erase(ns) > 0;
+  }
+
+  // True iff `key` has the form "<ns>.<rest>" and <ns>, the text before the
+  // FIRST '.', is exactly a flagged namespace. A key with no '.' is never
+  // pipeline-only, so a flagged `ob` refuses `ob.x` but not `obsolete`.
+  static bool isPipelineOnlyKey(const std::string& key) {
+    auto dot = key.find('.');
+    if (dot == std::string::npos) return false;
+    std::lock_guard<std::mutex> lk(mx());
+    return pipelineOnly().count(key.substr(0, dot)) > 0;
+  }
+
 private:
+  static std::unordered_set<std::string>& pipelineOnly() {
+    static std::unordered_set<std::string> instance;
+    return instance;
+  }
   static std::unordered_map<std::string, ProviderFn>& map() {
     static std::unordered_map<std::string, ProviderFn> instance;
     return instance;
