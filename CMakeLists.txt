@@ -6,7 +6,7 @@ project(KRN LANGUAGES CXX)
 # targets: no tests, benchmarks, data layer, market connector, server, install
 # rules or isolation gate. 3.20 predates PROJECT_IS_TOP_LEVEL.
 #
-# The three build switches are shadowed by NORMAL variables in this directory
+# The two build switches are shadowed by NORMAL variables in this directory
 # scope, never written with CACHE FORCE: option() is a no-op over a normal
 # variable (CMP0077 NEW under 3.20), and a normal variable set here is invisible
 # to the consumer's scope. So a consumer's own -DKRN_BUILD_TESTS=ON, or its own
@@ -15,7 +15,7 @@ if (CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
   set(_krn_top_level ON)
 else()
   set(_krn_top_level OFF)
-  foreach (_krn_opt IN ITEMS KRN_BUILD_TESTS KRN_BUILD_BENCHMARKS KRN_BUILD_DATA)
+  foreach (_krn_opt IN ITEMS KRN_BUILD_TESTS KRN_BUILD_BENCHMARKS)
     set(${_krn_opt} OFF)
   endforeach()
   message(STATUS
@@ -40,87 +40,6 @@ endif()
 option(KRN_BUILD_TESTS "Build unit tests in tests/" OFF)
 option(KRN_BUILD_BENCHMARKS "Build Google Benchmark suite in benchmarks/" OFF)
 option(KRN_WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
-
-# Data layer (ENC-1481, specs/2026-10-14-krn-data-layer/SPEC.md).
-#
-# THE DEFAULT FOLLOWS KRN_BUILD_TESTS, and an explicit -DKRN_BUILD_DATA always
-# wins. Three constraints had to hold at once and no fixed default holds all
-# three:
-#
-#   * Nothing may be silently skipped in a configuration that runs tests. A
-#     skipped target reads exactly like a passing one and this repo has paid for
-#     that twice (ENC-994 / ENC-1095). The acceptance command and every gate
-#     configuration pass -DKRN_BUILD_TESTS=ON, so krn_data, krn_data_tests and
-#     both engine-isolation cases are built and run there.
-#   * The documented quickstart — `cmake -B build -DCMAKE_BUILD_TYPE=Release`,
-#     tests off — must still work offline. A fixed ON made it fetch a 17 MB
-#     Arrow release unconditionally and HARD-FAIL at the download behind a
-#     firewall, where before this library existed it fetched nothing at all
-#     (googletest sits behind KRN_BUILD_TESTS=OFF too).
-#   * KRN_BUILD_DATA=OFF is SPEC D14's live-only CLIENT VARIANT: no local store,
-#     no Arrow. `krn_server` must build, link and run identically with it off,
-#     which is the whole reason the library is separately linkable. (D14's other
-#     client variant reads a central L1 over the wire — that one needs Arrow IPC,
-#     i.e. it needs this library. The invariant is about krn_engine, not about
-#     the product: see the engine isolation gate at the bottom of this file.)
-#
-# The cost of ON, measured on this toolchain 2026-10-14 and recorded in
-# docs/data-layer.md §15: a cold configure fetches a 17 MB Arrow source release
-# (2m33s on this link) and the build adds 45s Debug / 63s Release on 16 cores.
-# A warm build dir pays none of it.
-# Resolve, then report the value AGAINST the default rather than claiming to
-# know the provenance. `option()` writes the cache on the first configure, so
-# `if (DEFINED KRN_BUILD_DATA)` is true on every configure after that and
-# cannot tell "the user passed -D today" from "we defaulted it last week" —
-# a status line that said "explicit or cached" was wrong in the common case,
-# and the "why" is the only reason the line exists. Comparing the resolved
-# value with the default this KRN_BUILD_TESTS would produce is always true and
-# never goes stale.
-set(_krn_data_default ${KRN_BUILD_TESTS})
-option(KRN_BUILD_DATA
-  "Build krn_data: the L1 Arrow schema and codec. Defaults to KRN_BUILD_TESTS. OFF selects SPEC D14's live-only client variant (no Arrow fetched or built)."
-  ${_krn_data_default})
-
-if (KRN_BUILD_DATA AND _krn_data_default)
-  set(_krn_data_why "matches the default for KRN_BUILD_TESTS=${KRN_BUILD_TESTS}")
-elseif (NOT KRN_BUILD_DATA AND NOT _krn_data_default)
-  set(_krn_data_why "matches the default for KRN_BUILD_TESTS=${KRN_BUILD_TESTS}")
-else()
-  set(_krn_data_why
-    "OVERRIDDEN — the default for KRN_BUILD_TESTS=${KRN_BUILD_TESTS} is ${_krn_data_default}, and this build dir's cache says otherwise")
-endif()
-
-if (KRN_BUILD_DATA)
-  message(STATUS
-    "KRN_BUILD_DATA=ON [${_krn_data_why}] — krn_data is built; Arrow is "
-    "found via find_package(Arrow CONFIG) or fetched and built from source.")
-else()
-  message(STATUS
-    "KRN_BUILD_DATA=OFF [${_krn_data_why}] — SPEC D14's live-only client "
-    "variant: NO Arrow is fetched or built, and krn_data / krn_data_tests do not "
-    "exist in this build. Pass -DKRN_BUILD_DATA=ON to build them regardless.")
-endif()
-
-# A SKIP IN A CONFIGURATION THAT RUNS TESTS MUST NOT BE SILENT. The default
-# above makes `KRN_BUILD_TESTS=ON` imply the data layer, but a CACHE ENTRY
-# OUTLIVES IT: configure a dir with tests off (data defaults off), then
-# re-run with -DKRN_BUILD_TESTS=ON, and `option()` leaves KRN_BUILD_DATA=OFF.
-# ctest then goes green over a build with no krn_data_tests and no positive
-# control — exactly the ENC-994 / ENC-1095 mode this default was chosen to
-# avoid, arriving through the cache instead of through the default. It cannot
-# be fixed by forcing the value (that would silently discard a deliberate
-# -DKRN_BUILD_DATA=OFF), so it is NAMED instead.
-if (KRN_BUILD_TESTS AND NOT KRN_BUILD_DATA)
-  message(WARNING
-    "KRN_BUILD_DATA=OFF while KRN_BUILD_TESTS=ON: krn_data_tests is NOT "
-    "registered with ctest and krn_engine_isolation's second (krn_data) "
-    "positive control is absent, so a green `ctest` in this build directory "
-    "EXCLUDES the entire data layer. Intended if you asked for SPEC D14's live-only "
-    "client variant. If you did not: this is a STALE CACHE — `option()` wrote "
-    "KRN_BUILD_DATA on the first configure of this directory and a later "
-    "-DKRN_BUILD_TESTS=ON does not move it. Re-run with an explicit "
-    "-DKRN_BUILD_DATA=ON, or configure a fresh build directory.")
-endif()
 
 # Microarchitecture (ENC-790 / H5): -march=native pins the binary to the exact
 # build CPU and SIGILLs on older hosts. Release/RelWithDebInfo therefore default
@@ -931,28 +850,6 @@ if (KRN_BUILD_BENCHMARKS)
 endif()
 
 # =======================
-# Data layer (ENC-1481)
-# =======================
-# After the tests block on purpose: data/CMakeLists.txt registers its own ctest
-# case against GTest::gtest_main, which only exists once the block above has
-# run FetchContent on googletest.
-if (KRN_BUILD_DATA)
-  add_subdirectory(data)
-else()
-  # The gate exists only top-level with tests on (ENC-1561: a consumer's log
-  # must not claim it runs).
-  set(_krn_data_gate_note "")
-  if (_krn_top_level AND KRN_BUILD_TESTS)
-    set(_krn_data_gate_note
-      " krn_engine_isolation still runs, on its krn_isolation_control positive control.")
-  endif()
-  message(STATUS
-    "krn_data: DISABLED (KRN_BUILD_DATA=OFF) — SPEC D14's live-only client "
-    "variant. No Arrow is fetched or built, and krn_data_tests is not "
-    "registered with ctest.${_krn_data_gate_note}")
-endif()
-
-# =======================
 # Engine isolation gate (ENC-1481)
 # =======================
 # THE INVARIANT: krn_engine must not acquire a dependency on Arrow, the
@@ -970,7 +867,7 @@ endif()
 # krn_engine's and krn_server's own LINK_LIBRARIES is blind to exactly the line
 # that breaks the invariant: `target_link_libraries(krn INTERFACE krn_data)`,
 # or `krn::arrow` on a connector `krn` pulls in. Both leave the two roots'
-# properties unchanged and both make KRN_BUILD_DATA=OFF unlinkable. The
+# properties unchanged and both make the live-only variant unlinkable. The
 # checker therefore reads a link GRAPH — `link.<target>` /
 # `interface_link.<target>` — and walks it transitively from krn_engine and
 # krn_server. Add a first-party library target here when you add one; a target
@@ -979,7 +876,7 @@ endif()
 #
 # THE CHECKED ROOTS are krn_engine, krn_host, krn_engine_server, krn_server
 # and krn_tests (ENC-1561, purity SPEC D11.2). krn_tests is
-# there because data/CMakeLists.txt names "the engine test suite is built
+# there because krn-data's data/CMakeLists.txt names "the engine test suite is built
 # against an Arrow-free include path" as the thing being protected, and a
 # prose claim with no check behind it is what finding 1 was about. All but
 # krn_server are also barred from krn_connector_market (D11.1); the market
@@ -994,10 +891,9 @@ endif()
 # Its closure must trip a forbidden pattern, or the patterns match nothing in
 # this build and a clean verdict about krn_engine is a verdict from a search
 # that cannot find anything. It is declared below, in this file, so it exists
-# in every configuration the gate runs in -- KRN_BUILD_DATA=OFF included, and
-# after data/ leaves this repo. A missing or silent control is exit 2 (could
-# not run), never a pass. krn_data's own row is a second control when present,
-# and is cross-checked against KRN_BUILD_DATA.
+# in every configuration the gate runs in, and it is the only control: data/
+# and krn_data left for krn-data (ENC-1573). A missing or silent control is
+# exit 2 (could not run), never a pass.
 #
 # THE RESOLVED RAPIDJSON PATH IS IN THE MANIFEST (ENC-1497). `/third_party/`
 # is gitignored, so it is populated in the shared checkout and absent in a
@@ -1049,9 +945,6 @@ if (_krn_top_level AND KRN_BUILD_TESTS)
   # here, which is why the checker ALSO fails on any first-party-looking name
   # that has no row — belt and braces, and the braces are producer-independent.)
   set(_krn_iso_dirs "${PROJECT_SOURCE_DIR}")
-  if (KRN_BUILD_DATA)
-    list(APPEND _krn_iso_dirs "${PROJECT_SOURCE_DIR}/data")
-  endif()
   set(_krn_iso_link_targets "")
   foreach (_krn_iso_dir IN LISTS _krn_iso_dirs)
     get_directory_property(_krn_iso_dir_targets
@@ -1084,7 +977,6 @@ engine_interface_include_dirs=$<JOIN:$<TARGET_PROPERTY:krn_engine,INTERFACE_INCL
 engine_cmake_sources=$<JOIN:$<TARGET_PROPERTY:krn_engine,SOURCES>,|>
 host_cmake_sources=$<JOIN:$<TARGET_PROPERTY:krn_host,SOURCES>,|>
 engine_server_cmake_sources=$<JOIN:$<TARGET_PROPERTY:krn_engine_server,SOURCES>,|>
-krn_data_enabled=${KRN_BUILD_DATA}
 rapidjson_include_dir=${RAPIDJSON_INCLUDE_DIR}
 ${_krn_iso_link_rows}")
 
@@ -1108,64 +1000,6 @@ ${_krn_iso_link_rows}")
     message(WARNING
       "krn_engine_isolation test SKIPPED: no Python3 interpreter. The SPEC D14 "
       "engine-isolation invariant is NOT being checked in this build.")
-  endif()
-endif()
-
-# =======================
-# L1 schema gate (ENC-1480)
-# =======================
-# THE INVARIANT: data/schema/clickhouse.sql must not COMPUTE. No aggregate
-# function, no GROUP BY, no MATERIALIZED/ALIAS column, no view, no
-# Aggregating/SummingMergeTree, no window function (SPEC D2; docs/data-layer.md
-# §8). D2 is usually read as a rule about the shim's SELECTs, but it binds the
-# schema just as hard and in a way no SELECT lint can reach: a MATERIALIZED
-# column or an AggregatingMergeTree computes at insert or at merge time, so by
-# the time any query runs the second implementation of gma's math has already
-# produced its value.
-#
-# REGISTERED HERE BECAUSE A CHECKER NOTHING INVOKES IS NOT A GATE. It shipped
-# with ENC-1480 as a standalone script, which means it was a gate exactly as
-# often as somebody remembered to type it.
-#
-# NOT GATED ON KRN_BUILD_DATA, DELIBERATELY. The check reads a text file: no
-# Arrow, no ClickHouse client, no C++ target, no server. Gating it on
-# KRN_BUILD_DATA would mean SPEC D14's live-only client variant silently stops
-# checking the invariant — and the schema file still ships in that variant, so
-# the thing being protected is still there while the protection is not. It runs
-# whenever tests are on.
-#
-# TWO CASES, because one of them is the other's gate. The lint alone could decay
-# into a green no-op in several ways the lint itself cannot see: the aggregate
-# vocabulary going empty, the comment stripper eating the statements, the
-# statement splitter matching nothing. `self-test` runs the checker against
-# seven fixtures and nine generated mutants of the real schema — each asserting
-# its substitution changed the text before asserting the check reddens — so the
-# gate is observed failing on every pass. Same anti-vacuity rule as
-# krn_engine_isolation_selftest above (docs/data-layer.md §5.4).
-#
-# The schema path is passed explicitly rather than left to the script's own
-# __file__ resolution so that a wrong path is a loud failure (exit 2, "could not
-# run") instead of a case that quietly checks whatever it found.
-if (KRN_BUILD_TESTS)
-  if (Python3_Interpreter_FOUND)
-    add_test(NAME krn_schema_no_compute
-      COMMAND "${Python3_EXECUTABLE}"
-              "${PROJECT_SOURCE_DIR}/data/schema/check_no_compute.py"
-              lint "${PROJECT_SOURCE_DIR}/data/schema/clickhouse.sql")
-    set_tests_properties(krn_schema_no_compute PROPERTIES TIMEOUT 120)
-
-    # The gate's own gate — see the note above.
-    add_test(NAME krn_schema_no_compute_selftest
-      COMMAND "${Python3_EXECUTABLE}"
-              "${PROJECT_SOURCE_DIR}/data/schema/check_no_compute.py"
-              self-test)
-    set_tests_properties(krn_schema_no_compute_selftest PROPERTIES TIMEOUT 120)
-  else()
-    message(WARNING
-      "krn_schema_no_compute test SKIPPED: no Python3 interpreter. The SPEC D2 "
-      "invariant that data/schema/clickhouse.sql computes nothing — no "
-      "aggregate, no GROUP BY, no MATERIALIZED/ALIAS column, no "
-      "Aggregating/SummingMergeTree — is NOT being checked in this build.")
   endif()
 endif()
 
