@@ -25,6 +25,7 @@
 #include "krn/nodes/INode.hpp"
 #include "krn/nodes/Listener.hpp"
 #include "krn/rt/ThreadPool.hpp"
+#include "support/ScopedPipelineOnly.hpp"
 
 #include <gtest/gtest.h>
 
@@ -127,6 +128,7 @@ TEST(Enc101CanonicalPatternTest, ListenerClockPlusAtomicAccessorEmitsObValues) {
 // the canonical-pattern test: it asserts the canonical pattern is the
 // ONLY way to surface ob.* into a chart.
 TEST(Enc101CanonicalPatternTest, ListenerOnObFailsAtConstructTime) {
+    const krn::testsupport::ScopedPipelineOnly ob("ob");
     rt::ThreadPool pool(1);
     AtomicStore    store;
     Dispatcher     dispatcher(&pool, &store);

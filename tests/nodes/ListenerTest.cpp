@@ -4,6 +4,11 @@
 #include "krn/AtomicStore.hpp"
 #include "krn/StreamValue.hpp"
 #include "krn/nodes/INode.hpp"
+#include "krn/atomic/AtomicProviderRegistry.hpp"
+#include "krn/reference/ReferenceConnector.hpp"
+#include "krn/engine/Registries.hpp"
+#include "support/ScopedPipelineOnly.hpp"
+#include <boost/asio/io_context.hpp>
 #include <gtest/gtest.h>
 #include <memory>
 #include <vector>
@@ -130,6 +135,7 @@ TEST(ListenerTest, NoCrashOnDestructionWithoutStart) {
 // --------------------------------------------------------------------
 
 TEST(ListenerTest, RejectsObNamespaceAtFactory) {
+    const krn::testsupport::ScopedPipelineOnly ob("ob");
     rt::ThreadPool pool(1);
     AtomicStore store;
     Dispatcher dispatcher(&pool, &store);
@@ -149,6 +155,7 @@ TEST(ListenerTest, RejectsObNamespaceAtFactory) {
 }
 
 TEST(ListenerTest, RejectsObSpread) {
+    const krn::testsupport::ScopedPipelineOnly ob("ob");
     rt::ThreadPool pool(1);
     AtomicStore store;
     Dispatcher dispatcher(&pool, &store);
@@ -182,9 +189,10 @@ TEST(ListenerTest, AcceptsBareKeyAtFactory) {
 }
 
 TEST(ListenerTest, FactoryDoesNotMatchObesityFalsePositive) {
-    // Defensive: the prefix check is the literal three chars 'o','b','.'
-    // — not a starts_with("ob") call. Field names like "obesity" or
+    // Defensive: the namespace is the text before the first '.', matched
+    // exactly — not a starts_with("ob") call. Field names like "obesity" or
     // "obvious" must NOT be rejected.
+    const krn::testsupport::ScopedPipelineOnly ob("ob");
     rt::ThreadPool pool(1);
     AtomicStore store;
     Dispatcher dispatcher(&pool, &store);
@@ -192,5 +200,102 @@ TEST(ListenerTest, FactoryDoesNotMatchObesityFalsePositive) {
     auto stub = std::make_shared<DownstreamStub>();
     auto res = Listener::Create("X", "obesity", stub, &pool, &dispatcher);
     EXPECT_TRUE(res.has_value());
+    pool.shutdown();
+}
+
+// --------------------------------------------------------------------
+// ENC-1575: the pipeline-only rule is a namespace flag a plugin sets in
+// registerWith(), not a spelling inside Listener.
+// --------------------------------------------------------------------
+
+namespace {
+
+Result<std::shared_ptr<Listener>> createOn(const std::string& field,
+                                           rt::ThreadPool& pool,
+                                           Dispatcher& dispatcher) {
+    return Listener::Create("REF", field, std::make_shared<DownstreamStub>(),
+                            &pool, &dispatcher);
+}
+
+} // anonymous namespace
+
+TEST(ListenerTest, ReferencePluginDeclaresItsNamespacePipelineOnly) {
+    using synthetic::ReferenceComputer;
+    using synthetic::ReferenceConnector;
+    rt::ThreadPool pool(1);
+    AtomicStore store;
+    Dispatcher dispatcher(&pool, &store);
+    boost::asio::io_context ioc;
+    const std::string sumKey(ReferenceComputer::kSumKey);
+    const std::string ns(ReferenceConnector::kPipelineOnlyNamespace);
+    ASSERT_EQ(sumKey.rfind(ns + ".", 0), 0u)
+        << "the declared namespace must be the one ReferenceComputer writes";
+
+    // Before the plugin registers, nothing declares `reference` pipeline-only.
+    ASSERT_FALSE(AtomicProviderRegistry::isPipelineOnlyKey(sumKey));
+    EXPECT_TRUE(createOn(sumKey, pool, dispatcher).has_value());
+
+    engine::EngineRegistries regs;
+    regs.pool       = &pool;
+    regs.store      = &store;
+    regs.dispatcher = &dispatcher;
+    regs.io         = &ioc;
+    regs.computers  = &engine::EventComputerRegistry::singleton();
+    ReferenceConnector connector;
+    connector.registerWith(regs);
+
+    auto refused = createOn(sumKey, pool, dispatcher);
+    ASSERT_FALSE(refused.has_value())
+        << "a Listener on the reference plugin's pipeline-only namespace must be refused";
+    const auto& msg = refused.error().message;
+    EXPECT_NE(msg.find("pipeline-only"), std::string::npos) << msg;
+    EXPECT_NE(msg.find(sumKey), std::string::npos) << msg;
+    EXPECT_NE(msg.find("docs/atomic-keys.md"), std::string::npos) << msg;
+    EXPECT_FALSE(createOn(std::string(ReferenceComputer::kSumSqKey), pool, dispatcher).has_value());
+
+    // Unflagged namespaces and bare keys are accepted.
+    EXPECT_TRUE(createOn("synthetic.sin", pool, dispatcher).has_value());
+    EXPECT_TRUE(createOn(std::string(ReferenceComputer::kInputField), pool, dispatcher).has_value());
+    EXPECT_TRUE(createOn("referenced.sum", pool, dispatcher).has_value());
+
+    connector.stop();
+    EXPECT_TRUE(AtomicProviderRegistry::unmarkPipelineOnly(ns));
+    EXPECT_TRUE(createOn(sumKey, pool, dispatcher).has_value());
+    pool.shutdown();
+}
+
+TEST(ListenerTest, PipelineOnlyNamespaceMatchIsExact) {
+    rt::ThreadPool pool(1);
+    AtomicStore store;
+    Dispatcher dispatcher(&pool, &store);
+    const krn::testsupport::ScopedPipelineOnly ob("ob");
+    ASSERT_TRUE(ob.marked());
+
+    for (const char* refused : {"ob.x", "ob.", "ob.best.bid.price"}) {
+        EXPECT_FALSE(createOn(refused, pool, dispatcher).has_value())
+            << "flagged `ob` must refuse '" << refused << "'";
+    }
+    for (const char* accepted : {"obsolete", "obx.y", "obx.", "ob", "o.b", "xob.y", "x.ob.y", ".ob"}) {
+        EXPECT_TRUE(createOn(accepted, pool, dispatcher).has_value())
+            << "flagged `ob` must not refuse '" << accepted << "'";
+    }
+    pool.shutdown();
+}
+
+TEST(ListenerTest, PipelineOnlyRejectsEmptyOrDottedNamespace) {
+    EXPECT_FALSE(AtomicProviderRegistry::markPipelineOnly(""));
+    EXPECT_FALSE(AtomicProviderRegistry::markPipelineOnly("ob.best"));
+    EXPECT_FALSE(AtomicProviderRegistry::isPipelineOnlyKey("ob.best.bid"));
+    EXPECT_FALSE(AtomicProviderRegistry::isPipelineOnlyKey(".x"));
+}
+
+TEST(ListenerTest, UnflaggedObIsAcceptedWithoutAPlugin) {
+    // krn carries no market plugin: until one declares `ob`, it is an ordinary
+    // namespace. krn-common's MarketConnector::registerWith declares it.
+    rt::ThreadPool pool(1);
+    AtomicStore store;
+    Dispatcher dispatcher(&pool, &store);
+    ASSERT_FALSE(AtomicProviderRegistry::isPipelineOnlyKey("ob.spread"));
+    EXPECT_TRUE(createOn("ob.spread", pool, dispatcher).has_value());
     pool.shutdown();
 }
