@@ -22,6 +22,20 @@ else()
     "krn: consumed by ${CMAKE_PROJECT_NAME} — engine library targets only")
 endif()
 
+# ---- Default build type (ENC-1548) ----
+# An empty CMAKE_BUILD_TYPE on a single-config generator compiles with no
+# optimisation flags at all, and the Release block below (-O3, -march baseline,
+# LTO) never runs. Default it to Release, the configuration the quickstart and
+# stack.sh pass, matching krn-data (ENC-1586). Top-level and single-config only.
+# A non-empty -DCMAKE_BUILD_TYPE always wins, FORCE only replaces the empty entry
+# project() creates, and a consumer's build type is never touched.
+get_property(_krn_multi_config GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+if (_krn_top_level AND NOT _krn_multi_config AND "${CMAKE_BUILD_TYPE}" STREQUAL "")
+  set(CMAKE_BUILD_TYPE Release CACHE STRING
+    "Build type (single-config generators). Defaulted to Release when empty." FORCE)
+  message(STATUS "krn: CMAKE_BUILD_TYPE was empty, defaulted to Release")
+endif()
+
 # ---- Options ----
 option(KRN_BUILD_TESTS "Build unit tests in tests/" OFF)
 option(KRN_BUILD_BENCHMARKS "Build Google Benchmark suite in benchmarks/" OFF)
