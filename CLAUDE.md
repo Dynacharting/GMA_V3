@@ -179,6 +179,10 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full picture including 
   exists in every configuration, `KRN_BUILD_DATA=OFF` included. The gate exits 0 pass,
   1 violation, 2 could not run, and a missing or silent control is 2. Never link the control
   into a real target; the gate fails if anything does.
+  **Its roots are `krn_engine`, `krn_host`, `krn_engine_server` and (until it leaves) `krn_server`**
+  (ENC-1561); a missing root is a configure error under `KRN_BUILD_TESTS=ON`, and all but
+  `krn_server` are barred from `krn_connector_market`. `apps/` is scanned like `src/main.cpp`,
+  except that it may include `plugins/*` headers.
 - Namespace: `krn::` for public types, `krn::engine::` for engine contracts, `krn::market::` / `krn::synthetic::` for connector code
 - Globals: `krn::gThreadPool` (shared_ptr<ThreadPool>, set up in main.cpp)
 - Runtime config: INI-style key=value files (see `src/util/krn.conf`)
