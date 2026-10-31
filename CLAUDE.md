@@ -147,10 +147,10 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full picture including 
 - Runtime config: INI-style key=value files (krn-common's `conf/krn.conf` is the market example)
 - Prefer lock-free / fine-grained locking (shared_mutex, SPSCQueue)
 - Test files named `<Component>Test.cpp` under `tests/<category>/`; engine cases build into `krn_tests`, which links no market code; a case that needs the market connector belongs in krn-common (ENC-1562, ENC-1570)
-- **A test that writes to a process-global registry must derive its key per invocation (ENC-1102).** `FunctionMap`, `NodeTypeRegistry`, `EventComputerRegistry`, `EventTypeRegistry`, `IngressRegistry`, `AtomicProviderRegistry` and `ConfigNamespaceRegistry` are process-wide singletons with no per-entry removal, and `--gtest_repeat` re-runs every test body in the **same process**. A test that registers a *fixed* name therefore meets, on iteration 2, a registry its own iteration-1 run already populated — `registerNodeType` returns false, `EventComputerRegistry` reports double the factories, `FunctionMap::getAll()` does not grow. Five tests failed exactly this way. Build the name from a file-local `static std::atomic` counter (`uniqueKey()` in `tests/engine/RegistriesTest.cpp`, `uniqueType()` in `tests/engine/EventComputerCacheTest.cpp`) instead. This is a test-lifecycle fix only — the registries' production duplicate semantics (first-wins for node/event/ingress types, append for event computers, replace for functions/providers) are deliberate and unchanged.
+- **A test that writes to a process-global registry must derive its key per invocation (ENC-1102).** `FunctionMap`, `NodeTypeRegistry`, `EventComputerRegistry`, `EventTypeRegistry`, `IngressRegistry`, `ProtocolIngressRegistry`, `AtomicProviderRegistry` and `ConfigNamespaceRegistry` are process-wide singletons with no per-entry removal, and `--gtest_repeat` re-runs every test body in the **same process**. A test that registers a *fixed* name therefore meets, on iteration 2, a registry its own iteration-1 run already populated — `registerNodeType` returns false, `EventComputerRegistry` reports double the factories, `FunctionMap::getAll()` does not grow. Five tests failed exactly this way. Build the name from a file-local `static std::atomic` counter (`uniqueKey()` in `tests/engine/RegistriesTest.cpp`, `uniqueType()` in `tests/engine/EventComputerCacheTest.cpp`) instead. This is a test-lifecycle fix only — the registries' production duplicate semantics (first-wins for node/event/ingress types, append for event computers, replace for functions/providers) are deliberate and unchanged.
 - **`--gtest_repeat` must be run against the FULL unsharded binary**, never with `--gtest_filter`. ENC-1065 requires the full binary because cross-suite corruption surfaces dozens of suites later; filtering a repeat run is what hid ENC-1102 for months, since every repeat check in the project happened to be filtered.
 - Connectors implement the strict `IConnector` lifecycle: `registerWith()` allocates and registers (no live sockets/timers), `start()` brings sources online, `stop()` noexcept tears down in reverse order. `krn_host` drives all three; never wire your own `ShutdownCoordinator` step from inside a connector.
-- **Ingress sources are engine-owned (ENC-31).** Connectors register named factories on `reg.ingress` (e.g. krn-common's `market.feedserver`, `market.wsclient`); `krn_host` reads `cfg.ingress[]` and instantiates them. Adding a new ingress kind is a factory registration + INI edit, not a `krn_host` change. Legacy `feedPort` / `feedUrl` / `feeds.N.*` keys are auto-translated into `cfg.ingress[]` entries with a one-release deprecation warn.
+- **Ingress sources are engine-owned (ENC-31).** Connectors register named factories on `reg.ingress` (e.g. krn-common's `market.feedserver`, `market.wsclient`); `krn_host` reads `cfg.ingress[]` and instantiates them. Adding a new ingress kind is a factory registration + INI edit, not a `krn_host` change. A forum connector row becomes an ingress only if a plugin registered its `protocol` on `reg.protocols` (`ProtocolIngressRegistry`, ENC-1574); an unregistered protocol is logged and the row skipped, with no default kind.
 - **WS request keys — int vs string (`RequestKey`).** The subscribe / cancel / value-emit code paths in `ClientSession` and `Responder` use `krn::server::RequestKey = std::variant<int, std::string>` (header at `include/krn/server/RequestKey.hpp`). Inbound subscribe accepts `{key:<int>}`, `{id:<int>}` (legacy), or `{id:"<string>"}`; outbound frames render `"key":<int>` or `"requestId":"<string>"` to mirror. Engine internals (Dispatcher, AtomicStore, TreeBuilder, Listener) stay key-type-agnostic — they route on `(streamKey, field)`, not on the request id. See krn-common's [`docs/atomic-keys.md`](https://github.com/Dynacharting/krn-common/blob/main/docs/atomic-keys.md#subscribe-request-key--int-vs-string-requestkey) §"Subscribe request key — int vs string".
 - **Atomic-key namespaces — bare vs `ob.*` (ENC-94, ENC-101).** Two distinct namespaces by source (both written by krn-common's market connector): bare (`bid`, `ask`, `lastPrice`, sma_N, ...) is written by `MarketTickComputer` only when the tick payload carries the field directly (pre-aggregated tick connectors). `ob.*` (`ob.best.bid.price`, `ob.spread`, ...) is computed from `OrderBookManager` state — used for L2/L3 sources (ITCH, FIX). **Listeners may bind only to bare keys; `ob.*` is pipeline-only** — `ob::Provider` never calls `Dispatcher::notifyListeners`, so a `Listener` bound to an `ob.*` field would silently never fire. The reject lives in `nodes::Listener::Create` (the static factory; the public constructor is kept for unit-test fixtures only) and surfaces as a `{"type":"error","where":"build","message":"listener: field '...' is pipeline-only — see docs/atomic-keys.md..."}` WS frame. Canonical pattern for surfacing `ob.*` into a chart: `Listener(<bare-key clock>) → AtomicAccessor(ob.*) → ...` — see krn-common's [`docs/atomic-keys.md`](https://github.com/Dynacharting/krn-common/blob/main/docs/atomic-keys.md) for the worked NEXO example.
 - **A timer node posts; it does not call. Drain the pool before you sample (ENC-1340).**
@@ -218,23 +218,13 @@ Two layers, and they intentionally differ — keep them straight:
 | Key | Compiled default (`Config.hpp`) | `krn.conf` value |
 |---|---|---|
 | `wsPort` | **8080** | 4000 |
-| `feedPort` | 9001 | 9001 |
 | `threadPoolSize` | 0 (= hardware_concurrency) | 4 |
-| `taSMA` (SMA periods) | `{5, 20}` | `5,10,20,50` |
-| `taEMA` (EMA periods) | `{12, 26}` | `9,21,50` |
-| `taRSI` | 14 | 14 |
-| `taATR` | 14 | 14 |
-| `taMomentum` (momentum/ROC) | 10 | 10 |
-| `taVolAvg` (volume avg) | 20 | 20 |
-| `taMACD_fast` / `taMACD_slow` / `taMACD_signal` | 12 / 26 / 9 | 12 / 26 / 9 |
-| `taBBands_n` / `taBBands_stdK` | 20 / 2.0 | 20 / 2.0 |
 | `taHistoryMax` | 1000 | 1000 |
 | `metricsEnabled` / `metricsIntervalSec` | false / 15 | true / 15 |
 | `logLevel` | `info` | `info` |
 
-> ⚠️ The compiled SMA/EMA periods (`{5,20}` / `{12,26}`) are **not** what
-> `krn.conf` ships (`5,10,20,50` / `9,21,50`). Whichever you load wins; don't
-> assume one from the other.
+The market keys (`feedPort`, the TA periods, the legacy feed keys) are not engine keys
+(ENC-1574); krn-common's connector owns them.
 
 Other engine keys parsed by `src/util/Config.cpp` (defaults from `Config.hpp`):
 
@@ -244,10 +234,8 @@ Other engine keys parsed by `src/util/Config.cpp` (defaults from `Config.hpp`):
 - **Order book:** `allowNegativePrices` (false) — allow negative prices/yields.
 - **Ingress (ENC-31, the current model):** `ingress.N.kind` plus per-entry
   sub-keys (`ingress.N.port`, `ingress.N.url`, `ingress.N.adapter`,
-  `ingress.N.symbols`, …). The engine instantiates each entry by kind
-  (`market.feedserver`, `market.wsclient`).
-- **Legacy feed keys (auto-translated into `ingress[]` with a deprecation
-  warn):** `feedUrl`, `feedSymbols`, and `feed.N.{url,adapter,symbols}`.
+  `ingress.N.symbols`, …). The engine instantiates each entry by the kind a
+  plugin registered.
 - **forum-driven ingress:** `forumUrl`, `forumTenantId`, `forumAuthToken` —
   when `forumUrl` is set, ingress is pulled from forum instead of the static
   INI list.
@@ -258,22 +246,6 @@ Other engine keys parsed by `src/util/Config.cpp` (defaults from `Config.hpp`):
 CLI override order: `argv[1]=wsPort`, `argv[2]=configFile`; krn-common's `krn_server` adds `argv[3]=feedPort`.
 Values from argv win over the config file; the config file wins over the
 compiled defaults.
-
-> **`argv[3]` really does bind now (ENC-1331).** It used to be accepted, logged
-> and then ignored: `Config::loadFromFile()` ended with
-> `synthesizeIngressFromLegacy()`, which copied the *file's* `feedPort` into the
-> `market.feedserver` ingress `params` — and the connector binds those params,
-> not `cfg.feedPort`, which `main.cpp` overrode a hundred lines later. The boot
-> log printed `feedPort=<argv[3]>` while the acceptor sat on the file's port, so
-> the two lines disagreed and only the bind was true. Synthesis now has exactly
-> one caller, the composition root, after the argv overrides are applied.
-> Two consequences: **an explicit `ingress.N.port` still wins over `argv[3]`** —
-> it is the more specific key and is left alone, but the server now warns
-> (`config.feedport_arg_ignored`) instead of silently ignoring the argument —
-> and **the `listening` log line reports the port resolved into the ingress
-> entry**, not the intent, so it can no longer disagree with the socket.
-> Covered by krn-common's `krn_feed_port_override` (asserts the live acceptor) and
-> four `ConfigTest` cases here (assert the resolved ingress params).
 
 ## Design records (the umbrella D13 pointers)
 

@@ -195,6 +195,7 @@ All live under `include/krn/engine/`. Most are header-only static singletons wit
 | `AtomicProviderRegistry` | namespace (e.g. `"ob"`) → `double(symbol, fullKey)` | `AtomicAccessor` when a store lookup misses |
 | `FunctionMap` | fn name (e.g. `"mean"`) → `double(vector<double>)` | `TreeBuilder`'s worker builder |
 | `IngressRegistry` | kind (e.g. krn-common's `"market.feedserver"`, `"market.wsclient"`) → ingress factory | **Live (ENC-31)** — `krn_host` instantiates each `cfg.ingress[]` entry by kind |
+| `ProtocolIngressRegistry` | forum connector protocol → ingress kind (ENC-1574) | **Live** — `ConnectorsClient` maps each forum row; an unregistered protocol is logged and skipped |
 | `ConfigNamespaceRegistry` | prefix (e.g. `"market"`) → reader function | **Live (ENC-35)** — populates connector config on `dispatchPendingKeys()` |
 
 `EventTypeRegistry` is the one registry nothing on the hot path consults yet.
@@ -494,7 +495,6 @@ Minor architectural debts that are deliberately unresolved — none block adding
   `ConfigNamespaceRegistry`. The engine no longer knows about market-flavored
   fields.
 - **JSON wire type name `"SymbolSplit"`** was preserved for backward compatibility when the class was renamed to `GroupSplit`. The string literal is correct and intentional; don't "fix" it.
-- **`Config` still carries market keys** (`feedPort`, the TA periods, the legacy feed keys) that only krn-common's connector reads.
 
 ## 12. Key files
 
