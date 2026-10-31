@@ -20,7 +20,7 @@
 // Field names here are deliberately `alpha`/`beta`, not `price`/`size`, so a
 // market computer, had one been registered, would not pick them up. The one
 // case that needs MarketTickComputer's `mean` is in
-// tests/market/AtomicKeyNamespaceMarketTest.cpp (krn_market_tests, ENC-1562).
+// krn-common's tests/market/AtomicKeyNamespaceMarketTest.cpp (krn_common_tests).
 
 #include "krn/AtomicStore.hpp"
 #include "krn/Dispatcher.hpp"

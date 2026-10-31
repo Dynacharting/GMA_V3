@@ -49,7 +49,7 @@ void Dispatcher::setSymbolTable(const data::SymbolTable* symbols) {
 const std::string& Dispatcher::recordEventType() {
   // "tick", spelled once. A record is the resolved form of a tick, so it
   // must reach exactly the computers `Event{sym, payload}` reaches:
-  // `Event::type` defaults to "tick" and MarketConnector registers its
+  // `Event::type` defaults to "tick" and krn-common's MarketConnector registers its
   // computer factory under "tick". A function-local static rather than a
   // temporary per record, because `ingest` takes a `const std::string&` and
   // the typed-computer cache is keyed by `std::string`.

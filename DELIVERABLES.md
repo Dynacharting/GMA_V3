@@ -9,7 +9,7 @@
 > shapes, the duplicate `ClientConnection`, and a C++17 CMake standard. The
 > live system builds clean (g++ 16, `-Wall -Wextra -Wpedantic`), all tests
 > pass, the engine/connector split is enforced, feed code lives under
-> `connectors/market/`, and dispatch is the engine `Dispatcher` (there is no
+> krn-common's `connectors/market/`, and dispatch is the engine `Dispatcher` (there is no
 > `MarketDispatcher`). Deliverables 7–9 are marked ✅ COMPLETE inline; D1–D6
 > are likewise resolved. **Read this only as a record of where the project came
 > from — for the current state of the code see `docs/ARCHITECTURE.md`,

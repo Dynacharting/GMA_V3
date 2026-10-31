@@ -109,7 +109,7 @@ public:
   // ingress threads concurrently. The per-type computer cache is filled under a
   // lock, but IEventComputer::compute() runs OUTSIDE that lock, so the same
   // cached computer instance can have compute() entered concurrently for the
-  // same event type. IEventComputer implementations (which live in connectors/)
+  // same event type. IEventComputer implementations (supplied by connectors)
   // MUST therefore make compute() safe to call concurrently — either stateless
   // or internally synchronised. The Dispatcher adds no further serialisation.
   //
@@ -204,7 +204,7 @@ public:
   // ENC-1486. The event type a record routes to, i.e. which
   // `IEventComputer`s see it. A record IS the resolved form of a
   // `tick`, so it must reach exactly the computers an `Event{sym, payload}`
-  // reaches — `Event::type` defaults to "tick" and `MarketConnector`
+  // reaches — `Event::type` defaults to "tick" and krn-common's `MarketConnector`
   // registers its computer factory under "tick". Deliberately NOT
   // configurable: a knob here would let a record reach a different computer
   // set than its equivalent Event, which is the one thing this path must
