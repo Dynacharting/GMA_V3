@@ -1,7 +1,9 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include <cstdint>
 
@@ -24,9 +26,30 @@ public:
   // Replay every key parked during loadFromFile through
   // ConfigNamespaceRegistry::dispatch(). Called by the composition root
   // after each IConnector::registerWith() has had a chance to register
-  // its namespaces. Returns the number of keys that found a reader; the
-  // remainder are silently dropped (forward-compat for stray keys).
+  // its namespaces. Returns the number of keys that found a reader. A
+  // second call dispatches nothing again and returns 0.
   std::size_t dispatchPendingKeys();
+
+  // ENC-1595: marks a parked key as read by a plugin's own parse of the
+  // file, so reportUnclaimedKeys() does not warn about it. A plugin that
+  // re-reads the file (rather than registering a ConfigNamespaceRegistry
+  // reader) calls this from a HostHooks callback or from registerWith()
+  // for each key it used. Marking a key the file does not hold is a no-op.
+  void markConsumed(std::string_view key);
+
+  struct UnclaimedKey {
+    std::string key;
+    std::string file;
+  };
+  // Parked keys that no engine field, namespace reader or markConsumed()
+  // call claimed, one entry per distinct key, in file order.
+  std::vector<UnclaimedKey> unclaimedKeys() const;
+
+  // Logs one WARN "config.unclaimed_key" per unclaimedKeys() entry and
+  // returns how many. Never fails startup: an old file may carry a key that
+  // moved to a plugin. krn_host calls it after dispatchPendingKeys(), so
+  // every hook and connector has had its chance to claim a key.
+  std::size_t reportUnclaimedKeys() const;
 
   // Server port
   int wsPort = 8080;
@@ -90,8 +113,17 @@ private:
   static bool parseLineKV(const std::string& line, std::string& k, std::string& v);
   static std::string trim(const std::string& s);
 
-  // Parked unknown-to-engine keys awaiting dispatchPendingKeys().
-  std::vector<std::pair<std::string, std::string>> _pendingKeys;
+  // Parked unknown-to-engine keys awaiting dispatchPendingKeys(), kept
+  // afterwards so reportUnclaimedKeys() can name the ones nobody claimed.
+  struct PendingKey {
+    std::string key;
+    std::string value;
+    std::string file;
+    bool dispatched = false;
+    bool claimed = false;
+  };
+  std::vector<PendingKey> _pendingKeys;
+  std::unordered_set<std::string> _consumed;
 };
 
 } // namespace util

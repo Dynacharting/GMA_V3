@@ -240,6 +240,9 @@ int runHost(int argc, char* argv[], const HostOptions& opts) {
   // namespaces. Ordering: load → registerWith → dispatchPendingKeys
   // → ingress driver → connector start.
   cfg.dispatchPendingKeys();
+  // ENC-1595: after every hook and connector has had its chance to claim a
+  // key (namespace reader or Config::markConsumed), warn about the rest.
+  cfg.reportUnclaimedKeys();
 
   // Engine-driven ingress (ENC-31): read cfg.ingress[], lookup each kind in
   // IngressRegistry, instantiate, start in registration order. A single

@@ -39,7 +39,8 @@ bool Config::parseLineKV(const std::string& line, std::string& k, std::string& v
 
 bool Config::loadFromFile(const std::string& path) {
   // Simple INI-ish parser: key=value per line, '#' or ';' start comments.
-  // Unknown keys are ignored so you can add new knobs without breaking older builds.
+  // Unknown keys are parked, not rejected, so an older build still starts;
+  // reportUnclaimedKeys() warns about the ones nobody claims (ENC-1595).
 
   FILE* f = nullptr;
 
@@ -121,7 +122,7 @@ bool Config::loadFromFile(const std::string& path) {
       // Unknown to the engine — park for later replay through
       // ConfigNamespaceRegistry once connectors have registered their
       // readers. See dispatchPendingKeys().
-      _pendingKeys.emplace_back(std::move(key), std::move(val));
+      _pendingKeys.push_back({std::move(key), std::move(val), path});
     }
   }
 
@@ -132,13 +133,41 @@ bool Config::loadFromFile(const std::string& path) {
 
 std::size_t Config::dispatchPendingKeys() {
   std::size_t consumed = 0;
-  for (const auto& [k, v] : _pendingKeys) {
-    if (krn::engine::ConfigNamespaceRegistry::dispatch(k, v)) {
+  for (auto& p : _pendingKeys) {
+    if (p.dispatched) continue;
+    p.dispatched = true;
+    if (krn::engine::ConfigNamespaceRegistry::dispatch(p.key, p.value)) {
+      p.claimed = true;
       ++consumed;
     }
   }
-  _pendingKeys.clear();
   return consumed;
+}
+
+void Config::markConsumed(std::string_view key) {
+  _consumed.emplace(key);
+}
+
+std::vector<Config::UnclaimedKey> Config::unclaimedKeys() const {
+  std::vector<UnclaimedKey> out;
+  std::unordered_set<std::string> seen;
+  for (const auto& p : _pendingKeys) {
+    if (p.claimed || _consumed.count(p.key) > 0) continue;
+    if (!seen.insert(p.key).second) continue;
+    out.push_back({p.key, p.file});
+  }
+  return out;
+}
+
+std::size_t Config::reportUnclaimedKeys() const {
+  const auto keys = unclaimedKeys();
+  for (const auto& u : keys) {
+    logger().log(LogLevel::Warn, "config.unclaimed_key",
+                 {{"key", u.key},
+                  {"file", u.file},
+                  {"detail", "no engine field or plugin claimed it; ignored"}});
+  }
+  return keys.size();
 }
 
 } // namespace util

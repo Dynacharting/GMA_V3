@@ -30,7 +30,9 @@ namespace krn::host {
 
 struct HostHooks {
   // After the config file is loaded and wsPort is resolved, before the "boot"
-  // log line. Applies the caller's own arguments to cfg.
+  // log line. Applies the caller's own arguments to cfg. A hook that reads
+  // keys from the config file itself calls cfg.markConsumed() for each one,
+  // or the host warns that nothing claimed it (ENC-1595).
   std::function<void(int argc, char* argv[], util::Config& cfg)> applyExtraArgs;
 
   // Appended, in order, after wsPort on the "boot" log line.
