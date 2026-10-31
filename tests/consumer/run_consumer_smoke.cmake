@@ -58,7 +58,7 @@ if (MODE STREQUAL "fetchcontent")
     -S "${KRN_SOURCE_DIR}/tests/consumer/fetchcontent" -B "${_root}/build" ${_common}
     "-DKRN_SMOKE_URL=${KRN_SMOKE_URL}" "-DKRN_SMOKE_TAG=${_tag}"
     "-DKRN_SMOKE_CHECKOUT=${KRN_SOURCE_DIR}" "-DKRN_SMOKE_EXPECTED_TARGETS=${_expected}"
-    -DKRN_BUILD_TESTS=ON -DKRN_BUILD_DATA=ON -DKRN_BUILD_BENCHMARKS=ON)
+    -DKRN_BUILD_TESTS=ON -DKRN_BUILD_BENCHMARKS=ON)
   _run("consumer build" "${CMAKE_COMMAND}" --build "${_root}/build"
     --target krn_consumer_probe --parallel ${_jobs})
   _run("consumer probe" "${_root}/build/krn_consumer_probe")
