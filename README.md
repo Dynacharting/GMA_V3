@@ -199,7 +199,7 @@ cmake -B build -DKRN_BUILD_TESTS=ON && cmake --build build -j$(nproc)
 cd build && ctest --output-on-failure
 
 # A single suite
-./krn_tests --gtest_filter="DispatchTest.*"
+./krn_tests --gtest_filter="AggregateTest.*"
 ```
 
 All gtest cases build into one `krn_tests` executable; ctest also runs the
