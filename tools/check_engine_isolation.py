@@ -38,15 +38,17 @@ FOUR CHECKS, each closing a different route in:
                dependency.  See CHECK B IS THE WEAKEST OF THE FOUR below.
   C  link      nothing matching krn_data / arrow / parquet / clickhouse is
                reachable from krn_engine's link libraries — TRANSITIVELY.
-  D  profile   nothing matching them is reachable from krn_server's either,
+  D  profile   nothing matching them is reachable from krn_host's,
+               krn_engine_server's or (while it is built) krn_server's either,
                which is what makes the LIVE-ONLY VARIANT of SPEC D14's client
                profile (KRN_BUILD_DATA=OFF) actually buildable rather than
                nominally so.  `krn_tests` is checked on the same rule, because
                data/CMakeLists.txt names "the engine test suite is built
                against an Arrow-free include path" as the thing being
                protected, and a prose claim with no check behind it is what
-               this whole file is a reaction to.  krn_tests alone is also
-               barred from krn_connector_market (ENC-1562).
+               this whole file is a reaction to.  krn_engine, krn_host,
+               krn_engine_server and krn_tests are also barred from
+               krn_connector_market (ENC-1561, ENC-1562).
 
 CHECK B IS THE WEAKEST OF THE FOUR, AND ITS HOLE IS DELIBERATE.  (ENC-1497)
 Its rule used to be "any in-repo include dir that is not `<root>/include`",
@@ -131,6 +133,10 @@ CMakeLists removes it from krn_engine's sources and compiles it into
 correctly, as a connector header reached from `src/`.  It still must not reach
 Arrow or `data/`, because krn_server has to link with KRN_BUILD_DATA=OFF.
 
+`apps/` (krn_engine_server's sources, ENC-1561) is scanned by a middle rule:
+it composes the reference plugin, so `plugins/*/include` is allowed, but it is
+the connector-free server, so data/ and `connectors/*/include` are not.
+
 The file list for check A comes from CMake's own
 `$<TARGET_PROPERTY:krn_engine,SOURCES>`, not from this script re-deriving the
 glob.  A second derivation of the same set is a second thing to keep in sync,
@@ -179,11 +185,19 @@ FORBIDDEN_LINK_PATTERNS = (
     re.compile(r"duckdb", re.IGNORECASE),
 )
 
-# Check D, krn_tests only (ENC-1562, purity SPEC D11.1/D13): the engine test
-# binary must not reach the market connector.  Its market cases build as
-# krn_market_tests, which is not a checked root.
+# Per-root bans (purity SPEC D11.1): the market connector leaves this repo, so
+# the engine, the host and the engine server must not reach it (ENC-1561), nor
+# the engine test binary (ENC-1562).  krn_server and krn_market_tests are the
+# market half; they are not in the table.
 MARKET_CONNECTOR_LINK = re.compile(r"(?:^|[:/])krn_connector_market$")
-ROOT_FORBIDDEN_LINKS = {"krn_tests": (MARKET_CONNECTOR_LINK,)}
+ROOT_FORBIDDEN_LINKS = {r: (MARKET_CONNECTOR_LINK,) for r in
+                        ("krn_engine", "krn_host", "krn_engine_server",
+                         "krn_tests")}
+
+# Roots that must have a manifest row (ENC-1561, D11.2).  krn_server is checked
+# while it is built and is not required: it leaves with the market connector.
+REQUIRED_ROOTS = ("krn_engine", "krn_host", "krn_engine_server")
+SERVER_ROOT = "krn_server"
 
 # The positive control (ENC-1507).  Must match root CMakeLists.txt.
 CONTROL_TARGET = "krn_isolation_control"
@@ -267,6 +281,19 @@ SOURCE_SUFFIXES = (".cpp", ".hpp", ".h", ".cc", ".cxx", ".ipp")
 
 # Compiled into krn_server, not krn_engine -- see the docstring.
 COMPOSITION_ROOT = os.path.join("src", "main.cpp")
+# krn_engine_server's tree (ENC-1561).
+APPS_DIR = "apps"
+
+
+def walk_tree(root: str, sub: str) -> list[str]:
+    """Every source/header under `root/sub`, as realpaths."""
+    found: list[str] = []
+    for dirpath, dirnames, filenames in os.walk(os.path.join(root, sub)):
+        dirnames[:] = [d for d in dirnames if d not in (".git", "build")]
+        for name in filenames:
+            if name.endswith(SOURCE_SUFFIXES):
+                found.append(os.path.realpath(os.path.join(dirpath, name)))
+    return sorted(found)
 
 
 def walk_engine_trees(root: str) -> list[str]:
@@ -275,20 +302,14 @@ def walk_engine_trees(root: str) -> list[str]:
     Not connectors/, not data/, not tests/.  The composition root is excluded
     because CMake excludes it from the target.
     """
-    found: list[str] = []
-    for sub in ("src", "include"):
-        base = os.path.join(root, sub)
-        for dirpath, dirnames, filenames in os.walk(base):
-            dirnames[:] = [d for d in dirnames if d not in (".git", "build")]
-            for name in filenames:
-                if name.endswith(SOURCE_SUFFIXES):
-                    found.append(os.path.realpath(os.path.join(dirpath, name)))
+    found = walk_tree(root, "src") + walk_tree(root, "include")
     composition = os.path.realpath(os.path.join(root, COMPOSITION_ROOT))
     return sorted(f for f in found if f != composition)
 
 
 def check_cmake_sources_stay_in_the_engine_trees(
-        root: str, cmake_sources: list[str], walked: set[str]) -> list[str]:
+        root: str, cmake_sources: list[str], walked: set[str],
+        target: str = "krn_engine") -> list[str]:
     """Nothing from outside src/ and include/ is compiled into krn_engine.
 
     The other direction of check A: if krn_engine ever started compiling a file
@@ -303,13 +324,13 @@ def check_cmake_sources_stay_in_the_engine_trees(
             continue
         if real == composition:
             problems.append(
-                "krn_engine compiles src/main.cpp -- the composition root "
+                f"{target} compiles src/main.cpp -- the composition root "
                 "belongs to krn_server, and pulling it into the engine library "
                 "drags the market connector in with it")
             continue
         if real not in walked:
             problems.append(
-                f"krn_engine compiles {os.path.relpath(real, root)}, which is "
+                f"{target} compiles {os.path.relpath(real, root)}, which is "
                 f"outside src/ and include/ -- engine sources must come from "
                 f"the engine's own trees")
     return problems
@@ -649,8 +670,9 @@ def forbidden_links(graph: dict[str, list[str]], root: str) -> list[str]:
             shown = market if market == name else f"{name}' (as '{market}"
             problems.append(
                 f"{root} links '{shown}' via {' -> '.join(chain)} -- "
-                f"{root} carries no market code (ENC-1562); market cases "
-                f"build as krn_market_tests")
+                f"{root} carries no market code (purity SPEC D11.1); the "
+                f"market connector reaches only krn_server and "
+                f"krn_market_tests")
             continue
         hit = next((c for c in cands
                     for p in FORBIDDEN_LINK_PATTERNS if p.search(c)), None)
