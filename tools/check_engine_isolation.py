@@ -31,7 +31,7 @@ FOUR CHECKS, each closing a different route in:
 
   A  textual   no engine translation unit includes an Arrow / Parquet /
                ClickHouse / DuckDB header, nor a header that exists only under
-               `data/include`, `connectors/*/include` or `plugins/*/include`.
+               `connectors/*/include` or `plugins/*/include`.
   B  include   krn_engine's include directories, restricted to paths inside
                the repo, are `<root>/include` or a VENDORED THIRD-PARTY tree
                under `<root>/third_party` whose name is not itself a forbidden
@@ -365,9 +365,8 @@ def check_a_includes(root: str, sources: list[str], foreign_roots: list[str],
     """No file in `sources` includes a forbidden header or a foreign-only one.
 
     `foreign_roots` is the set of include trees this file may not reach into.
-    For engine proper that is data/include AND every connector; for the
-    composition root it is data/include only, since main.cpp's whole job is to
-    wire connectors up.
+    For engine proper that is every connector and plugin; for the composition
+    root it is none, since main.cpp's whole job is to wire connectors up.
     """
     engine_include = os.path.join(root, "include")
     problems: list[str] = []
@@ -968,10 +967,10 @@ def selftest_stripper(failures: list[str], log: list[str]) -> int:
                         f"did not change the text; its verdict proves nothing")
             out.append(f"  E/{name}: substitution NOT applied -- FAIL")
             return
-        changed = sum(1 for a, b in zip(base, mutated) if a != b) + abs(
-            len(base) - len(mutated))
-        out.append(f"  E/{name}: substitution applied ({changed} char(s) "
-                   f"changed); {word} {'survives' if base_survives else 'is stripped'}"
+        first = next((k for k, (a, b) in enumerate(zip(base, mutated))
+                      if a != b), min(len(base), len(mutated)))
+        out.append(f"  E/{name}: substitution applied (text differs from "
+                   f"offset {first}, {len(base)} -> {len(mutated)} chars); {word} {'survives' if base_survives else 'is stripped'}"
                    f" in base, {'is stripped' if base_survives else 'survives'}"
                    f" in mutant")
         for label, text, want in (("base", base, base_survives),
@@ -1093,7 +1092,6 @@ def selftest_gate(failures: list[str]) -> int:
     with tempfile.TemporaryDirectory(prefix="enc1507-gate-") as fx:
         os.makedirs(os.path.join(fx, "include", "krn"))
         os.makedirs(os.path.join(fx, "src", "core"))
-        os.makedirs(os.path.join(fx, "data", "include"))
         os.makedirs(os.path.join(fx, "src", "host"))
         os.makedirs(os.path.join(fx, APPS_DIR, "engine_server"))
         mkt = os.path.join(fx, "connectors", "market", "include", "krn",
@@ -1109,7 +1107,8 @@ def selftest_gate(failures: list[str]) -> int:
         sources = []
         for i in range(MIN_ENGINE_FILES + 5):
             path = os.path.join(fx, "src", "core", f"E{i}.cpp")
-            open(path, "w").close()
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(f"int e{i}; // fixture\n")
             sources.append(path)
         open(os.path.join(fx, COMPOSITION_ROOT), "w").close()
         inc = os.path.join(fx, "include")
@@ -1246,6 +1245,23 @@ def selftest_gate(failures: list[str]) -> int:
                 fh.write(before)
         gate("legal-after-include-restore", base_graph, 0)
 
+        # ENC-1578: a stripper that blanks nothing over check A's list is
+        # "could not run".  The mutation drops every comment from the fixture.
+        kept = {}
+        for path in sources:
+            with open(path, encoding="utf-8") as fh:
+                kept[path] = fh.read()
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(kept[path].split("//")[0] + "\n")
+        if all(open(p, encoding="utf-8").read() == kept[p] for p in sources):
+            failures.append("SELFTEST: gate/stripper-blanks-nothing: mutation "
+                            "did not apply")
+        gate("stripper-blanks-nothing", base_graph, 2, "stripper")
+        for path, text in kept.items():
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(text)
+        gate("legal-after-comment-restore", base_graph, 0)
+
         # Scanned, never linked: the stub or the control target in a real one.
         gate("stub-in-krn_engine",
              mutant("stub-in-krn_engine",
@@ -1309,7 +1325,7 @@ def selftest() -> int:
         expect_clean("A/legal-SymbolTable.hpp", check_a_includes(tmp, [good], foreign))
 
         # apps/ (krn_engine_server, ENC-1561): a plugin header is legal, a
-        # market, data/ or Arrow header is not.
+        # market or Arrow header is not.
         app_roots = app_foreign_roots(tmp, foreign)
         if len(app_roots) != len(foreign) - 1:
             failures.append(f"SELFTEST: app_foreign_roots did not drop exactly "
@@ -1318,7 +1334,6 @@ def selftest() -> int:
         for label, inc, bad in (
                 ("plugin", "krn/reference/SyntheticConnector.hpp", False),
                 ("market", "krn/market/MarketConnector.hpp", True),
-                ("data", "krn/data/Schema.hpp", True),
                 ("arrow", "arrow/api.h", True)):
             app = os.path.join(tmp, APPS_DIR, "engine_server", f"{label}.cpp")
             with open(app, "w", encoding="utf-8") as fh:
@@ -1333,21 +1348,21 @@ def selftest() -> int:
                         check_a_includes(tmp, [plugin_user], foreign))
 
         # The composition root: it may reach a connector, it may not reach
-        # Arrow or data/. This is the distinction the first real run of this
-        # script surfaced, so both halves of it are pinned here.
+        # Arrow. This is the distinction the first real run of this script
+        # surfaced, so both halves of it are pinned here.  Its root list is
+        # empty BY DESIGN since data/ left (ENC-1573, ENC-1578).
         main_cpp = os.path.join(tmp, "src", "main.cpp")
         with open(main_cpp, "w", encoding="utf-8") as fh:
             fh.write('#include "krn/market/MarketConnector.hpp"\n')
-        data_only = [r for r in foreign if r.endswith(os.path.join("data", "include"))]
         expect_clean("A/composition-root-may-use-a-connector",
-                     check_a_includes(tmp, [main_cpp], data_only, "composition root"))
+                     check_a_includes(tmp, [main_cpp], [], "composition root"))
         expect_detected("A/composition-root-may-not-use-a-connector-as-engine",
                         check_a_includes(tmp, [main_cpp], foreign))
         main_bad = os.path.join(tmp, "src", "main_bad.cpp")
         with open(main_bad, "w", encoding="utf-8") as fh:
             fh.write('#include <arrow/api.h>\n')
         expect_detected("A/composition-root-may-not-use-arrow",
-                        check_a_includes(tmp, [main_bad], data_only, "composition root"))
+                        check_a_includes(tmp, [main_bad], [], "composition root"))
 
         # The walk must exclude the composition root, and the cross-check must
         # notice if CMake ever compiles it into krn_engine anyway.
@@ -1371,11 +1386,19 @@ def selftest() -> int:
         expect_detected("A/arrow-include",
                         check_a_includes(tmp, [bad_arrow], foreign))
 
-        bad_schema = os.path.join(tmp, "src", "core", "BadSchema.cpp")
-        with open(bad_schema, "w", encoding="utf-8") as fh:
-            fh.write('#include "krn/data/Schema.hpp"\n')
-        expect_detected("A/data-only-header",
-                        check_a_includes(tmp, [bad_schema], foreign))
+        # ENC-1578: the dead data/include root is DROPPED, not filtered.  The
+        # fixture has a data/include tree; it must not be a root, and every
+        # root returned must exist, so no named root can vanish in silence.
+        if not os.path.isdir(os.path.join(tmp, "data", "include")):
+            failures.append("SELFTEST: A/dead-data-root-dropped: the fixture "
+                            "has no data/include, so this proves nothing")
+        if any(_under(os.path.realpath(r), os.path.realpath(
+                os.path.join(tmp, "data"))) for r in foreign):
+            failures.append(f"SELFTEST: A/dead-data-root-dropped: data/include "
+                            f"is still a root: {foreign}")
+        if not foreign or not all(os.path.isdir(r) for r in foreign):
+            failures.append(f"SELFTEST: A/dead-data-root-dropped: a root is "
+                            f"missing or empty: {foreign}")
 
         # --- B: the include path, its ONE exemption, and that exemption's
         # --- bound.  Both directions, because B's defect was a FALSE
