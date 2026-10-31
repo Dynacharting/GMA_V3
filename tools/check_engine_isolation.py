@@ -1375,6 +1375,17 @@ def selftest_gate(failures: list[str]) -> int:
                 fh.write(f"int e{i}; // fixture\n")
             sources.append(path)
         inc = os.path.join(fx, "include")
+        # Check E's inputs, the real ones: the vocabulary and the fixture,
+        # plus a BuiltinFunctions.cpp registering the builtin exemptions.
+        here = os.path.dirname(os.path.abspath(__file__))
+        os.makedirs(os.path.join(fx, "tools", "fixtures"))
+        for rel in (VOCAB_FILE, VOCAB_FIXTURE):
+            shutil.copy(os.path.join(os.path.dirname(here), rel),
+                        os.path.join(fx, rel))
+        with open(os.path.join(fx, BUILTINS_FILE), "w", encoding="utf-8") as fh:
+            for w, (kind, _) in sorted(VOCAB_EXEMPT.items()):
+                if kind == "builtin":
+                    fh.write(f'void r{len(w)}() {{ registerFunction("{w}"); }}\n')
 
         base_graph = {
             "krn_engine": ["Threads::Threads"],
@@ -1539,14 +1550,15 @@ def selftest_gate(failures: list[str]) -> int:
         gate("legal-after-include-restore", base_graph, 0)
 
         # ENC-1578: a stripper that blanks nothing over check A's list is
-        # "could not run".  The mutation drops every comment from the fixture.
+        # "could not run".  The mutation drops every comment and quote from
+        # the fixture, BuiltinFunctions.cpp's literals included.
         kept = {}
-        for path in sources:
+        for path in sources + [os.path.join(fx, BUILTINS_FILE)]:
             with open(path, encoding="utf-8") as fh:
                 kept[path] = fh.read()
             with open(path, "w", encoding="utf-8") as fh:
-                fh.write(kept[path].split("//")[0] + "\n")
-        if all(open(p, encoding="utf-8").read() == kept[p] for p in sources):
+                fh.write(kept[path].split("//")[0].replace('"', "") + "\n")
+        if all(open(p, encoding="utf-8").read() == kept[p] for p in kept):
             failures.append("SELFTEST: gate/stripper-blanks-nothing: mutation "
                             "did not apply")
         gate("stripper-blanks-nothing", base_graph, 2, "stripper")
@@ -1554,6 +1566,46 @@ def selftest_gate(failures: list[str]) -> int:
             with open(path, "w", encoding="utf-8") as fh:
                 fh.write(text)
         gate("legal-after-comment-restore", base_graph, 0)
+
+        # ENC-1579, check E: the acceptance's three cases on an engine file,
+        # then the fixture control.  Each asserts its edit applied.
+        target = sources[0]
+        for label, line, want in (
+                ("market-type-identifier", "MarketTickComputer* e_x;\n", 1),
+                ("market-type-in-comment", "// MarketTickComputer\n", 0),
+                ("market-type-in-string",
+                 'const char* e_s = "MarketTickComputer";\n', 0)):
+            before = append_line(f"E-{label}", target, line)
+            gate(f"E-{label}", base_graph, want)
+            with open(target, "w", encoding="utf-8") as fh:
+                fh.write(before)
+        fixture = os.path.join(fx, VOCAB_FIXTURE)
+        with open(fixture, encoding="utf-8") as fh:
+            fixture_text = fh.read()
+        os.remove(fixture)
+        if os.path.exists(fixture):
+            failures.append("SELFTEST: gate/E-fixture-deleted: mutation did "
+                            "not apply")
+        gate("E-fixture-deleted", base_graph, 2, "positive control")
+        # A fixture whose code lines are all commented out hits nothing.
+        with open(fixture, "w", encoding="utf-8") as fh:
+            fh.write("".join("// " + ln for ln in
+                             fixture_text.splitlines(keepends=True)))
+        gate("E-fixture-hits-nothing", base_graph, 2, "positive control")
+        # A word moved into code on a DECOY line is a leak, not a hit.
+        with open(fixture, "w", encoding="utf-8") as fh:
+            fh.write(fixture_text.replace("int d2;", "int vwap;"))
+        gate("E-fixture-decoy-leak", base_graph, 2, "positive control")
+        vocab_path = os.path.join(fx, VOCAB_FILE)
+        with open(fixture, "w", encoding="utf-8") as fh:
+            fh.write(fixture_text)
+        with open(vocab_path, encoding="utf-8") as fh:
+            vocab_text = fh.read()
+        os.remove(vocab_path)
+        gate("E-vocabulary-deleted", base_graph, 2, "vocabulary")
+        with open(vocab_path, "w", encoding="utf-8") as fh:
+            fh.write(vocab_text)
+        gate("legal-after-E-restore", base_graph, 0)
 
         # Scanned, never linked: the stub or the control target in a real one.
         gate("stub-in-krn_engine",
