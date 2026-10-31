@@ -624,6 +624,7 @@ if (KRN_BUILD_TESTS)
     tests/core/ConfigNamespaceDispatchTest.cpp
     tests/core/ConfigTest.cpp
     tests/core/ExprTest.cpp
+    tests/core/JsonUtilNonFiniteTest.cpp
     tests/core/LoggerTest.cpp
     tests/core/RecordValueTest.cpp
     tests/core/SelectFunctionTest.cpp
