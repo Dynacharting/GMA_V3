@@ -121,11 +121,12 @@ const KEY_SETS = {
     { key: 52, streamKey: 'SYN', field: 'counter', label: 'SYN/Worker(max)',
       pipeline: [{ type: 'Worker', fn: 'max' }] },
 
-    // Tier 6: Aggregate fan-in, arity == inputs (join-correctness D2).
-    { key: 60, streamKey: 'REF', field: 'sample', label: 'REF/Aggregate(2)',
-      node: { type: 'Aggregate', arity: 2,
+    // Tier 6: Aggregate fan-in, arity == inputs (join-correctness D2). REF
+    // emits only `sample`, so the second input is SYN, joined by:"none".
+    { key: 60, streamKey: 'REF', field: 'sample', label: 'REF+SYN/Aggregate(2)',
+      node: { type: 'Aggregate', arity: 2, by: 'none',
               inputs: [{ type: 'Listener', streamKey: 'REF', field: 'sample' },
-                       { type: 'Listener', streamKey: 'REF', field: 'reference.sum' }] } },
+                       { type: 'Listener', streamKey: 'SYN', field: 'counter' }] } },
   ],
 };
 
