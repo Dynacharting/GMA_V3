@@ -3,8 +3,7 @@ project(KRN LANGUAGES CXX)
 
 # ---- Consumed mode (ENC-1553, purity SPEC D5) ----
 # Under FetchContent/add_subdirectory this file defines ONLY the engine library
-# targets: no tests, benchmarks, data layer, market connector, server, install
-# rules or isolation gate. 3.20 predates PROJECT_IS_TOP_LEVEL.
+# targets: no tests, benchmarks, server, install rules or isolation gate. 3.20 predates PROJECT_IS_TOP_LEVEL.
 #
 # The two build switches are shadowed by NORMAL variables in this directory
 # scope, never written with CACHE FORCE: option() is a no-op over a normal
@@ -201,16 +200,11 @@ message(STATUS "RapidJSON include dir: ${RAPIDJSON_INCLUDE_DIR}")
 # =======================
 # Sources / targets
 # =======================
-# Engine / connector split:
-#   krn_engine             — domain-agnostic core (all src/**/*.cpp, minus main)
-#   krn_connector_market   — market-specific code (connectors/market/**)
-#   krn                    — INTERFACE alias linking both (legacy consumer target)
-#   krn_server             — composition root, picks up main.cpp + both libs
-# The split is enforced by include-directory scoping: krn_engine's PUBLIC
-# include paths contain *only* the engine headers, so engine code that
-# accidentally references a connector header fails to compile.
-
-set(MAIN_SRC "${PROJECT_SOURCE_DIR}/src/main.cpp")
+#   krn_engine             — domain-agnostic core (src/**, include/krn/**)
+#   krn                    — INTERFACE alias for krn_engine (legacy consumer target)
+# The market connector and krn_server are krn-common's (purity SPEC D6, D8;
+# ENC-1570). krn_engine's PUBLIC include paths contain *only* the engine
+# headers, so engine code that references a plugin header fails to compile.
 
 # Explicit lists, not globs (ENC-1551): a missing file is a configure error,
 # and paths are rooted at this project, not at whoever add_subdirectory()s it.
@@ -324,44 +318,6 @@ set(KRN_ENGINE_HEADERS
 )
 list(TRANSFORM KRN_ENGINE_HEADERS PREPEND "${PROJECT_SOURCE_DIR}/")
 
-set(KRN_MARKET_SOURCES
-  connectors/market/src/MarketConnector.cpp
-  connectors/market/src/MarketIngress.cpp
-  connectors/market/src/MarketTA.cpp
-  connectors/market/src/book/OrderBook.cpp
-  connectors/market/src/book/OrderBookManager.cpp
-  connectors/market/src/feed/IFeedAdapter.cpp
-  connectors/market/src/feed/ItchAdapter.cpp
-  connectors/market/src/ob/ObKey.cpp
-  connectors/market/src/ob/ObMaterializer.cpp
-  connectors/market/src/ob/ObProvider.cpp
-  connectors/market/src/server/FeedServer.cpp
-  connectors/market/src/ws/WsFeedClient.cpp
-)
-list(TRANSFORM KRN_MARKET_SOURCES PREPEND "${PROJECT_SOURCE_DIR}/")
-set(KRN_MARKET_HEADERS
-  connectors/market/include/krn/book/DepthTypes.hpp
-  connectors/market/include/krn/book/OrderBook.hpp
-  connectors/market/include/krn/book/OrderBookManager.hpp
-  connectors/market/include/krn/feed/FeedEvent.hpp
-  connectors/market/include/krn/feed/IFeedAdapter.hpp
-  connectors/market/include/krn/feed/ItchAdapter.hpp
-  connectors/market/include/krn/market/AtomicFunctions.hpp
-  connectors/market/include/krn/market/FeedServer.hpp
-  connectors/market/include/krn/market/MarketConnector.hpp
-  connectors/market/include/krn/market/MarketFieldMap.hpp
-  connectors/market/include/krn/market/MarketIngress.hpp
-  connectors/market/include/krn/market/MarketTA.hpp
-  connectors/market/include/krn/market/SymbolHistory.hpp
-  connectors/market/include/krn/market/WsFeedClient.hpp
-  connectors/market/include/krn/ob/FunctionalSnapshotSource.hpp
-  connectors/market/include/krn/ob/ObKey.hpp
-  connectors/market/include/krn/ob/ObMaterializer.hpp
-  connectors/market/include/krn/ob/ObProvider.hpp
-  connectors/market/include/krn/ob/ObSnapshot.hpp
-  connectors/market/include/krn/ta/Indicators.hpp
-)
-list(TRANSFORM KRN_MARKET_HEADERS PREPEND "${PROJECT_SOURCE_DIR}/")
 
 # ---- Engine library ----
 add_library(krn_engine STATIC ${KRN_ENGINE_SOURCES} ${KRN_ENGINE_HEADERS})
@@ -391,17 +347,10 @@ if (OpenSSL_FOUND)
   target_compile_definitions(krn_engine PUBLIC KRN_HAS_SSL=1)
 endif()
 
-# ---- Market connector library (top-level only) ----
+# ---- Legacy umbrella (top-level only); the benchmarks link it ----
 if (_krn_top_level)
-  add_library(krn_connector_market STATIC ${KRN_MARKET_SOURCES} ${KRN_MARKET_HEADERS})
-  target_include_directories(krn_connector_market PUBLIC
-    "${PROJECT_SOURCE_DIR}/connectors/market/include"
-  )
-  target_link_libraries(krn_connector_market PUBLIC krn_engine)
-
-  # ---- Legacy umbrella alias so existing rules that link `krn` keep working ----
   add_library(krn INTERFACE)
-  target_link_libraries(krn INTERFACE krn_engine krn_connector_market)
+  target_link_libraries(krn INTERFACE krn_engine)
 endif()
 
 # ---- Synthetic connector (demo): proves the zero-core-changes invariant ----
@@ -431,9 +380,6 @@ target_link_libraries(krn_plugin_reference PUBLIC krn_engine)
 # krn_server, krn_tests and the benchmarks were silent. krn_server/krn_tests/
 # benchmarks are wired at their definition sites below.
 krn_apply_warnings(krn_engine)
-if (TARGET krn_connector_market)
-  krn_apply_warnings(krn_connector_market)
-endif()
 krn_apply_warnings(krn_plugin_reference)
 
 if (WIN32)
@@ -462,26 +408,6 @@ if (_krn_top_level)
   krn_apply_warnings(krn_engine_server)
 endif()
 
-# krn_server [wsPort] [conf] [feedPort] — krn_host + the market connector.
-if (_krn_top_level AND EXISTS "${MAIN_SRC}")
-  add_executable(krn_server "${MAIN_SRC}")
-  target_include_directories(krn_server PRIVATE "${PROJECT_SOURCE_DIR}/include")
-  if (Boost_FOUND)
-    target_include_directories(krn_server PRIVATE ${Boost_INCLUDE_DIRS})
-    target_link_libraries(krn_server PRIVATE krn_host krn Boost::system)
-  else()
-    target_link_libraries(krn_server PRIVATE krn_host krn Boost::system)
-    target_compile_definitions(krn_server PRIVATE
-      BOOST_ALL_NO_LIB
-      BOOST_ERROR_CODE_HEADER_ONLY
-      BOOST_SYSTEM_NO_DEPRECATED
-      BOOST_ASIO_NO_DEPRECATED
-      BOOST_BEAST_USE_STD_STRING_VIEW
-    )
-  endif()
-  target_link_libraries(krn_server PRIVATE Threads::Threads RapidJSON::rapidjson)
-  krn_apply_warnings(krn_server)
-endif()
 
 # =======================
 # Release optimizations
@@ -490,10 +416,6 @@ if (CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDeb
   if (MSVC)
     target_compile_options(krn_engine           PRIVATE /O2 /Ob2 /GL)
     target_link_options(krn_engine           PUBLIC /LTCG)
-    if (TARGET krn_connector_market)
-      target_compile_options(krn_connector_market PRIVATE /O2 /Ob2 /GL)
-      target_link_options(krn_connector_market PUBLIC /LTCG)
-    endif()
   else()
     # Microarchitecture (ENC-790 / H5). -O3 always; -march is portable by default.
     set(KRN_RELEASE_ARCH_FLAGS "")
@@ -508,9 +430,6 @@ if (CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDeb
       message(STATUS "Release: no -march (portable default)")
     endif()
     target_compile_options(krn_engine           PRIVATE -O3 ${KRN_RELEASE_ARCH_FLAGS})
-    if (TARGET krn_connector_market)
-      target_compile_options(krn_connector_market PRIVATE -O3 ${KRN_RELEASE_ARCH_FLAGS})
-    endif()
   endif()
 
   include(CheckIPOSupported)
@@ -518,7 +437,7 @@ if (CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDeb
   if (ipo_supported)
     set_property(TARGET krn_engine           PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
     set(_krn_lto_targets krn_engine)
-    foreach (_krn_t IN ITEMS krn_connector_market krn_host krn_server krn_engine_server)
+    foreach (_krn_t IN ITEMS krn_host krn_engine_server)
       if (TARGET ${_krn_t})
         set_property(TARGET ${_krn_t} PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
         list(APPEND _krn_lto_targets ${_krn_t})
@@ -698,86 +617,9 @@ if (KRN_BUILD_TESTS)
     COMMAND krn_tests
     WORKING_DIRECTORY "$<TARGET_FILE_DIR:krn_tests>")
 
-  # krn_market_tests (ENC-1562, purity SPEC D13): every case that needs the
-  # market connector, with a market bootstrap that registers MarketConnector.
-  # The 8 COMMON files plus tests/market/; krn-common imports exactly this set
-  # (§6 row 18). Top-level only, like everything in this block.
-  set(KRN_MARKET_TEST_SOURCES
-    tests/book/CrossedBookTest.cpp
-    tests/book/OrderBookTest.cpp
-    tests/feed/FeedEventDispatchTest.cpp
-    tests/feed/ItchAdapterTest.cpp
-    tests/feed/ItchSemanticTest.cpp
-    tests/ob/ObKeyTest.cpp
-    tests/ob/ObMaterializerTest.cpp
-    tests/ob/ObProviderTest.cpp
-    tests/market/AtomicFunctionsTest.cpp
-    tests/market/AtomicKeyNamespaceMarketTest.cpp
-    tests/market/BootstrapIdempotenceTest.cpp
-    tests/market/ClockCoherentCorpusSweepTest.cpp
-    tests/market/ConnectorLifecycleRealTest.cpp
-    tests/market/GapFixesTest.cpp
-    tests/market/IndicatorsTest.cpp
-    tests/market/IntegrationTest.cpp
-    tests/market/MarketFieldMapTest.cpp
-    tests/market/MarketTANumericTest.cpp
-    tests/market/test_bootstrap.cpp
-  )
-  list(TRANSFORM KRN_MARKET_TEST_SOURCES PREPEND "${PROJECT_SOURCE_DIR}/")
-  add_executable(krn_market_tests ${KRN_MARKET_TEST_SOURCES})
-  target_include_directories(krn_market_tests PRIVATE "${PROJECT_SOURCE_DIR}/include")
-  if (Boost_FOUND)
-    target_include_directories(krn_market_tests PRIVATE ${Boost_INCLUDE_DIRS})
-  else()
-    target_compile_definitions(krn_market_tests PRIVATE
-      BOOST_ALL_NO_LIB
-      BOOST_ERROR_CODE_HEADER_ONLY
-      BOOST_SYSTEM_NO_DEPRECATED
-      BOOST_ASIO_NO_DEPRECATED
-      BOOST_BEAST_USE_STD_STRING_VIEW
-    )
-  endif()
-  target_link_libraries(krn_market_tests PRIVATE
-    krn
-    Boost::system
-    Threads::Threads
-    RapidJSON::rapidjson
-    GTest::gtest_main
-    krn_plugin_reference
-  )
-  krn_apply_warnings(krn_market_tests)
-  # The corpus is found through KRN_TEST_SOURCE_DIR (tests/support/CorpusPath.hpp);
-  # no second POST_BUILD copy into the directory krn_tests already copies into.
-  target_compile_definitions(krn_market_tests PRIVATE
-    KRN_TEST_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
-  add_test(NAME krn_market_tests
-    COMMAND krn_market_tests
-    WORKING_DIRECTORY "$<TARGET_FILE_DIR:krn_market_tests>")
-
-  # ENC-1006: an occupied wsPort/feedPort must produce a clean non-zero exit,
-  # not std::terminate. This drives the real server binaries, so it lives as
-  # a script test rather than a gtest case. ENC-1561 splits it: the feedPort
-  # half here against krn_server, the wsPort half below against
-  # krn_engine_server (krn_port_conflict_ws).
+  # The ws half of ENC-1006's port-conflict test is krn_port_conflict_ws,
+  # below; the feed half left with krn_server for krn-common (ENC-1570).
   find_package(Python3 COMPONENTS Interpreter QUIET)
-  if (TARGET krn_server AND Python3_Interpreter_FOUND)
-    add_test(NAME krn_port_conflict
-      COMMAND "${Python3_EXECUTABLE}"
-              "${PROJECT_SOURCE_DIR}/tests/scripts/port_conflict_test.py"
-              "$<TARGET_FILE:krn_server>" feed)
-    set_tests_properties(krn_port_conflict PROPERTIES TIMEOUT 120)
-
-    # ENC-1331: `krn_server <ws> <conf> <feed>` must BIND <feed>. Asserted
-    # against the live acceptor rather than the boot log, because the log
-    # already printed the right number while the socket used the file's.
-    add_test(NAME krn_feed_port_override
-      COMMAND "${Python3_EXECUTABLE}"
-              "${PROJECT_SOURCE_DIR}/tests/scripts/feed_port_override_test.py"
-              "$<TARGET_FILE:krn_server>")
-    set_tests_properties(krn_feed_port_override PROPERTIES TIMEOUT 120)
-  elseif (NOT Python3_Interpreter_FOUND)
-    message(STATUS "krn_port_conflict / krn_feed_port_override tests skipped: no Python3 interpreter")
-  endif()
 endif()
 
 # ENC-1559: krn_engine_server serves reference.* values over a real WebSocket
@@ -833,7 +675,6 @@ if (KRN_BUILD_BENCHMARKS)
     krn_apply_warnings(${NAME})
   endfunction()
 
-  krn_add_benchmark(bench_atomic_functions  "${PROJECT_SOURCE_DIR}/benchmarks/AtomicFunctionsBench.cpp")
   krn_add_benchmark(bench_dispatcher        "${PROJECT_SOURCE_DIR}/benchmarks/DispatcherBench.cpp")
   krn_add_benchmark(bench_atomic_store      "${PROJECT_SOURCE_DIR}/benchmarks/AtomicStoreBench.cpp")
   krn_add_benchmark(bench_thread_pool       "${PROJECT_SOURCE_DIR}/benchmarks/ThreadPoolBench.cpp")
@@ -841,7 +682,6 @@ if (KRN_BUILD_BENCHMARKS)
 
   # Convenience target: build all benchmarks at once
   add_custom_target(krn_benchmarks DEPENDS
-    bench_atomic_functions
     bench_dispatcher
     bench_atomic_store
     bench_thread_pool
