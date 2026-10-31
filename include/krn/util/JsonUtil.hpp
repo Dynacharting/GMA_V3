@@ -4,6 +4,7 @@
 #include <rapidjson/writer.h>
 #include <rapidjson/stringbuffer.h>
 
+#include <cmath>
 #include <string>
 #include <type_traits>
 #include <variant>
@@ -12,6 +13,15 @@
 #include "krn/StreamValue.hpp"
 
 namespace krn::util {
+
+// ENC-1584: JSON has no NaN/Inf. rapidjson's Writer::Double writes nothing for
+// them, leaving `"value":}`. Non-finite doubles go on the wire as `null`;
+// finite ones take Writer::Double unchanged.
+inline void writeDoubleJson(::rapidjson::Writer<::rapidjson::StringBuffer>& w,
+                            double d) {
+  if (std::isfinite(d)) w.Double(d);
+  else w.Null();
+}
 
 // Forward declaration for mutual recursion with writeArgValueJson.
 inline void writeArgTypeJson(::rapidjson::Writer<::rapidjson::StringBuffer>& w,
@@ -32,7 +42,7 @@ inline void writeArgTypeJson(::rapidjson::Writer<::rapidjson::StringBuffer>& w,
     } else if constexpr (std::is_same_v<T, int>) {
       w.Int(x);
     } else if constexpr (std::is_same_v<T, double>) {
-      w.Double(x);
+      writeDoubleJson(w, x);
     } else if constexpr (std::is_same_v<T, std::string>) {
       w.String(x.c_str());
     } else if constexpr (std::is_same_v<T, std::vector<int>>) {
@@ -41,7 +51,7 @@ inline void writeArgTypeJson(::rapidjson::Writer<::rapidjson::StringBuffer>& w,
       w.EndArray();
     } else if constexpr (std::is_same_v<T, std::vector<double>>) {
       w.StartArray();
-      for (double d : x) w.Double(d);
+      for (double d : x) writeDoubleJson(w, d);
       w.EndArray();
     } else if constexpr (std::is_same_v<T, std::vector<krn::ArgValue>>) {
       w.StartArray();
