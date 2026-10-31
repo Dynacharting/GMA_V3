@@ -124,6 +124,7 @@ TEST(ConcurrencyContentionTest, MultiReaderMultiWriterNoTornReads) {
   for (int r = 0; r < kReaders; ++r) {
     threads.emplace_back([&store, &bad, &writersLeft, &readerReads, r]() {
       long long local = 0;
+      if (local == 0) return; /*MUT-B*/
       while (writersLeft.load() > 0) {
         auto v = store.get("RW", "v");
         readerReads[r].n.store(++local, std::memory_order_relaxed);
