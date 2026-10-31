@@ -19,7 +19,8 @@ namespace krn::util {
 // finite ones take Writer::Double unchanged.
 inline void writeDoubleJson(::rapidjson::Writer<::rapidjson::StringBuffer>& w,
                             double d) {
-  w.Double(d);  // PERTURBATION: fix reverted
+  if (std::isfinite(d)) w.Double(d);
+  else w.RawValue("NaN", 3, ::rapidjson::kNumberType);  // PERTURBATION 2
 }
 
 // Forward declaration for mutual recursion with writeArgValueJson.
