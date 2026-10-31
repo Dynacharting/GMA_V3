@@ -19,7 +19,10 @@
 #include <gtest/gtest.h>
 #include <rapidjson/document.h>
 
+#include <algorithm>
+#include <array>
 #include <atomic>
+#include <chrono>
 #include <memory>
 #include <string>
 #include <thread>
@@ -66,7 +69,8 @@ TEST(ConcurrencyContentionTest, SameKeyWriteWriteSurvivorIsValid) {
 // values from the closed set [0, kDomain). Readers spin reading the same key
 // and flag if they EVER observe a value outside that set (a torn read) or a
 // wrong variant alternative. No timing assumptions — the readers loop until the
-// writers are done.
+// writers are done, and the writers are not done until every reader has
+// completed kMinReadsPerReader reads (ENC-1588).
 // ---------------------------------------------------------------------------
 TEST(ConcurrencyContentionTest, MultiReaderMultiWriterNoTornReads) {
   AtomicStore store;
@@ -74,29 +78,55 @@ TEST(ConcurrencyContentionTest, MultiReaderMultiWriterNoTornReads) {
   constexpr int kReaders = 4;
   constexpr int kDomain  = 256;
   constexpr int kIters   = 20000;
+  // ENC-1340's floor was 10,000 reads in total; ENC-1588 makes it per reader.
+  constexpr long long kMinReadsPerReader = 2500;
+  // Not a pass condition. It only turns "a reader never runs" into a failure
+  // instead of a hang.
+  constexpr auto kHangCap = std::chrono::seconds(60);
 
   // Seed so readers always find a value.
   store.set("RW", "v", 0);
 
+  struct alignas(64) ReaderCount { std::atomic<long long> n{0}; };
+  std::array<ReaderCount, kReaders> readerReads;
+  auto minReaderReads = [&readerReads]() {
+    long long m = readerReads[0].n.load(std::memory_order_relaxed);
+    for (const auto& c : readerReads) m = std::min(m, c.n.load(std::memory_order_relaxed));
+    return m;
+  };
+
   std::atomic<bool>      bad{false};
+  std::atomic<bool>      hitHangCap{false};
   std::atomic<int>       writersLeft{kWriters};
-  std::atomic<long long> reads{0};
+  std::atomic<long long> writes{0};
+  const auto hangDeadline = std::chrono::steady_clock::now() + kHangCap;
 
   std::vector<std::thread> threads;
   for (int w = 0; w < kWriters; ++w) {
-    threads.emplace_back([&store, &writersLeft]() {
-      for (int i = 0; i < kIters; ++i) {
-        store.set("RW", "v", i % kDomain);
+    threads.emplace_back([&]() {
+      long long i = 0;
+      // At least kIters writes, then keep writing until every reader has done
+      // its minimum — so the readers' minimum is reached WHILE writes are
+      // still happening, however the scheduler treats this box.
+      for (;; ++i) {
+        if (i >= kIters && minReaderReads() >= kMinReadsPerReader) break;
+        if (i >= kIters && (i % 1024) == 0 &&
+            std::chrono::steady_clock::now() > hangDeadline) {
+          hitHangCap.store(true);
+          break;
+        }
+        store.set("RW", "v", static_cast<int>(i % kDomain));
       }
+      writes.fetch_add(i, std::memory_order_relaxed);
       --writersLeft;
     });
   }
   for (int r = 0; r < kReaders; ++r) {
-    threads.emplace_back([&store, &bad, &writersLeft, &reads]() {
+    threads.emplace_back([&store, &bad, &writersLeft, &readerReads, r]() {
       long long local = 0;
       while (writersLeft.load() > 0) {
         auto v = store.get("RW", "v");
-        ++local;
+        readerReads[r].n.store(++local, std::memory_order_relaxed);
         if (!v) continue;
         try {
           int x = std::get<int>(*v);
@@ -105,7 +135,6 @@ TEST(ConcurrencyContentionTest, MultiReaderMultiWriterNoTornReads) {
           bad.store(true); // wrong variant alternative => torn write
         }
       }
-      reads.fetch_add(local, std::memory_order_relaxed);
     });
   }
   for (auto& th : threads) th.join();
@@ -114,32 +143,32 @@ TEST(ConcurrencyContentionTest, MultiReaderMultiWriterNoTornReads) {
       << "reader observed an out-of-domain or torn value — AtomicStore locking "
          "did not hold under multi-reader/multi-writer contention";
 
-  // ── ENC-1340: ANTI-VACUITY ────────────────────────────────────────────────
+  // ── ENC-1340 / ENC-1588: ANTI-VACUITY ─────────────────────────────────────
   // "No torn read was observed" is only evidence if reads were observed at
-  // all. The readers exit on `writersLeft == 0`, so anything that stops them
-  // reading — a reader back-off in AtomicStore, an OS that never schedules
-  // them, a future refactor — silently converts this test into an assertion
-  // over an empty sample that passes and means nothing. ENC-1340 added
-  // AtomicStore's bounded reader stand-down for queued writers precisely in
-  // this code path, so the risk is not hypothetical: it is the change that was
-  // landed alongside this line.
+  // all, and observed while the writers were writing. ENC-1340 asserted a
+  // floor of 10,000 reads over a run whose length was set by the writers, so
+  // under machine load the readers could be descheduled for most of it and
+  // the test failed on CPU starvation with no torn read (ENC-1588: 3/15
+  // passes on an unchanged base). The run is now bounded by reader progress
+  // instead: the writers keep writing until every reader has done
+  // kMinReadsPerReader reads, so the bound holds on any box that schedules
+  // the readers at all, and a reader that never reads fails here at kHangCap.
   //
-  // The floor is set far below the measured value so it catches "the readers
-  // stopped reading", not "the box was busy today". Measured with the
-  // stand-down in place on a 16-core box at loadavg ~4-5, 15 runs:
-  // 455,137 reads minimum, 492,617 mean, against 80,000 writes. The floor of
-  // 10,000 is ~45x below the worst run observed.
-  //
-  // It has already earned its keep: the first cut of AtomicStore's stand-down
-  // yielded up to 64 times, and this assertion is what reported that the
-  // readers had fallen to 2,335 reads and the test had become a no-op that
-  // "passed" in 14 ms. See the yield-bound table in src/core/AtomicStore.cpp.
-  const long long observed = reads.load();
-  RecordProperty("reads", std::to_string(observed));
-  RecordProperty("writes", std::to_string(static_cast<long long>(kWriters) * kIters));
-  EXPECT_GT(observed, 10000)
-      << "the readers barely ran (" << observed << " reads against "
-      << (static_cast<long long>(kWriters) * kIters)
+  // What this no longer catches: a reader back-off in AtomicStore that makes
+  // the readers slow (ENC-1340's 64-yield first cut fell to 2,335 reads in
+  // 14 ms). That now lengthens this test instead of failing it; the yield
+  // bound is pinned by the table in src/core/AtomicStore.cpp.
+  long long total = 0;
+  for (const auto& c : readerReads) total += c.n.load();
+  RecordProperty("reads", std::to_string(total));
+  RecordProperty("writes", std::to_string(writes.load()));
+  EXPECT_FALSE(hitHangCap.load())
+      << "the writers gave up after " << kHangCap.count()
+      << " s waiting for the readers to reach " << kMinReadsPerReader
+      << " reads each";
+  EXPECT_GE(minReaderReads(), kMinReadsPerReader)
+      << "a reader barely ran (" << minReaderReads() << " reads; " << total
+      << " in total against " << writes.load()
       << " writes) — this test asserts the absence of torn reads over a sample "
          "that is effectively empty, so it proves nothing. Do not relax this "
          "bound; find out why the readers are not overlapping the writers.";
