@@ -151,18 +151,18 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full picture including 
   (four checks, refuses to pass on vacuous input) and `krn_engine_isolation_selftest` (runs
   each predicate against an input that violates it). Run them before claiming a layering
   change is safe; `--selftest` needs no build. **Checks C and D walk the transitive link
-  closure**, because `krn_server` links only the `krn` umbrella: one
-  `target_link_libraries(krn INTERFACE krn_data)` breaks the live-only build while both
-  roots' own link properties stay clean. CMake emits a `link.<target>` manifest row per
+  closure**, because `krn_engine_server` links only `krn_host` and the plugin: one
+  `target_link_libraries(krn_host PUBLIC krn_data)` breaks the live-only build while the
+  server's own link property stays clean. CMake emits a `link.<target>` manifest row per
   first-party target — add one when you add a library target. **The positive control is
   `krn_isolation_control`** (ENC-1507), a scan-only target in the root `CMakeLists.txt` that
   exists in every configuration and is the gate's only control. The gate exits 0 pass,
   1 violation, 2 could not run, and a missing or silent control is 2. Never link the control
   into a real target; the gate fails if anything does.
-  **Its roots are `krn_engine`, `krn_host`, `krn_engine_server` and (until it leaves) `krn_server`**
-  (ENC-1561); a missing root is a configure error under `KRN_BUILD_TESTS=ON`, and all but
-  `krn_server` are barred from `krn_connector_market`. `apps/` is scanned like `src/main.cpp`,
-  except that it may include `plugins/*` headers.
+  **Its roots are `krn_engine`, `krn_host` and `krn_engine_server`** (ENC-1561; `krn_server`
+  left for krn-common, ENC-1570); a missing root is a configure error under `KRN_BUILD_TESTS=ON`,
+  and no graphed target may reach `krn_connector_market`. `apps/` may include `plugins/*`
+  headers but not `connectors/*` ones; with no `connectors/` here that list is empty on purpose.
 - Namespace: `krn::` for public types, `krn::engine::` for engine contracts, `krn::market::` / `krn::synthetic::` for connector code
 - Globals: `krn::gThreadPool` (shared_ptr<ThreadPool>, set up in main.cpp)
 - Runtime config: INI-style key=value files (see `src/util/krn.conf`)
