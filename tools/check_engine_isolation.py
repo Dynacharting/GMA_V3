@@ -1539,123 +1539,104 @@ def selftest() -> int:
                     f"expected it to say {want!r}")
 
         # --- C and D: the link closure ----------------------------------
-        # The real shape of this repo's link graph, copied from an actual
-        # manifest (`link.*` rows of build/krn_engine_isolation.manifest,
-        # 2026-10-14) rather than from memory -- OpenSSL included, and with
-        # no decoration, because the real rows carry none.
+        # The real shape of this repo's link graph after ENC-1570, from the
+        # `link.*` rows of build/krn_engine_isolation.manifest -- OpenSSL
+        # included, and with no decoration, because the real rows carry none.
         legal = {
-            "krn_server": ["krn", "Boost::system", "Threads::Threads",
-                           "RapidJSON::rapidjson"],
-            "krn": ["krn_engine", "krn_connector_market"],
+            "krn": ["krn_engine"],
             "krn_engine": ["Boost::system", "Threads::Threads",
                            "RapidJSON::rapidjson", "OpenSSL::SSL",
                            "OpenSSL::Crypto"],
-            "krn_connector_market": ["krn_engine"],
             "krn_plugin_reference": ["krn_engine"],
             "krn_host": ["krn_engine"],
             "krn_engine_server": ["krn_host", "krn_plugin_reference"],
             "krn_tests": ["krn_engine", "Boost::system", "Threads::Threads",
                           "RapidJSON::rapidjson", "GTest::gtest_main",
                           "krn_plugin_reference"],
-            "krn_market_tests": ["krn", "Boost::system", "Threads::Threads",
-                                 "RapidJSON::rapidjson", "GTest::gtest_main",
-                                 "krn_plugin_reference"],
         }
-        expect_clean("C/closure-legal", forbidden_links(legal, "krn_engine"))
-        expect_clean("D/closure-legal", forbidden_links(legal, "krn_server"))
-        expect_clean("D/closure-legal-krn_tests",
-                     forbidden_links(legal, "krn_tests"))
-
-        # ENC-1562: krn_tests must not reach krn_connector_market, directly
-        # or through the umbrella; the ban is krn_tests' alone.
-        for label, libs in (("direct", ["krn_engine", "krn_connector_market"]),
-                            ("via-umbrella", ["krn", "GTest::gtest_main"])):
-            mut = dict(legal, krn_tests=libs)
-            if mut == legal:
-                failures.append(f"SELFTEST: D/krn_tests-market-{label}: "
-                                f"mutation did not apply")
-            expect_detected(f"D/krn_tests-links-market-{label}",
-                            forbidden_links(mut, "krn_tests"))
-        expect_clean("D/market-ban-is-not-krn_market_tests'",
-                     forbidden_links(legal, "krn_market_tests"))
-        expect_clean("D/market-ban-is-not-krn_server's",
-                     forbidden_links(legal, "krn_server"))
-
-        # ENC-1561 (D11.1): the same ban on krn_engine, krn_host and
-        # krn_engine_server, direct and through the umbrella.
-        for r in ("krn_host", "krn_engine_server"):
+        for r in CHECKED_ROOTS:
             expect_clean(f"D/closure-legal-{r}", forbidden_links(legal, r))
-        for r, label, lib in (
-                ("krn_engine", "direct", "krn_connector_market"),
-                ("krn_host", "direct", "krn_connector_market"),
-                ("krn_host", "via-umbrella", "krn"),
-                ("krn_engine_server", "direct", "krn_connector_market"),
-                ("krn_engine_server", "via-umbrella", "krn")):
-            mut = dict(legal, **{r: legal[r] + [lib]})
+        expect_clean("D/market-legal", market_reachers(legal))
+
+        # D11.1 after ENC-1570: no graphed target reaches the market
+        # connector -- each root directly and through the umbrella, and a
+        # target no root reaches, which only market_reachers sees.
+        for r, label, extra in (
+                ("krn_engine", "direct", {}),
+                ("krn_host", "direct", {}),
+                ("krn_host", "via-umbrella", {"krn": ["krn_engine",
+                                                      "krn_connector_market"]}),
+                ("krn_engine_server", "direct", {}),
+                ("krn_engine_server", "via-umbrella",
+                 {"krn": ["krn_engine", "krn_connector_market"]}),
+                ("krn_tests", "direct", {}),
+                ("krn_tests", "via-umbrella",
+                 {"krn": ["krn_engine", "krn_connector_market"]}),
+                ("bench_x", "unreached", {})):
+            lib = "krn" if label == "via-umbrella" else "krn_connector_market"
+            mut = dict(legal, **extra)
+            mut[r] = legal.get(r, []) + [lib]
             if mut == legal:
                 failures.append(f"SELFTEST: D/{r}-market-{label}: "
                                 f"mutation did not apply")
+            got = market_reachers(mut)
             expect_detected(f"D/{r}-links-market-{label}",
-                            forbidden_links(mut, r))
+                            [p for p in got if p.startswith(f"{r} links")])
+            expect_clean(f"D/{r}-links-market-{label}-is-reported-once",
+                         [p for p in forbidden_links(mut, r)
+                          if "connector_market" in p])
 
-        # THE CASE THAT MOTIVATED THE CLOSURE. One line on the umbrella makes
-        # the live-only variant unlinkable; neither krn_engine's nor krn_server's
-        # own property changes at all.
-        umbrella = dict(legal)
-        umbrella["krn"] = ["krn_engine", "krn_connector_market", "krn_data"]
-        expect_detected("D/umbrella-links-krn_data",
-                        forbidden_links(umbrella, "krn_server"))
-        expect_clean("C/umbrella-does-not-touch-the-engine",
-                     forbidden_links(umbrella, "krn_engine"))
+        # THE CASE THAT MOTIVATED THE CLOSURE. One line on krn_host makes the
+        # live-only variant unlinkable; krn_engine_server's own property does
+        # not change at all.
+        intermediate = dict(legal, krn_host=["krn_engine", "krn_data"])
+        expect_detected("D/intermediate-links-krn_data",
+                        forbidden_links(intermediate, "krn_engine_server"))
+        expect_clean("C/intermediate-does-not-touch-the-engine",
+                     forbidden_links(intermediate, "krn_engine"))
 
         # CONTRAST, not a gate: the review finding in one assertion. A check
-        # that reads only krn_server's OWN link libraries sees
-        # ["krn", "Boost::system", ...] and passes the graph above. If this
-        # ever stops being true the contrast is stale and should be deleted.
-        direct_only = [link_item_name(x) for x in umbrella["krn_server"]]
+        # that reads only krn_engine_server's OWN link libraries sees
+        # ["krn_host", "krn_plugin_reference"] and passes the graph above. If
+        # this ever stops being true the contrast is stale and should go.
+        direct_only = [link_item_name(x)
+                       for x in intermediate["krn_engine_server"]]
         if any(p.search(n) for n in direct_only for p in FORBIDDEN_LINK_PATTERNS):
             failures.append(
                 "SELFTEST: the one-level contrast case is no longer one-level "
-                "-- D/umbrella-links-krn_data no longer demonstrates why the "
-                "closure walk exists")
+                "-- D/intermediate-links-krn_data no longer demonstrates why "
+                "the closure walk exists")
 
-        # The second route in: Arrow on the market connector. It does NOT make
-        # the engine depend on Arrow (C stays clean, correctly) but it does
-        # make the live-only server unlinkable, so D must redden.
-        connector_arrow = dict(legal)
-        connector_arrow["krn_connector_market"] = ["krn_engine", "krn::arrow"]
-        expect_detected("D/connector-links-arrow",
-                        forbidden_links(connector_arrow, "krn_server"))
-        expect_clean("C/connector-arrow-is-not-an-engine-dependency",
-                     forbidden_links(connector_arrow, "krn_engine"))
+        # The second route in: Arrow on the plugin. It does NOT make the
+        # engine depend on Arrow (C stays clean, correctly) but it does make
+        # the live-only server unlinkable, so D must redden.
+        plugin_arrow = dict(legal, krn_plugin_reference=["krn_engine",
+                                                         "krn::arrow"])
+        expect_detected("D/plugin-links-arrow",
+                        forbidden_links(plugin_arrow, "krn_engine_server"))
+        expect_clean("C/plugin-arrow-is-not-an-engine-dependency",
+                     forbidden_links(plugin_arrow, "krn_engine"))
 
         # The third route, and the one the FIRST VERSION OF THIS CHECK MISSED:
-        # the target registry in CMakeLists.txt is hand-written, so a new
-        # first-party library gets no row and the walk treats it as a leaf.
-        # Both of these are green under a check that only pattern-matches.
-        new_lib = dict(legal)
-        new_lib["krn"] = ["krn_engine", "krn_connector_market", "krn_store"]
+        # a first-party library with no row is a leaf the walk never expands.
+        new_lib = dict(legal, krn_plugin_reference=["krn_engine", "krn_store"])
         expect_detected("D/unregistered-first-party-library",
-                        forbidden_links(new_lib, "krn_server"))
-        aliased = dict(legal)
-        aliased["krn"] = ["krn_engine", "krn_connector_market", "krn::data"]
+                        forbidden_links(new_lib, "krn_engine_server"))
+        aliased = dict(legal, krn_plugin_reference=["krn_engine", "krn::data"])
         expect_detected("D/alias-for-krn_data",
-                        forbidden_links(aliased, "krn_server"))
+                        forbidden_links(aliased, "krn_engine_server"))
         # ... and once the row exists, the walk reaches through it.
-        registered = dict(new_lib)
-        registered["krn_store"] = ["krn_engine", "krn_data"]
+        registered = dict(new_lib, krn_store=["krn_engine", "krn_data"])
         expect_detected("D/through-a-registered-new-library",
-                        forbidden_links(registered, "krn_server"))
-        clean_new_lib = dict(new_lib)
-        clean_new_lib["krn_store"] = ["krn_engine"]
+                        forbidden_links(registered, "krn_engine_server"))
+        clean_new_lib = dict(new_lib, krn_store=["krn_engine"])
         expect_clean("D/a-registered-new-library-that-is-clean",
-                     forbidden_links(clean_new_lib, "krn_server"))
+                     forbidden_links(clean_new_lib, "krn_engine_server"))
         # A genuinely third-party leaf must NOT trip the first-party rule.
         expect_clean("D/third-party-leaves-are-leaves",
-                     forbidden_links({"krn_server": ["Boost::system", "m",
-                                                     "GTest::gtest_main",
-                                                     "stdc++fs", "libm.so"]},
-                                     "krn_server"))
+                     forbidden_links({"krn_engine_server": [
+                         "Boost::system", "m", "GTest::gtest_main",
+                         "stdc++fs", "libm.so"]}, "krn_engine_server"))
 
         # Direct links still caught, one per forbidden pattern.
         for name in ("krn_data", "krn::arrow", "arrow_static", "parquet",
@@ -1687,20 +1668,22 @@ def selftest() -> int:
         if observed == legal:
             failures.append("SELFTEST: D/build-interface-wrapped-market-link: "
                             "mutation did not apply")
+        got = market_reachers(observed)
         for r in ("krn_host", "krn_engine_server"):
             expect_detected(f"D/build-interface-wrapped-market-link-{r}",
-                            forbidden_links(observed, r))
+                            [p for p in got if p.startswith(f"{r} links")])
         # A wrapped edge must still be TRAVERSED, not merely matched.
         expect_detected("D/wrapped-edge-is-still-walked (defensive)",
                         forbidden_links(
-                            {"krn_server": ["$<LINK_LIBRARY:WHOLE_ARCHIVE,krn>"],
+                            {"krn_engine_server":
+                             ["$<LINK_LIBRARY:WHOLE_ARCHIVE,krn>"],
                              "krn": ["krn_data"]},
-                            "krn_server"))
+                            "krn_engine_server"))
         expect_detected("C/directory-scoped-interface-entry (defensive)",
                         forbidden_links(
-                            {"krn_server": ["krn::@(0x55f0)"],
+                            {"krn_engine_server": ["krn::@(0x55f0)"],
                              "krn": ["krn_data"]},
-                            "krn_server"))
+                            "krn_engine_server"))
         # And a decorated LEGAL entry must not be mistaken for a violation.
         expect_clean("C/decorated-legal-entry (defensive)",
                      forbidden_links(
