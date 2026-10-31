@@ -32,4 +32,4 @@ endif()
 message(STATUS "KRN_SMOKE ok: krn::krn_engine includes [${_inc}]")
 
 add_executable(krn_consumer_probe src/main.cpp)
-target_link_libraries(krn_consumer_probe PRIVATE krn::krn_engine)
+target_link_libraries(krn_consumer_probe PRIVATE krn::krn_engine krn::krn_host)

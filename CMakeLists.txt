@@ -477,11 +477,13 @@ endif()
 # (b) one `registerWith` call at the composition root; no engine edits.
 set(KRN_SYNTHETIC_SOURCES
   plugins/reference/src/ReferenceComputer.cpp
+  plugins/reference/src/ReferenceConnector.cpp
   plugins/reference/src/SyntheticConnector.cpp
 )
 list(TRANSFORM KRN_SYNTHETIC_SOURCES PREPEND "${PROJECT_SOURCE_DIR}/")
 set(KRN_SYNTHETIC_HEADERS
   plugins/reference/include/krn/reference/ReferenceComputer.hpp
+  plugins/reference/include/krn/reference/ReferenceConnector.hpp
   plugins/reference/include/krn/reference/SyntheticConnector.hpp
 )
 list(TRANSFORM KRN_SYNTHETIC_HEADERS PREPEND "${PROJECT_SOURCE_DIR}/")
@@ -503,6 +505,49 @@ krn_apply_warnings(krn_plugin_reference)
 
 if (WIN32)
   add_definitions(-D_WIN32_WINNT=0x0A00 -DNOMINMAX)
+endif()
+
+# =======================
+# Host + server executables (ENC-1559, purity SPEC D6)
+# =======================
+# krn_host is the engine composition every server binary shares (src/host/,
+# include/krn/host/). It is an engine library target: defined in consumed mode
+# too, and exported as krn::krn_host. The executables are top-level only.
+# Defined BEFORE the Release block so that block can see them (ENC-1583: it
+# used to test `TARGET krn_server` before krn_server existed).
+add_library(krn_host STATIC
+  "${PROJECT_SOURCE_DIR}/src/host/Host.cpp"
+  "${PROJECT_SOURCE_DIR}/include/krn/host/Host.hpp")
+add_library(krn::krn_host ALIAS krn_host)
+target_link_libraries(krn_host PUBLIC krn_engine)
+krn_apply_warnings(krn_host)
+
+if (_krn_top_level)
+  # krn_engine_server [wsPort] [conf] — krn_host + the reference plugin.
+  add_executable(krn_engine_server "${PROJECT_SOURCE_DIR}/apps/engine_server/main.cpp")
+  target_link_libraries(krn_engine_server PRIVATE krn_host krn_plugin_reference)
+  krn_apply_warnings(krn_engine_server)
+endif()
+
+# krn_server [wsPort] [conf] [feedPort] — krn_host + the market connector.
+if (_krn_top_level AND EXISTS "${MAIN_SRC}")
+  add_executable(krn_server "${MAIN_SRC}")
+  target_include_directories(krn_server PRIVATE "${PROJECT_SOURCE_DIR}/include")
+  if (Boost_FOUND)
+    target_include_directories(krn_server PRIVATE ${Boost_INCLUDE_DIRS})
+    target_link_libraries(krn_server PRIVATE krn_host krn Boost::system)
+  else()
+    target_link_libraries(krn_server PRIVATE krn_host krn Boost::system)
+    target_compile_definitions(krn_server PRIVATE
+      BOOST_ALL_NO_LIB
+      BOOST_ERROR_CODE_HEADER_ONLY
+      BOOST_SYSTEM_NO_DEPRECATED
+      BOOST_ASIO_NO_DEPRECATED
+      BOOST_BEAST_USE_STD_STRING_VIEW
+    )
+  endif()
+  target_link_libraries(krn_server PRIVATE Threads::Threads RapidJSON::rapidjson)
+  krn_apply_warnings(krn_server)
 endif()
 
 # =======================
@@ -539,37 +584,18 @@ if (CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDeb
   check_ipo_supported(RESULT ipo_supported OUTPUT ipo_output)
   if (ipo_supported)
     set_property(TARGET krn_engine           PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-    if (TARGET krn_connector_market)
-      set_property(TARGET krn_connector_market PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-    endif()
-    if (TARGET krn_server)
-      set_property(TARGET krn_server PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-    endif()
-    message(STATUS "LTO enabled for krn_engine + krn_connector_market + krn_server")
+    set(_krn_lto_targets krn_engine)
+    foreach (_krn_t IN ITEMS krn_connector_market krn_host krn_server krn_engine_server)
+      if (TARGET ${_krn_t})
+        set_property(TARGET ${_krn_t} PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+        list(APPEND _krn_lto_targets ${_krn_t})
+      endif()
+    endforeach()
+    list(JOIN _krn_lto_targets " + " _krn_lto_targets)
+    message(STATUS "LTO enabled for ${_krn_lto_targets}")
   else()
     message(STATUS "LTO not supported: ${ipo_output}")
   endif()
-endif()
-
-# App executable (if src/main.cpp exists; top-level only)
-if (_krn_top_level AND EXISTS "${MAIN_SRC}")
-  add_executable(krn_server "${MAIN_SRC}")
-  target_include_directories(krn_server PRIVATE "${PROJECT_SOURCE_DIR}/include")
-  if (Boost_FOUND)
-    target_include_directories(krn_server PRIVATE ${Boost_INCLUDE_DIRS})
-    target_link_libraries(krn_server PRIVATE krn Boost::system)
-  else()
-    target_link_libraries(krn_server PRIVATE krn Boost::system)
-    target_compile_definitions(krn_server PRIVATE
-      BOOST_ALL_NO_LIB
-      BOOST_ERROR_CODE_HEADER_ONLY
-      BOOST_SYSTEM_NO_DEPRECATED
-      BOOST_ASIO_NO_DEPRECATED
-      BOOST_BEAST_USE_STD_STRING_VIEW
-    )
-  endif()
-  target_link_libraries(krn_server PRIVATE Threads::Threads RapidJSON::rapidjson)
-  krn_apply_warnings(krn_server)
 endif()
 
 # Tests (opt-in)
@@ -816,6 +842,16 @@ if (KRN_BUILD_TESTS)
   elseif (NOT Python3_Interpreter_FOUND)
     message(STATUS "krn_port_conflict / krn_feed_port_override tests skipped: no Python3 interpreter")
   endif()
+endif()
+
+# ENC-1559: krn_engine_server serves reference.* values over a real WebSocket
+# and exits 0 on SIGTERM.
+if (KRN_BUILD_TESTS AND TARGET krn_engine_server AND Python3_Interpreter_FOUND)
+  add_test(NAME krn_engine_server_reference
+    COMMAND "${Python3_EXECUTABLE}"
+            "${PROJECT_SOURCE_DIR}/tests/scripts/engine_server_reference_test.py"
+            "$<TARGET_FILE:krn_engine_server>")
+  set_tests_properties(krn_engine_server_reference PROPERTIES TIMEOUT 120)
 endif()
 
 # Benchmarks (opt-in)
@@ -1090,11 +1126,12 @@ endif()
 # Install / export (ENC-1553, purity SPEC D5)
 # =======================
 # Top-level only: a FetchContent consumer builds krn_engine from source and
-# installs nothing of ours. `find_package(krn CONFIG)` gives krn::krn_engine.
+# installs nothing of ours. `find_package(krn CONFIG)` gives krn::krn_engine
+# and krn::krn_host.
 if (_krn_top_level)
   include(GNUInstallDirs)
   set(KRN_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/krn")
-  install(TARGETS krn_engine EXPORT krnTargets
+  install(TARGETS krn_engine krn_host EXPORT krnTargets
     ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
     INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
   install(DIRECTORY "${PROJECT_SOURCE_DIR}/include/krn"
