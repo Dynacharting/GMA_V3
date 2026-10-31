@@ -1,29 +1,12 @@
 #include "krn/nodes/Listener.hpp"
 #include "krn/Dispatcher.hpp"
+#include "krn/atomic/AtomicProviderRegistry.hpp"
 #include "krn/rt/ThreadPool.hpp"
 #include "krn/util/Logger.hpp"
 
 #include <utility>
 
 using namespace krn::nodes;
-
-namespace {
-
-// ENC-101: ob.* atomic keys are written by ob::Provider into the
-// AtomicStore but never push through Dispatcher::notifyListeners,
-// so a Listener bound to one of them registers and silently never
-// fires. Reject at construction time so the failure is loud.
-//
-// Literal 3-char prefix ('o','b','.') — not a starts_with("ob")
-// check, which would catch "obesity" or "obvious".
-bool isPipelineOnlyKey(const std::string& field) {
-  return field.size() >= 3
-      && field[0] == 'o'
-      && field[1] == 'b'
-      && field[2] == '.';
-}
-
-} // anonymous namespace
 
 krn::Result<std::shared_ptr<Listener>> Listener::Create(
     std::string symbol,
@@ -32,7 +15,9 @@ krn::Result<std::shared_ptr<Listener>> Listener::Create(
     krn::rt::ThreadPool* pool,
     krn::Dispatcher* dispatcher,
     std::shared_ptr<krn::rt::Strand> strand) {
-  if (isPipelineOnlyKey(field)) {
+  // ENC-101 / ENC-1575: a key in a namespace a plugin declared pipeline-only
+  // is never pushed, so a Listener on it would silently never fire.
+  if (krn::AtomicProviderRegistry::isPipelineOnlyKey(field)) {
     return krn::Error{
       "listener: field '" + field +
         "' is pipeline-only — see docs/atomic-keys.md; bind via "
