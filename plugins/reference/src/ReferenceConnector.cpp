@@ -11,6 +11,7 @@
 #include "krn/Dispatcher.hpp"
 #include "krn/Event.hpp"
 #include "krn/engine/EventComputerRegistry.hpp"
+#include "krn/engine/ProtocolIngressRegistry.hpp"
 #include "krn/reference/ReferenceComputer.hpp"
 
 namespace krn::synthetic {
@@ -20,12 +21,13 @@ ReferenceConnector::ReferenceConnector(Options opts) : _opts(std::move(opts)) {}
 ReferenceConnector::~ReferenceConnector() = default;
 
 void ReferenceConnector::registerWith(engine::EngineRegistries& reg) {
-  if (!reg.dispatcher || !reg.io || !reg.computers) {
+  if (!reg.dispatcher || !reg.io || !reg.computers || !reg.protocols) {
     throw std::runtime_error("ReferenceConnector: incomplete EngineRegistries");
   }
   reg.computers->registerFactory(std::string(ReferenceComputer::kEventType), [] {
     return std::make_unique<ReferenceComputer>();
   });
+  reg.protocols->registerProtocol(std::string(kProtocol), std::string(kIngressKind));
   _timer = std::make_unique<boost::asio::steady_timer>(*reg.io);
   _dispatcher = reg.dispatcher;
 }

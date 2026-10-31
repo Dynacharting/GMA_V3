@@ -84,9 +84,8 @@ bool Config::loadFromFile(const std::string& path) {
     std::string key, val;
     if (!parseLineKV(s, key, val)) continue;
 
-    // NOTE: std::atoi returns 0 for non-numeric input. All period values are
-    // guarded by std::max(1, ...) and port/size values have explicit range
-    // checks, so invalid input produces safe defaults rather than UB.
+    // NOTE: std::atoi returns 0 for non-numeric input. Port/size values have
+    // explicit range checks, so invalid input produces safe defaults rather than UB.
     if      (key == "wsPort")        { int p = std::atoi(val.c_str()); if (p > 0 && p <= 65535) wsPort = p; }
     else if (key == "threadPoolSize") { int v = std::atoi(val.c_str()); if (v >= 0) threadPoolSize = v; }
     else if (key == "taHistoryMax") { int v = std::atoi(val.c_str()); if (v > 0) taHistoryMax = v; }

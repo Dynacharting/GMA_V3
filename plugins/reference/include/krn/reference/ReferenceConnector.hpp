@@ -35,6 +35,11 @@ public:
   explicit ReferenceConnector(Options opts);
   ~ReferenceConnector() override;
 
+  // The forum connector protocol this plugin registers, and the ingress kind
+  // it maps to (ENC-1574). No ingress factory is registered for the kind.
+  static constexpr std::string_view kProtocol    = "reference";
+  static constexpr std::string_view kIngressKind = "reference.ingress";
+
   std::string_view name() const override { return "reference"; }
   void registerWith(engine::EngineRegistries& reg) override;
   void start() override;

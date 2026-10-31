@@ -159,8 +159,8 @@ public:
   // `RecordFieldSource` (data/include/krn/data/RecordFieldSource.hpp).
   // Resolving the id, and refusing an unresolvable one, stays here.
   //
-  // THE JSON PATH IS UNCHANGED AND STAYS. The legacy TCP feed server and
-  // `market.wsclient` ingress keep using `onTick`. Two ingress shapes is a
+  // THE JSON PATH IS UNCHANGED AND STAYS. Ingress sources that deliver a JSON
+  // DOM keep using `onTick`. Two ingress shapes is a
   // cost; folding them is a bigger one (docs/data-layer.md §C2).
   //
   // A GRAPH CANNOT TELL WHICH ENTRY POINT FED IT, and that is structural
