@@ -223,7 +223,7 @@ Two layers, and they intentionally differ — keep them straight:
 | `metricsEnabled` / `metricsIntervalSec` | false / 15 | true / 15 |
 | `logLevel` | `info` | `info` |
 
-The market keys (`feedPort`, the TA periods, the legacy feed keys) are not engine keys
+The market keys (`feedPort`, the TA periods, the legacy feed keys, `allowNegativePrices`) are not engine keys
 (ENC-1574); krn-common's connector owns them.
 
 Other engine keys parsed by `src/util/Config.cpp` (defaults from `Config.hpp`):
@@ -231,7 +231,6 @@ Other engine keys parsed by `src/util/Config.cpp` (defaults from `Config.hpp`):
 - **Memory bounds:** `maxSymbols` (10000), `maxFieldsPerSymbol` (200).
 - **Derived-atomic key shape:** `atomicKeyNamespaceByField` (false) — see the
   atomic-key namespaces bullet under *Code Conventions*.
-- **Order book:** `allowNegativePrices` (false) — allow negative prices/yields.
 - **Ingress (ENC-31, the current model):** `ingress.N.kind` plus per-entry
   sub-keys (`ingress.N.port`, `ingress.N.url`, `ingress.N.adapter`,
   `ingress.N.symbols`, …). The engine instantiates each entry by the kind a

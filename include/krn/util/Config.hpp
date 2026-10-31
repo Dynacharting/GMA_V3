@@ -67,9 +67,6 @@ public:
   // Logging
   std::string logLevel = "info";
 
-  // Allow negative prices in order book (for bonds with negative yields, spreads, etc.)
-  bool allowNegativePrices = false;
-
   // ENC-31: engine-driven ingress entries (`ingress.N.kind = ..., ingress.N.X = ...`).
   // The engine reads this list after connectors register their factories,
   // looks each kind up in IngressRegistry, and drives start/stop centrally.
