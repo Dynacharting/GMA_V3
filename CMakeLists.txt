@@ -821,14 +821,16 @@ if (KRN_BUILD_TESTS)
     WORKING_DIRECTORY "$<TARGET_FILE_DIR:krn_market_tests>")
 
   # ENC-1006: an occupied wsPort/feedPort must produce a clean non-zero exit,
-  # not std::terminate. This drives the real krn_server binary, so it lives as
-  # a script test rather than a gtest case.
+  # not std::terminate. This drives the real server binaries, so it lives as
+  # a script test rather than a gtest case. ENC-1561 splits it: the feedPort
+  # half here against krn_server, the wsPort half below against
+  # krn_engine_server (krn_port_conflict_ws).
   find_package(Python3 COMPONENTS Interpreter QUIET)
   if (TARGET krn_server AND Python3_Interpreter_FOUND)
     add_test(NAME krn_port_conflict
       COMMAND "${Python3_EXECUTABLE}"
               "${PROJECT_SOURCE_DIR}/tests/scripts/port_conflict_test.py"
-              "$<TARGET_FILE:krn_server>")
+              "$<TARGET_FILE:krn_server>" feed)
     set_tests_properties(krn_port_conflict PROPERTIES TIMEOUT 120)
 
     # ENC-1331: `krn_server <ws> <conf> <feed>` must BIND <feed>. Asserted
@@ -852,6 +854,12 @@ if (KRN_BUILD_TESTS AND TARGET krn_engine_server AND Python3_Interpreter_FOUND)
             "${PROJECT_SOURCE_DIR}/tests/scripts/engine_server_reference_test.py"
             "$<TARGET_FILE:krn_engine_server>")
   set_tests_properties(krn_engine_server_reference PROPERTIES TIMEOUT 120)
+
+  add_test(NAME krn_port_conflict_ws
+    COMMAND "${Python3_EXECUTABLE}"
+            "${PROJECT_SOURCE_DIR}/tests/scripts/port_conflict_test.py"
+            "$<TARGET_FILE:krn_engine_server>" ws)
+  set_tests_properties(krn_port_conflict_ws PROPERTIES TIMEOUT 120)
 endif()
 
 # Benchmarks (opt-in)
