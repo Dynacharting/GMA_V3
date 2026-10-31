@@ -1226,12 +1226,18 @@ def evaluate(manifest: dict[str, str]
         split_list(manifest.get("engine_interface_include_dirs", "")))
     graph = parse_link_graph(manifest)
     link_libs = graph.get("krn_engine", [])
-    server_libs = graph.get("krn_server", [])
+    have_server = SERVER_ROOT in graph
+    server_libs = graph.get(SERVER_ROOT, [])
     engine_closure = link_closure(graph, "krn_engine")
-    server_closure = link_closure(graph, "krn_server")
+    server_closure = link_closure(graph, SERVER_ROOT)
+    host_closure = link_closure(graph, "krn_host")
+    app_closure = link_closure(graph, "krn_engine_server")
     tests_closure = (link_closure(graph, "krn_tests")
                      if "krn_tests" in graph else [])
     cmake_sources = dedupe(split_list(manifest.get("engine_cmake_sources", "")))
+    host_sources = dedupe(split_list(manifest.get("host_cmake_sources", "")))
+    app_cmake_sources = dedupe(
+        split_list(manifest.get("engine_server_cmake_sources", "")))
     data_enabled = manifest.get("krn_data_enabled", "?")
     rapidjson_dir = manifest.get("rapidjson_include_dir", "")
 
@@ -1240,13 +1246,22 @@ def evaluate(manifest: dict[str, str]
     # Scan the union: CMake's list is authoritative for what krn_engine
     # compiles, and the walk catches a header CMake's glob pattern happens not
     # to match.
-    sources = sorted(walked_set | {os.path.realpath(s) for s in cmake_sources
+    sources = sorted(walked_set | {os.path.realpath(s)
+                                   for s in cmake_sources + host_sources
                                    if s.endswith(SOURCE_SUFFIXES)
                                    and os.path.realpath(s) != os.path.realpath(
                                        os.path.join(root, COMPOSITION_ROOT))})
     foreign_roots = non_engine_header_roots(root)
     data_only_roots = [r for r in foreign_roots
                        if r.endswith(os.path.join("data", "include"))]
+    # krn_engine_server: the apps/ walk plus CMake's own list for the target.
+    plugins_dir = os.path.realpath(os.path.join(root, "plugins"))
+    app_foreign_roots = [r for r in foreign_roots
+                         if not _under(os.path.realpath(r), plugins_dir)]
+    app_walked = walk_tree(root, APPS_DIR)
+    app_sources = sorted(set(app_walked) | {
+        os.path.realpath(s) for s in app_cmake_sources
+        if s.endswith(SOURCE_SUFFIXES)})
     composition_root = os.path.join(root, COMPOSITION_ROOT)
 
     # --- anti-vacuity: an empty input is a failure, not a pass --------------
@@ -1285,22 +1300,48 @@ def evaluate(manifest: dict[str, str]
         vacuous.append(
             "the manifest lists no krn_engine sources -- the generator "
             "expression did not resolve, so the cross-check is inert")
-    if not server_libs:
+    # The gate's roots (ENC-1561, D11.2).  CMake refuses to configure without
+    # them; a manifest that lacks one is stale or hand-made.
+    for r in REQUIRED_ROOTS:
+        if r not in graph:
+            vacuous.append(
+                f"the manifest has no link.{r} row -- {r} is a root of this "
+                f"gate, so checks C/D were not run on it")
+    names = {name for name, _, _ in app_closure}
+    if not {"krn_host", "krn_engine"} <= names:
         vacuous.append(
-            "the manifest lists no krn_server link libraries -- check D is "
-            "inert (krn_server links at least the `krn` umbrella)")
-    if "krn" not in graph:
+            "krn_engine_server's link closure does not reach krn_host and "
+            "krn_engine -- it goes krn_engine_server -> krn_host -> "
+            "krn_engine, so check D on it never traversed an edge")
+    if not any(name == "krn_engine" for name, _, _ in host_closure):
         vacuous.append(
-            "the link graph has no row for the `krn` umbrella -- the manifest "
-            "is one-level-deep again, and the umbrella is exactly where the "
-            "review found the hole (CMake must emit link.<target> for every "
-            "first-party target)")
-    if not any(name == "krn_engine" for name, _, _ in server_closure):
+            "krn_host's link closure does not reach krn_engine -- check D on "
+            "krn_host never traversed an edge")
+    if not app_sources:
         vacuous.append(
-            "krn_server's link closure does not reach krn_engine -- it goes "
-            "krn_server -> krn -> krn_engine, so a closure that does not "
-            "contain krn_engine never traversed an edge and check D is a "
-            "one-level check wearing a closure's name")
+            f"found no krn_engine_server source under {APPS_DIR}/ or in the "
+            f"manifest -- its include scan has nothing to check")
+    if not app_cmake_sources:
+        vacuous.append(
+            "the manifest lists no krn_engine_server sources -- the generator "
+            "expression did not resolve, so files outside apps/ are unscanned")
+    if have_server:
+        if not server_libs:
+            vacuous.append(
+                "the manifest lists no krn_server link libraries -- check D "
+                "is inert (krn_server links at least the `krn` umbrella)")
+        if "krn" not in graph:
+            vacuous.append(
+                "the link graph has no row for the `krn` umbrella -- the "
+                "manifest is one-level-deep again, and the umbrella is exactly "
+                "where the review found the hole (CMake must emit "
+                "link.<target> for every first-party target)")
+        if not any(name == "krn_engine" for name, _, _ in server_closure):
+            vacuous.append(
+                "krn_server's link closure does not reach krn_engine -- it "
+                "goes krn_server -> krn -> krn_engine, so a closure that does "
+                "not contain krn_engine never traversed an edge and check D "
+                "is a one-level check wearing a closure's name")
     # POSITIVE CONTROL (ENC-1507): the patterns must be shown to match
     # something in THIS build before a clean engine verdict means anything.
     # The primary control is krn_isolation_control, which exists in every
@@ -1349,7 +1390,7 @@ def evaluate(manifest: dict[str, str]
             f"{'has' if have_krn_data else 'has no'} link.krn_data row -- the "
             f"two disagree, so the positive control's verdict describes a "
             f"build this manifest is not")
-    if not os.path.isfile(composition_root):
+    if have_server and not os.path.isfile(composition_root):
         vacuous.append(
             f"{COMPOSITION_ROOT} does not exist -- the composition-root rule "
             f"has nothing to check, and the walk's exclusion is hiding "
@@ -1359,11 +1400,17 @@ def evaluate(manifest: dict[str, str]
                 (check_a_includes(root, [composition_root], data_only_roots,
                                   "composition root (src/main.cpp)")
                  if os.path.isfile(composition_root) else []) +
+                check_a_includes(root, app_sources, app_foreign_roots,
+                                 "engine server (krn_engine_server)") +
                 check_cmake_sources_stay_in_the_engine_trees(
                     root, cmake_sources, walked_set) +
+                check_cmake_sources_stay_in_the_engine_trees(
+                    root, host_sources, walked_set, "krn_host") +
                 check_b_include_dirs(root, include_dirs) +
                 forbidden_links(graph, "krn_engine") +
-                forbidden_links(graph, "krn_server") +
+                forbidden_links(graph, "krn_host") +
+                forbidden_links(graph, "krn_engine_server") +
+                (forbidden_links(graph, SERVER_ROOT) if have_server else []) +
                 (forbidden_links(graph, "krn_tests")
                  if "krn_tests" in graph else []) +
                 control_reachers(graph))
@@ -1371,7 +1418,11 @@ def evaluate(manifest: dict[str, str]
     summary.append("krn_engine isolation (ENC-1481, SPEC D14)")
     summary.append(f"  root            : {root}")
     summary.append(f"  engine files    : {len(sources)} "
-                   f"({len(cmake_sources)} from CMake, {len(walked)} walked)")
+                   f"({len(cmake_sources)} from CMake, {len(walked)} walked, "
+                   f"{len(host_sources)} krn_host)")
+    summary.append(f"  engine server   : {len(app_sources)} file(s) "
+                   f"({len(app_cmake_sources)} from CMake, "
+                   f"{len(app_walked)} under {APPS_DIR}/)")
     summary.append(f"  include dirs    : {len(include_dirs)}")
     # Printed unconditionally and on both verdicts: it is the field that
     # explains why two checkouts of one commit can disagree (ENC-1497).
@@ -1379,9 +1430,13 @@ def evaluate(manifest: dict[str, str]
     summary.append(f"  link libraries  : {len(link_libs)} engine, {len(server_libs)} server "
                    f"(direct)")
     summary.append(f"  link closure    : {len(engine_closure)} from krn_engine, "
-                   f"{len(server_closure)} from krn_server, "
+                   f"{len(host_closure)} from krn_host, "
+                   f"{len(app_closure)} from krn_engine_server, "
+                   f"{len(server_closure) if have_server else 'not built'} "
+                   f"from krn_server, "
                    f"{len(tests_closure)} from krn_tests, over "
                    f"{len(graph)} graphed target(s): {sorted(graph)}")
+    summary.append(f"  market-free     : {sorted(ROOT_FORBIDDEN_LINKS)}")
     summary.append(f"  positive control: {control}")
     reachers = control_reachers(graph)
     summary.append(f"  control linked  : "
@@ -1433,10 +1488,10 @@ def run_gate(manifest_path: str) -> int:
     if code == 0:
         print("\nOK: no Arrow/ClickHouse include in engine code or the composition "
               "root, no data/ or connector header reached from the engine, engine "
-              "include path is include/ or a non-forbidden vendored tree, and no "
-              "data-layer library anywhere "
-              "in the TRANSITIVE link closure of krn_engine, krn_server or "
-              "krn_tests.")
+              "include path is include/ or a non-forbidden vendored tree, no "
+              "data-layer library in the TRANSITIVE link closure of any checked "
+              "root, and no market connector in krn_engine's, krn_host's, "
+              "krn_engine_server's or krn_tests'.")
     return code
 
 
