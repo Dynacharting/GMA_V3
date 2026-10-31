@@ -126,7 +126,7 @@ def atomic_name_words() -> set[str]:
 
 
 DEF_RE = re.compile(
-    r"^\s*(?:template\s*<[^>]*>\s*)?(?:class|struct|enum\s+class|enum)\s+"
+    r"^(?:template\s*<[^>]*>\s*)?(?:class|struct|enum\s+class|enum)\s+"
     r"(?:\w+::)*(\w+)\b[^;{]*\{", re.M)
 
 
