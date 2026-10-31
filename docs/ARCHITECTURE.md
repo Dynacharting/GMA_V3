@@ -7,32 +7,26 @@ This document is the authoritative reference for how KRN is put together. `CLAUD
 KRN is a **streaming-computation server**: JSON request trees come in over WebSocket, events come in from data feeds, and the node pipeline runs user-specified math on the stream and pushes results back out. The codebase is split into two layers:
 
 - **Engine** (`libkrn_engine`): everything that has no idea what it's processing — node pipeline, event routing, JSON tree builder, WebSocket transport, thread pool, atomic store.
-- **Connectors** (`libkrn_connector_market`, `libkrn_plugin_reference`, …): everything domain-specific — feed protocols, per-event computations (e.g. TA), order books, custom atomic provider namespaces, specialized node types.
+- **Connectors** (here only `libkrn_plugin_reference`): everything domain-specific — feed protocols, per-event computations, custom atomic provider namespaces, specialized node types. The market connector (order book, TA, ITCH, `FeedServer`, `WsFeedClient`) and `krn_server` live in [krn-common](https://github.com/Dynacharting/krn-common); the data layer (`krn_data`, Arrow, ClickHouse, ingest) lives in [krn-data](https://github.com/Dynacharting/krn-data). Both consume this repo through `FetchContent`.
 
-**The core invariant:** adding a new connector touches only the connector's own directory plus one line at the composition root. No engine edits. If a change to the engine is ever required to support a new connector, something went wrong in the extension-point design.
+**The core invariant:** adding a new connector touches only the connector's own directory plus one factory in a binary's `HostOptions::connectors`. No engine edits. If a change to the engine is ever required to support a new connector, something went wrong in the extension-point design.
 
 ## 2. Library topology
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│ krn_server  (composition root; main.cpp, ~160 lines)         │
-└──────────────────────┬───────────────────────────────────────┘
-                       │ links
-                       ▼
-┌──────────────────────────────────────────────────────────────┐
-│ krn  (INTERFACE target — transitive convenience alias)       │
+│ krn_engine_server  (apps/engine_server/main.cpp)             │
 └───────────┬──────────────────────┬───────────────────────────┘
-            │                      │
+            │ links                │ links
             ▼                      ▼
 ┌───────────────────────┐ ┌────────────────────────────────────┐
-│ libkrn_connector_     │ │                                    │
-│   market              │ │                                    │
-│   (OB, TA, ITCH,      │ │                                    │
-│    FeedServer,        │ │                                    │
-│    WsFeedClient)      │ │                                    │
-└──────┬────────────────┘ │                                    │
-       │ depends on       │                                    │
-       ▼                  ▼                                    │
+│ libkrn_host           │ │ libkrn_plugin_reference            │
+│   src/host/Host.cpp:  │ │   ReferenceConnector +             │
+│   the composition     │ │   ReferenceComputer,               │
+│   (hostMain/runHost)  │ │   SyntheticConnector               │
+└──────┬────────────────┘ └──────┬─────────────────────────────┘
+       │ depends on              │ depends on
+       ▼                         ▼
 ┌──────────────────────────────────────────────────────────────┐
 │ libkrn_engine                                                │
 │   Dispatcher, TreeBuilder, Node pipeline, WebSocketServer,   │
@@ -41,9 +35,19 @@ KRN is a **streaming-computation server**: JSON request trees come in over WebSo
 └──────────────────────────────────────────────────────────────┘
 ```
 
-`libkrn_plugin_reference` sits next to the market connector (also depending on `krn_engine`) but is only linked into `krn_tests` — it exists as a demo + regression check, not a production feature.
+`krn_host` names no plugin: a binary passes its connectors in `HostOptions` (`include/krn/host/Host.hpp`). `krn_engine_server` is the connector-free server: `krn_host` plus the reference plugin. krn-common's `krn_server` is `krn_host` plus its market connector. Under `FetchContent` / `add_subdirectory` only the library targets are defined (`krn_engine`, `krn_host`, `krn_plugin_reference`); `cmake --install` + `find_package(krn CONFIG)` gives `krn::krn_engine` and `krn::krn_host`.
 
-Engine isolation is enforced via CMake include scoping: `krn_engine`'s PUBLIC include path is `include/` only, so any accidental `#include "krn/book/..."` or `#include "krn/market/..."` from inside engine code fails at compile time.
+Engine isolation is enforced twice. CMake include scoping: `krn_engine`'s PUBLIC include path is `include/` only, so an engine `#include` of a plugin header fails to compile. And `tools/check_engine_isolation.py`, run as the ctest cases `krn_engine_isolation` and `krn_engine_isolation_selftest`:
+
+| Check | What it rejects |
+|---|---|
+| A textual | an engine translation unit including an Arrow / Parquet / ClickHouse / DuckDB header, or a `connectors/*` / `plugins/*` header |
+| B include | an in-repo include directory on `krn_engine` other than `include/` or a vendored `third_party/` tree |
+| C link | `krn_data` / Arrow / Parquet / ClickHouse anywhere in `krn_engine`'s transitive link closure |
+| D profile | the same in the closures of `krn_host`, `krn_engine_server` and `krn_tests`; and `krn_connector_market` reachable from any graphed target |
+| E lexical | part 1 (ENC-1578) is the comment/literal stripper over check A's file list; its vocabulary is ENC-1579 |
+
+The positive control is `krn_isolation_control`, a scan-only target whose closure must trip a forbidden pattern. Exit 0 is a verified pass, 1 a violation, 2 could not run (including a missing or silent control).
 
 ## 3. Event lifecycle (the hot path)
 
@@ -57,7 +61,7 @@ struct Event {
 };
 ```
 
-Where events come from, end-to-end, using the market connector as the example:
+Where events come from, end-to-end, using krn-common's market connector as the example (`FeedServer`, `WsFeedClient`, `ItchAdapter` and `MarketTickComputer` are all krn-common's):
 
 ```
   TCP socket (port 9001)                External wss:// feed
@@ -121,9 +125,9 @@ Where events come from, end-to-end, using the market connector as the example:
 
 Key semantics:
 
-- **Type routing.** `Dispatcher` invokes only computers whose `eventType()` matches the event's `type`. This is how market + synthetic computers coexist on the same dispatcher.
+- **Type routing.** `Dispatcher` invokes only computers whose `eventType()` matches the event's `type`. This is how the reference and synthetic computers (or market and synthetic ones) coexist on the same dispatcher.
 - **TA atomics are not directly subscribable.** `sma_5`, `rsi_14`, etc. are written to `AtomicStore` but delivered to listeners only when a client adds an `AtomicAccessor` node to its pipeline. Subscribing directly on field `sma_5` does nothing by itself.
-- **FunctionMap builtins are subscribable.** `mean`, `sum`, `stddev`, etc. are computed per-field per-tick inside `Dispatcher::computeAndStoreAtomics` and fan out to matching listeners. By default they are stored under the **bare** function name — one slot per symbol, shared by every field, so two fields driving the same builtin overwrite each other. Set `atomicKeyNamespaceByField = true` to store them as `<field>.<fn>` instead; Listener push is unchanged either way. See [atomic-keys.md](atomic-keys.md#derived-atomic-key-shape--atomickeynamespacebyfield-enc-1008) for what flipping it breaks.
+- **FunctionMap builtins are subscribable.** `mean`, `sum`, `stddev`, etc. are computed per-field per-tick inside `Dispatcher::computeAndStoreAtomics` and fan out to matching listeners. By default they are stored under the **bare** function name — one slot per symbol, shared by every field, so two fields driving the same builtin overwrite each other. Set `atomicKeyNamespaceByField = true` to store them as `<field>.<fn>` instead; Listener push is unchanged either way. See krn-common's [atomic-keys.md](https://github.com/Dynacharting/krn-common/blob/main/docs/atomic-keys.md#derived-atomic-key-shape--atomickeynamespacebyfield-enc-1008) for what flipping it breaks.
 - **Per-field raw path.** If a listener subscribed on `(AAPL, lastPrice)` and the payload has `lastPrice`, the dispatcher reads it and delivers directly — no TA involvement.
 
 ### Two ingress shapes, one body (ENC-1486)
@@ -175,7 +179,7 @@ Consequences worth knowing before you touch either:
   a field and the clock nodes are untouched.
 
 Design: `specs/2026-10-14-krn-data-layer/SPEC.md` D1/D3/D9,
-`docs/data-layer.md` §C2/§C6/§6. Pinned by
+krn-data's `docs/data-layer.md` §C2/§C6/§6. Pinned by
 krn-data's `data/tests/RecordIngressParityTest.cpp` and
 `tests/dispatch/RecordIngressEngineTest.cpp`.
 
