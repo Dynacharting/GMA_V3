@@ -2,7 +2,7 @@
 //
 // String interning for the record path (ENC-1481).
 //
-// Design: specs/2026-10-14-krn-data-layer/SPEC.md D3; docs/data-layer.md §5.3.
+// Design: specs/2026-10-14-krn-data-layer/SPEC.md D3; krn-data's docs/data-layer.md §5.3.
 //
 // WHY THIS IS IN krn_engine AND NOT IN krn_data
 // ---------------------------------------------
@@ -25,7 +25,7 @@
 // real one.
 //
 // This is a general string->id interner, used twice: once for tickers and once
-// for venues (docs/data-layer.md §8.3 makes both dictionary columns). It is
+// for venues (krn-data's docs/data-layer.md §8.3 makes both dictionary columns). It is
 // named SymbolTable because the ticker space is the one that matters — a venue
 // space has a handful of entries and a symbol space has thousands against
 // millions of rows.

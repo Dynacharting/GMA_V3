@@ -109,7 +109,7 @@ public:
   // ingress threads concurrently. The per-type computer cache is filled under a
   // lock, but IEventComputer::compute() runs OUTSIDE that lock, so the same
   // cached computer instance can have compute() entered concurrently for the
-  // same event type. IEventComputer implementations (which live in connectors/)
+  // same event type. IEventComputer implementations (supplied by connectors)
   // MUST therefore make compute() safe to call concurrently — either stateless
   // or internally synchronised. The Dispatcher adds no further serialisation.
   //
@@ -142,7 +142,7 @@ public:
   // ENC-1486 — RECORD INGRESS. The same ingress, with the JSON DOM removed.
   //
   // Design: specs/2026-10-14-krn-data-layer/SPEC.md D1, D3, D13;
-  //         docs/data-layer.md §C2, §C6, §6.
+  //         krn-data's docs/data-layer.md §C2, §C6, §6.
   //
   // WHY A SECOND ENTRY POINT. `onTick`'s unit of work is a
   // `shared_ptr<rapidjson::Document>`: it walks `MemberBegin()..MemberEnd()`
@@ -150,18 +150,18 @@ public:
   // ledger, and every `IEventComputer` then probes it by name. For a chart
   // tick that is irrelevant. At MBO rates — tens of millions of records per
   // symbol-day — it is the dominant cost, not the math
-  // (docs/data-layer.md §C6). A record arrives with its fields already
+  // (krn-data's docs/data-layer.md §C6). A record arrives with its fields already
   // resolved, so this path constructs no DOM and no per-field string.
   //
   // THE ENGINE NAMES NO RECORD TYPE (ENC-1557, purity SPEC D4). The caller
   // hands over the record's interned `symbolId` and an `engine::FieldSource`
   // over its fields — for a `krn::data::TickRecord` that is krn_data's
-  // `RecordFieldSource` (data/include/krn/data/RecordFieldSource.hpp).
+  // `RecordFieldSource` (krn-data's data/include/krn/data/RecordFieldSource.hpp).
   // Resolving the id, and refusing an unresolvable one, stays here.
   //
   // THE JSON PATH IS UNCHANGED AND STAYS. The legacy TCP feed server and
   // `market.wsclient` ingress keep using `onTick`. Two ingress shapes is a
-  // cost; folding them is a bigger one (docs/data-layer.md §C2).
+  // cost; folding them is a bigger one (krn-data's docs/data-layer.md §C2).
   //
   // A GRAPH CANNOT TELL WHICH ENTRY POINT FED IT, and that is structural
   // rather than asserted: both entry points are three-line adapters over one
@@ -169,7 +169,7 @@ public:
   // raw-admission ledger, the history buffers, `computeAndStoreAtomics`, the
   // `AtomicStore` keys, the computer sets and `deliver()`'s ordering are one
   // implementation reached two ways (SPEC D1). Pinned by
-  // data/tests/RecordIngressParityTest.cpp, which drives one logical tick
+  // krn-data's data/tests/RecordIngressParityTest.cpp, which drives one logical tick
   // down both paths and compares deliveries IN ORDER and store contents.
   //
   // THE SYMBOL IS STILL HEAP-COPIED HERE, deliberately. `StreamValue` carries
@@ -183,9 +183,9 @@ public:
   //
   // THERE IS NO EVENT TIME ON THIS PATH. `header.tsEventNs` is not exposed as
   // a field and the clock nodes are untouched — SPEC D9 /
-  // docs/data-layer.md §C1, explicitly post-measurement. B1/B2 use a
+  // krn-data's docs/data-layer.md §C1, explicitly post-measurement. B1/B2 use a
   // non-windowed graph precisely so they need none of it. See
-  // data/include/krn/data/RecordFieldSource.hpp for the full field mapping and
+  // krn-data's data/include/krn/data/RecordFieldSource.hpp for the full field mapping and
   // for what each omission is protecting.
   //
   // PRECONDITIONS. `setSymbolTable()` must have been called with a table that
@@ -204,7 +204,7 @@ public:
   // ENC-1486. The event type a record routes to, i.e. which
   // `IEventComputer`s see it. A record IS the resolved form of a
   // `tick`, so it must reach exactly the computers an `Event{sym, payload}`
-  // reaches — `Event::type` defaults to "tick" and `MarketConnector`
+  // reaches — `Event::type` defaults to "tick" and krn-common's `MarketConnector`
   // registers its computer factory under "tick". Deliberately NOT
   // configurable: a knob here would let a record reach a different computer
   // set than its equivalent Event, which is the one thing this path must
@@ -293,7 +293,7 @@ private:
   //     driving the builtin `spread` writes `ob.spread` (ob::Provider's key),
   //     and a field `synthetic` driving `sin` writes `synthetic.sin`
   //     (SyntheticConnector's). Narrow, opt-in-only, documented in
-  //     docs/atomic-keys.md.
+  //     krn-common's docs/atomic-keys.md.
   void computeAndStoreAtomics(const std::string& symbol,
                               const std::string& field,
                               const std::vector<double>& history);

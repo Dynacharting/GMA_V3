@@ -2,7 +2,7 @@
 """Assert krn_engine has not acquired a data-layer dependency.  (ENC-1481)
 
 Design: specs/2026-10-14-krn-data-layer/SPEC.md D14;
-        docs/data-layer.md §4 rule 6.
+        krn-data's docs/data-layer.md §4 rule 6.
 
 THE INVARIANT, in the wording that actually matters:
 
@@ -149,7 +149,7 @@ ANTI-VACUITY.  Every check asserts its own input is non-empty.  A scan of zero
 files and a property list of zero entries both pass every predicate above while
 proving nothing, and that reads exactly like a clean run -- the failure mode
 this repo has been bitten by more than once (ENC-1289's expected-failure
-machinery, the lint anti-vacuity rule in docs/data-layer.md §5.4, and the
+machinery, the lint anti-vacuity rule in krn-data's docs/data-layer.md §5.4, and the
 workspace-root grep that reaches none of the seven repos).  An empty input is
 an ERROR here, not a pass.
 
@@ -1953,7 +1953,7 @@ def run_gate(manifest_path: str) -> int:
         for p in problems:
             print(f"  ! {p}", file=sys.stderr)
         print("\nArrow and the ClickHouse client must never become krn_engine "
-              "dependencies (SPEC D14, docs/data-layer.md §4 rule 6): the "
+              "dependencies (SPEC D14, krn-data's docs/data-layer.md §4 rule 6): the "
               "live-only variant of D14's client profile omits krn_data "
               "entirely and must still link.", file=sys.stderr)
 

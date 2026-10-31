@@ -7,7 +7,7 @@
 //
 // Uses a hand-rolled MockConnector that records call ordering rather than
 // touching any of the production connectors (their behavior is covered by
-// MarketConnector / SyntheticConnector tests respectively).
+// krn-common's MarketConnector tests and the SyntheticConnector tests).
 
 #include "krn/engine/IConnector.hpp"
 #include "krn/engine/Registries.hpp"

@@ -290,7 +290,7 @@ TEST_F(TreeBuilderTestFixture, BuildForRequestBuildsListener) {
     EXPECT_NE(chain.head, nullptr);
 }
 
-// ENC-101 push-vs-pull rule (see GMA_V3/docs/atomic-keys.md). A request
+// ENC-101 push-vs-pull rule (see krn-common's docs/atomic-keys.md). A request
 // asking for a Listener-on-`ob.*` must surface as a runtime_error
 // during buildForRequest, not silently produce a Listener that never
 // fires. ClientSession's subscribe/validate `try { TreeBuilder } catch`

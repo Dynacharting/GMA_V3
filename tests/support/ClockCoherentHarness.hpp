@@ -1,7 +1,7 @@
 // tests/support/ClockCoherentHarness.hpp — ENC-1562 (purity SPEC D13)
 //
 // The ENC-1335 drive harness, shared by tests/dispatch/ClockCoherentPullTest.cpp
-// and tests/market/ClockCoherentCorpusSweepTest.cpp. Factored out, unchanged,
+// and krn-common's tests/market/ClockCoherentCorpusSweepTest.cpp. Factored out, unchanged,
 // so the corpus sweep can move without a second copy of it.
 //
 // Header-only and test-only: nothing under include/ or src/ may depend on it.

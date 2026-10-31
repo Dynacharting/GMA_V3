@@ -690,7 +690,7 @@ endif()
 # =======================
 # THE INVARIANT: krn_engine must not acquire a dependency on Arrow, the
 # ClickHouse client, or the krn_data library target (SPEC D14,
-# docs/data-layer.md §4 rule 6). SPEC D14's live-only client variant omits
+# krn-data's docs/data-layer.md §4 rule 6). SPEC D14's live-only client variant omits
 # krn_data entirely and must still link, so this is a shipping constraint and
 # not a style preference.
 #
@@ -823,7 +823,7 @@ ${_krn_iso_link_rows}")
     # The gate's own gate. A predicate that stopped detecting its violation
     # would turn krn_engine_isolation into a green no-op; this runs each one
     # against an input that violates it and fails unless it is caught. The
-    # anti-vacuity rule of docs/data-layer.md §5.4, applied to the checker.
+    # anti-vacuity rule of krn-data's docs/data-layer.md §5.4, applied to the checker.
     add_test(NAME krn_engine_isolation_selftest
       COMMAND "${Python3_EXECUTABLE}"
               "${PROJECT_SOURCE_DIR}/tools/check_engine_isolation.py"

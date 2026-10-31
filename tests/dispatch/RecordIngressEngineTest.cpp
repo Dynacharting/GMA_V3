@@ -9,7 +9,7 @@
 // symbol is refused, once and out loud (sections 5-6). The parity of the two
 // entry points over a real `TickRecord`, and the record-to-field mapping, need
 // `RecordFieldSource` and live in krn_data_tests:
-// data/tests/RecordIngressParityTest.cpp.
+// krn-data's data/tests/RecordIngressParityTest.cpp.
 //
 // The refusal cases drive `FixedFields`, a FieldSource with no record behind
 // it. That is the point: the refusal is decided on `symbolId` before a field
@@ -125,7 +125,7 @@ struct Rig {
 
 util::Config defaultCfg() {
   util::Config cfg;
-  cfg.threadPoolSize = 1;   // docs/data-layer.md §C7
+  cfg.threadPoolSize = 1;   // krn-data's docs/data-layer.md §C7
   return cfg;
 }
 

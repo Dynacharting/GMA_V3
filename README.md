@@ -15,16 +15,18 @@ pipeline runs nested statistical / technical-indicator math on the live feed,
 pushing results back as values change.
 
 The codebase is split into a **domain-agnostic core engine** plus **pluggable
-connectors**. The engine knows nothing about markets; the market connector
-contributes order-book and technical-analysis capabilities. Adding a new data
-source (crypto, FIX, sensor feed, …) means writing a new connector — no engine
-changes.
+connectors**. This repo is the engine, its composition `krn_host`, the
+connector-free `krn_engine_server` and a reference plugin. The market connector
+(order book, technical analysis, feed adapters) and the `krn_server` binary live
+in [krn-common](https://github.com/Dynacharting/krn-common); the data layer lives in
+[krn-data](https://github.com/Dynacharting/krn-data). Adding a new data source
+means writing a new connector — no engine changes.
 
 ```
-  data feed ──▶ ingress (FeedServer / WsFeedClient + adapter)
-                     │  Event{ streamKey, payload, type="tick" }
+  data feed ──▶ ingress (a connector's IngressRegistry factory)
+                     │  Event{ streamKey, payload, type }
                      ▼
-              Dispatcher ──▶ MarketTickComputer ──▶ AtomicStore / OrderBook
+              Dispatcher ──▶ IEventComputer(s) ──▶ AtomicStore
                      │
                      ▼
    WS clients ──▶ ClientSession ──▶ TreeBuilder ──▶ node pipeline ──▶ Responder ──▶ WS
@@ -42,9 +44,10 @@ Key properties:
   fine-grained pipelining and reuse.
 - **Composable request trees** — clients compose nested pipelines of nodes
   (Listener → Worker/Aggregate/AtomicAccessor → Responder).
-- **Engine / connector split** — `libkrn_engine` is source-agnostic;
-  `libkrn_connector_market` adds OB + TA + feed adapters. CMake include-scoping
-  enforces that the engine never depends on connector headers.
+- **Engine / connector split** — `libkrn_engine` is source-agnostic; plugins
+  add computers, ingress kinds and provider namespaces. CMake include-scoping
+  and `tools/check_engine_isolation.py` enforce that the engine never depends
+  on a plugin header or the data layer.
 - **WebSocket interface** — clients connect, subscribe, and receive continuous
   value updates.
 
@@ -53,7 +56,7 @@ Key properties:
 ## Repository structure
 
 ```
-├── CMakeLists.txt              # Root build (engine + connectors + server + tests)
+├── CMakeLists.txt              # Root build (engine + host + server + tests)
 ├── LICENSE                     # Proprietary, all-rights-reserved licence
 ├── include/krn/                # Engine public headers (libkrn_engine)
 │   ├── engine/                 # IConnector, EngineRegistries, registries
@@ -68,16 +71,12 @@ Key properties:
 ├── src/                        # Engine implementations (mirrors include/)
 │   ├── core/                   # Dispatcher, TreeBuilder, Expr, builtins
 │   ├── nodes/  server/  ws/  rt/  util/
-│   ├── util/krn.conf           # Example INI runtime config
-│   └── main.cpp                # Composition root — boots engine, registers connectors
-├── connectors/
-│   └── market/                 # libkrn_connector_market (OB, TA, ITCH, FeedServer, WsFeedClient)
-│       ├── include/krn/        # market/, book/, ob/, ta/, feed/, ws/, server/
-│       └── src/
+│   └── host/Host.cpp           # krn_host — the engine composition every server shares
+├── apps/engine_server/         # krn_engine_server — krn_host + the reference plugin
 ├── plugins/
-│   └── reference/              # demo connector (linked into tests only)
+│   └── reference/              # ReferenceConnector/Computer, SyntheticConnector
 ├── tests/                      # GoogleTest suites (one krn_tests binary)
-└── docs/                       # ARCHITECTURE.md, atomic-keys.md, feed-adapters.md, ...
+└── docs/                       # ARCHITECTURE.md, CONNECTOR_REFACTOR.md, ...
 ```
 
 ---
@@ -111,41 +110,34 @@ cmake --build build -j$(nproc)
 ./tools/compile.sh
 ```
 
-CMake targets: `libkrn_engine.a`, `libkrn_connector_market.a`,
-`libkrn_plugin_reference.a`, the **`krn_server`** binary, and `krn_tests`.
+CMake targets: `libkrn_engine.a`, `libkrn_host.a`, `libkrn_plugin_reference.a`,
+the **`krn_engine_server`** binary, and `krn_tests`.
 
 ---
 
 ## Run
 
 ```bash
-# Compiled defaults: wsPort=8080, feedPort=9001 (no config file loaded)
-./build/krn_server
+# Compiled defaults: wsPort=8080 (no config file loaded)
+./build/krn_engine_server
 
-# argv[1]=wsPort, argv[2]=configFile, argv[3]=feedPort (argv wins over the file)
-./build/krn_server 9002
-./build/krn_server 9002 krn.conf        # load the example INI (it sets wsPort=4000,
-                                        #   but argv[1]=9002 overrides it)
-./build/krn_server 9002 krn.conf 9005   # also override feedPort
+# argv[1]=wsPort, argv[2]=configFile (argv wins over the file)
+./build/krn_engine_server 9002
+./build/krn_engine_server 9002 my.conf
 ```
 
-> **Port note:** the **compiled-in** default `wsPort` is **8080**
-> (`include/krn/util/Config.hpp`). The shipped `src/util/krn.conf` *overrides*
-> it to **4000**, so the port you get depends on whether you pass that file.
+It streams `REF` (`reference.tick`: field `sample`, keys `reference.sum` /
+`reference.sumsq`) and `SYN` (`synthetic.tick`: field `counter`, keys
+`synthetic.sin` / `synthetic.cos`).
 
 ### Configuration
 
-Runtime config is an **INI `key=value` file** (see `src/util/krn.conf`) parsed by
-`src/util/Config.cpp` — there is no compile-time config struct to edit. Keys
-include `wsPort`, `feedPort`, `threadPoolSize`, `logLevel`,
-`metricsEnabled`/`metricsIntervalSec`, the TA periods
-(`taSMA`, `taEMA`, `taRSI`, `taATR`, `taMomentum`, `taVolAvg`, `taMACD_*`,
-`taBBands_*`), memory bounds (`taHistoryMax`, `maxSymbols`,
-`maxFieldsPerSymbol`), `allowNegativePrices`, the `ingress.N.*` ingress entries,
-and the `market.source.*` field-map namespace. See **[CLAUDE.md](./CLAUDE.md) →
-Configuration** for the full table (including compiled-default vs `krn.conf`
-values) and **[docs/feed-adapters.md](./docs/feed-adapters.md)** for the source
-field map.
+Runtime config is an **INI `key=value` file** parsed by `src/util/Config.cpp`.
+Engine keys include `wsPort`, `threadPoolSize`, `logLevel`,
+`metricsEnabled`/`metricsIntervalSec`, memory bounds (`maxSymbols`,
+`maxFieldsPerSymbol`), `atomicKeyNamespaceByField` and the `ingress.N.*`
+entries. See **[CLAUDE.md](./CLAUDE.md) → Configuration** for the full table.
+The market keys and example config (`conf/krn.conf`) are krn-common's.
 
 ---
 
@@ -177,33 +169,26 @@ not both), and an optional `pipeline`/`node` sub-tree.
 Errors come back as `{"type":"error","where":"<stage>","message":"..."}` where
 `<stage>` is `parse` / `type` / `subscribe` / `validate` / `build`.
 
-Two atomic-key namespaces exist — **bare** keys (`lastPrice`, `bid`, `sma_5`,
+With the market connector (krn-common), two atomic-key namespaces exist — **bare** keys (`lastPrice`, `bid`, `sma_5`,
 `rsi_14`, `macd_line`, `bollinger_upper`, …) are Listener-subscribable, while
 **`ob.*`** keys (`ob.best.bid.price`, `ob.spread`, …) are **pipeline-only** (read
 via an `AtomicAccessor`, never a direct Listener). The push-vs-pull rule, the
 canonical `ob.*`-in-a-chart pattern, and the exact emitted key names are in
-**[docs/atomic-keys.md](./docs/atomic-keys.md)**.
+krn-common's **[docs/atomic-keys.md](https://github.com/Dynacharting/krn-common/blob/main/docs/atomic-keys.md)**.
 
 Derived FunctionMap builtins (`mean`, `sum`, `stddev`, …) are stored under the
 bare function name by default — a single per-symbol slot shared by every field,
 so two fields driving the same builtin overwrite each other. Set
 `atomicKeyNamespaceByField = true` to key them `<field>.<fn>` instead; see
-[docs/atomic-keys.md](./docs/atomic-keys.md#derived-atomic-key-shape--atomickeynamespacebyfield-enc-1008)
+krn-common's [docs/atomic-keys.md](https://github.com/Dynacharting/krn-common/blob/main/docs/atomic-keys.md#derived-atomic-key-shape--atomickeynamespacebyfield-enc-1008)
 for the migration, since the key is client-visible.
 
-### TCP feed (market connector, default port 9001)
+### Feeds
 
-The market connector's `FeedServer` accepts GMA's own line-delimited JSON:
-
-```jsonc
-{"symbol":"AAPL","lastPrice":187.42,"volume":350,"bid":187.40,"ask":187.43}
-{"type":"ob","action":"add","symbol":"AAPL","id":1,"side":"bid","price":187.40,"size":100}
-{"type":"control","action":"reset","symbol":"AAPL"}
-```
-
-External vendor feeds (e.g. NASDAQ ITCH) are ingested over `WsFeedClient` + a
-feed adapter — see **[docs/feed-adapters.md](./docs/feed-adapters.md)** and
-**[docs/writing-adapters.md](./docs/writing-adapters.md)**.
+The TCP feed server and the vendor feed adapters (e.g. NASDAQ ITCH) are the
+market connector's — see krn-common's
+**[docs/feed-adapters.md](https://github.com/Dynacharting/krn-common/blob/main/docs/feed-adapters.md)** and
+**[docs/writing-adapters.md](https://github.com/Dynacharting/krn-common/blob/main/docs/writing-adapters.md)**.
 
 ---
 
@@ -214,10 +199,11 @@ cmake -B build -DKRN_BUILD_TESTS=ON && cmake --build build -j$(nproc)
 cd build && ctest --output-on-failure
 
 # A single suite
-./krn_tests --gtest_filter="ItchAdapterTest.*"
+./krn_tests --gtest_filter="AggregateTest.*"
 ```
 
-All tests build into one `krn_tests` executable.
+All gtest cases build into one `krn_tests` executable; ctest also runs the
+script, isolation-gate and consumer-smoke cases.
 
 ---
 

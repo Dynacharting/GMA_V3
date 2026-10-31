@@ -2,7 +2,7 @@
 //
 // JsonFieldSource — the JSON DOM adapter for FieldSource (ENC-1486).
 //
-// Design: specs/2026-10-14-krn-data-layer/SPEC.md D1; docs/data-layer.md §C2.
+// Design: specs/2026-10-14-krn-data-layer/SPEC.md D1; krn-data's docs/data-layer.md §C2.
 //
 // This is the LEGACY ingress shape and it is unchanged: the TCP feed server
 // and `market.wsclient` both hand `Dispatcher::onTick` a
@@ -87,7 +87,7 @@ public:
     if (!isObject()) return;
     // ONE reused buffer, not a fresh `std::string` per member. The pre-ENC-1486
     // loop constructed a `std::string name(it->name.GetString(), ...)` per
-    // member per tick — the cost docs/data-layer.md §C6 names — and the sink
+    // member per tick — the cost krn-data's docs/data-layer.md §C6 names — and the sink
     // copies the name anyway when it admits it, so constructing a second one
     // here would be pure waste. `assign` reuses the capacity, so a tick costs
     // at most one allocation for names rather than one per member.
