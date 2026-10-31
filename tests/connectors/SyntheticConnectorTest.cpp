@@ -152,6 +152,7 @@ engine::EngineRegistries buildRegs(util::Config& cfg,
     &AtomicProviderRegistry::singleton(),
     &FunctionMap::instance(),
     &util::logger(),
+    &engine::ProtocolIngressRegistry::singleton(),
   };
 }
 

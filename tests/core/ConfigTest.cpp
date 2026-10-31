@@ -95,3 +95,23 @@ TEST(ConfigTest, AtomicKeyNamespaceByFieldStaysOffForAnythingElse) {
         std::remove(path);
     }
 }
+
+// ENC-1574: the legacy feed keys and the TA keys are not engine keys. Loading
+// them sets nothing and synthesizes no ingress entry of any kind.
+TEST(ConfigTest, LegacyMarketKeysSynthesizeNoIngress) {
+    const char* path = "test_config_enc1574_legacy.ini";
+    {
+        std::ofstream f(path);
+        f << "feedPort=9101\n"
+          << "feedUrl=ws://localhost:8100/feed\n"
+          << "feedSymbols=A,B\n"
+          << "feed.0.url=ws://localhost:8101/feed\n"
+          << "taSMA=3,7\n"
+          << "maxSymbols=11\n";
+    }
+    Config cfg;
+    EXPECT_TRUE(cfg.loadFromFile(path));
+    std::remove(path);
+    EXPECT_EQ(cfg.maxSymbols, 11);
+    EXPECT_TRUE(cfg.ingress.empty());
+}
