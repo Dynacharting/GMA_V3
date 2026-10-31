@@ -9,7 +9,7 @@
 //   Fix 6: Allow negative prices in OrderBook
 //
 // Fixes 6, 1, 5+7 and 4 need the market connector and are in
-// tests/market/GapFixesTest.cpp (krn_market_tests, ENC-1562).
+// krn-common's tests/market/GapFixesTest.cpp (krn_common_tests).
 
 #include <gtest/gtest.h>
 

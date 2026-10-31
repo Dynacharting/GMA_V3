@@ -6,6 +6,7 @@
 #include "krn/nodes/INode.hpp"
 #include "krn/nodes/Listener.hpp"
 #include "krn/JsonValidator.hpp"
+#include "../support/ScopedPipelineOnly.hpp"
 #include <gtest/gtest.h>
 #include <rapidjson/document.h>
 #include <memory>
@@ -290,13 +291,14 @@ TEST_F(TreeBuilderTestFixture, BuildForRequestBuildsListener) {
     EXPECT_NE(chain.head, nullptr);
 }
 
-// ENC-101 push-vs-pull rule (see GMA_V3/docs/atomic-keys.md). A request
+// ENC-101 push-vs-pull rule (see krn-common's docs/atomic-keys.md). A request
 // asking for a Listener-on-`ob.*` must surface as a runtime_error
 // during buildForRequest, not silently produce a Listener that never
 // fires. ClientSession's subscribe/validate `try { TreeBuilder } catch`
 // chain (src/server/ClientSession.cpp:456) propagates this to the WS
 // peer as `{"type":"error","where":"validate", ...}`.
 TEST_F(TreeBuilderTestFixture, BuildForRequestRejectsObListenerField) {
+    const krn::testsupport::ScopedPipelineOnly ob("ob");
     initDeps();
     auto terminal = std::make_shared<TerminalStub>();
     rapidjson::Document doc;
@@ -316,6 +318,7 @@ TEST_F(TreeBuilderTestFixture, BuildForRequestRejectsObListenerField) {
 }
 
 TEST_F(TreeBuilderTestFixture, BuildForRequestRejectsObSpread) {
+    const krn::testsupport::ScopedPipelineOnly ob("ob");
     initDeps();
     auto terminal = std::make_shared<TerminalStub>();
     rapidjson::Document doc;

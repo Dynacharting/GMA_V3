@@ -11,6 +11,7 @@
 #include "krn/NodeRegistry.hpp"
 #include "krn/rt/ThreadPool.hpp"
 #include "krn/server/WebSocketServer.hpp"
+#include "../support/ScopedPipelineOnly.hpp"
 
 #include <boost/asio/connect.hpp>
 #include <boost/asio/io_context.hpp>
@@ -280,6 +281,7 @@ TEST(ClientSessionTest, SubscribeRejectsOversizedField) {
 // test that exercises the full WS round-trip; ListenerTest +
 // TreeBuilderTest already cover the reject at lower layers.
 TEST(ClientSessionTest, SubscribeRejectsObListenerField) {
+  const krn::testsupport::ScopedPipelineOnly ob("ob");
   ServerHarness srv;
   asio::io_context clientIoc;
   auto stream = connect(clientIoc, srv.port());
