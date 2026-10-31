@@ -987,8 +987,8 @@ def selftest_stripper(failures: list[str], log: list[str]) -> int:
         ("char", "auto c = 'Hit';\n", "'Hit'", "Hit", "Hit", False),
         ("raw-string", 'auto s = R"(Hit)";\n', 'R"(Hit)"', 'R"()" Hit',
          "Hit", False),
-        ("raw-string-delimiter", 'auto s = R"x(a)" Hit )x";\n', ')x"; ',
-         ')x"; Hit2 ', "Hit2", False),
+        ("raw-string-delimiter", 'auto s = R"x(a)" Hit )x"; int b;\n',
+         'R"x(', 'R"(', "Hit", False),
         ("u8R-raw-string", 'auto s = u8R"(// Hit)";\n', 'u8R"(// Hit)"',
          'u8R"(//)" Hit', "Hit", False),
         ("LR-raw-string", 'auto s = LR"(Hit)";\n', 'LR"(Hit)"', 'LR"()" Hit',
@@ -1008,7 +1008,7 @@ def selftest_stripper(failures: list[str], log: list[str]) -> int:
          'R"(^(http)://)"', "R//", "Keep", True),
         ("quote-in-comment", '/* " */ Keep; // "\n', '/* " */', '" ',
          "Keep", True),
-        ("quote-in-line-comment", '// "\nKeep; "x";\n', '// "', '"',
+        ("quote-in-line-comment", '// "\nKeep;\n', '// "\n', '"',
          "Keep", True),
         ("dquote-in-char", "char c = '\"'; Keep; char d = '\"';\n", "'\"'",
          "'", "Keep", True),
@@ -1029,7 +1029,7 @@ def selftest_stripper(failures: list[str], log: list[str]) -> int:
         ("block-comment-ends", "/* a */ Keep;\n", "*/", "*", "Keep", True),
         ("raw-string-ends-at-its-delimiter",
          'auto s = R"x(a)" b)x"; Keep;\n', ')x";', ')y";', "Keep", True),
-        ("identifier-is-not-a-prefix", 'auto s = MyR"(a)"; Keep; "x";\n',
+        ("identifier-is-not-a-prefix", 'auto s = MyR"(a"; Keep; ")";\n',
          "MyR", "R", "Keep", True),
     )
     for case in cases:
