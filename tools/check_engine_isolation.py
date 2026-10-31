@@ -1100,8 +1100,10 @@ def selftest_gate(failures: list[str]) -> int:
     The fixture clears every anti-vacuity floor, and the legal case is asserted
     to exit 0 first, so each refusal below is caused by its own mutation and
     not by the fixture being thin.  Each mutant also asserts it changed the
-    manifest before its verdict is judged.
+    manifest before its verdict is judged.  The fixture has the repo's shape
+    after ENC-1570: no connectors/, no src/main.cpp, no market target.
     """
+    import shutil
     import tempfile
 
     ran: list[str] = []
@@ -1110,10 +1112,8 @@ def selftest_gate(failures: list[str]) -> int:
         os.makedirs(os.path.join(fx, "src", "core"))
         os.makedirs(os.path.join(fx, "src", "host"))
         os.makedirs(os.path.join(fx, APPS_DIR, "engine_server"))
-        mkt = os.path.join(fx, "connectors", "market", "include", "krn",
-                           "market")
-        os.makedirs(mkt)
-        open(os.path.join(mkt, "MarketConnector.hpp"), "w").close()
+        os.makedirs(os.path.join(fx, "plugins", "reference", "include", "krn",
+                                 "reference"))
         app_main = os.path.join(fx, APPS_DIR, "engine_server", "main.cpp")
         with open(app_main, "w", encoding="utf-8") as fh:
             fh.write("#include <memory>\n")
@@ -1126,21 +1126,16 @@ def selftest_gate(failures: list[str]) -> int:
             with open(path, "w", encoding="utf-8") as fh:
                 fh.write(f"int e{i}; // fixture\n")
             sources.append(path)
-        open(os.path.join(fx, COMPOSITION_ROOT), "w").close()
         inc = os.path.join(fx, "include")
 
         base_graph = {
             "krn_engine": ["Threads::Threads"],
-            "krn": ["krn_engine", "krn_connector_market"],
-            "krn_connector_market": ["krn_engine"],
-            "krn_server": ["krn_host", "krn", "Threads::Threads"],
+            "krn": ["krn_engine"],
             "krn_plugin_reference": ["krn_engine"],
             "krn_host": ["krn_engine"],
             "krn_engine_server": ["krn_host", "krn_plugin_reference"],
             "krn_tests": ["krn_engine", "krn_plugin_reference",
                           "GTest::gtest_main"],
-            "krn_market_tests": ["krn", "krn_plugin_reference",
-                                 "GTest::gtest_main"],
             CONTROL_TARGET: [CONTROL_PROBE],
         }
 
@@ -1181,6 +1176,17 @@ def selftest_gate(failures: list[str]) -> int:
                 failures.append(f"SELFTEST: gate/{name}: mutation did not apply")
             return g
 
+        def append_line(label, path, line):
+            with open(path, encoding="utf-8") as fh:
+                before = fh.read()
+            with open(path, "a", encoding="utf-8") as fh:
+                fh.write(line)
+            with open(path, encoding="utf-8") as fh:
+                if fh.read() == before:
+                    failures.append(f"SELFTEST: gate/{label}: mutation did "
+                                    f"not apply")
+            return before
+
         # The legal fixture passes, and its control fires FROM THE STUB -- the
         # only control since data/ left (ENC-1573).
         summary = gate("legal", base_graph, 0)
@@ -1191,6 +1197,18 @@ def selftest_gate(failures: list[str]) -> int:
         expect = forbidden_links(base_graph, CONTROL_TARGET)
         if not expect:
             failures.append("SELFTEST: the control stub does not fire")
+
+        # ENC-1570: the apps/ rule's connector-root list is EMPTY here, which
+        # is intended: a pass (0), not "could not run" (2), and the summary
+        # says so.  The prefix rule still bites, below.
+        if app_foreign_roots(fx, non_engine_header_roots(fx)) != []:
+            failures.append("SELFTEST: gate/apps-rule-empty: the fixture has "
+                            "a connector root, so this proves nothing")
+        if not any("apps/ rule" in ln and "empty is intended" in ln
+                   for ln in summary):
+            failures.append("SELFTEST: gate/apps-rule-empty: the summary does "
+                            f"not name the empty apps/ list: {summary}")
+        ran.append("apps-rule-empty-is-intended=0")
 
         # An Arrow-linking target no checked root reaches is not a violation.
         with_data = mutant("legal-unreached-krn_data", lambda g: g.update(
@@ -1212,24 +1230,29 @@ def selftest_gate(failures: list[str]) -> int:
             {CONTROL_TARGET: ["krn::arrow"]}))
         gate("control-without-stub", drifted, 2, CONTROL_TARGET)
 
-        # ENC-1562: the whole gate exits 1 when krn_tests links the market
-        # connector -- the CMake line `target_link_libraries(krn_tests
-        # PRIVATE krn_connector_market)`.
-        gate("krn_tests-links-market",
-             mutant("krn_tests-links-market",
-                    lambda g: g["krn_tests"].append("krn_connector_market")),
-             1)
-
-        # ENC-1561 (D11.1): the market connector in krn_engine's, krn_host's
-        # or krn_engine_server's closure -- direct, and via the umbrella.
-        for r in ("krn_engine", "krn_host", "krn_engine_server"):
-            for how, lib in (("direct", "krn_connector_market"),
-                             ("via-umbrella", "krn")):
-                if r == "krn_engine" and how == "via-umbrella":
-                    continue  # krn -> krn_engine: a cycle, not a shape
-                name = f"{r}-links-market-{how}"
-                gate(name, mutant(name, lambda g, r=r, lib=lib:
-                                  g[r].append(lib)), 1)
+        # D11.1 after ENC-1570: krn_connector_market exists nowhere in this
+        # repo, so a link to the NAME (an IMPORTED stub, or the target
+        # re-added) is the violation -- from every checked root, directly
+        # and through the umbrella, and from a target no root reaches.
+        for r in ("krn_engine", "krn_host", "krn_engine_server", "krn_tests"):
+            name = f"{r}-links-market-direct"
+            gate(name, mutant(name, lambda g, r=r:
+                              g[r].append("krn_connector_market")), 1)
+        def via_umbrella(g, r):
+            g["krn"].append("krn_connector_market")
+            g[r].append("krn")
+        for r in ("krn_host", "krn_engine_server", "krn_tests"):
+            name = f"{r}-links-market-via-umbrella"
+            gate(name, mutant(name, lambda g, r=r: via_umbrella(g, r)), 1)
+        gate("umbrella-links-market",
+             mutant("umbrella-links-market",
+                    lambda g: g["krn"].append("krn_connector_market")), 1)
+        gate("unreached-bench-links-market",
+             mutant("unreached-bench-links-market", lambda g: g.update(
+                 {"bench_x": ["krn", "krn_connector_market"]})), 1)
+        gate("krn_server-re-added",
+             mutant("krn_server-re-added", lambda g: g.update(
+                 {"krn_server": ["krn_host", "krn_connector_market"]})), 1)
 
         # D11.2: a missing root is "could not run", never a pass.  krn_host
         # is removed with its edges, else the unregistered-name rule fires.
@@ -1240,25 +1263,31 @@ def selftest_gate(failures: list[str]) -> int:
         for r in ("krn_host", "krn_engine_server"):
             gate(f"no-{r}-row", mutant(f"no-{r}-row",
                                        lambda g, r=r: drop(g, r)), 2, r)
-        # ... and krn_server leaving (D12 step 22) is not a failure.
-        gate("krn_server-not-built",
-             mutant("krn_server-not-built", lambda g: g.pop("krn_server")),
-             0)
 
-        # ENC-1561: a market header included from krn_engine_server's or
-        # krn_host's source is caught by check A.
+        # The apps/ prefix rule with the EMPTY connector-root list: an Arrow
+        # include from krn_engine_server's source is still caught.
+        before = append_line("apps-main-includes-arrow", app_main,
+                             "#include <arrow/api.h>\n")
+        gate("apps-main-includes-arrow", base_graph, 1)
+        with open(app_main, "w", encoding="utf-8") as fh:
+            fh.write(before)
+
+        # A connector re-added under connectors/ is enumerated, so including
+        # it from apps/ or krn_host is caught with no edit to this file.
+        mkt = os.path.join(fx, "connectors", "market", "include", "krn",
+                           "market")
+        os.makedirs(mkt)
+        open(os.path.join(mkt, "MarketConnector.hpp"), "w").close()
+        if len(app_foreign_roots(fx, non_engine_header_roots(fx))) != 1:
+            failures.append("SELFTEST: gate/connector-re-added: the stub "
+                            "connector root was not enumerated")
         for label, path in (("apps-main", app_main), ("host-cpp", host_cpp)):
-            with open(path, encoding="utf-8") as fh:
-                before = fh.read()
-            with open(path, "a", encoding="utf-8") as fh:
-                fh.write('#include "krn/market/MarketConnector.hpp"\n')
-            with open(path, encoding="utf-8") as fh:
-                if fh.read() == before:
-                    failures.append(f"SELFTEST: gate/{label}-includes-market: "
-                                    f"mutation did not apply")
+            before = append_line(f"{label}-includes-market", path,
+                                 '#include "krn/market/MarketConnector.hpp"\n')
             gate(f"{label}-includes-market", base_graph, 1)
             with open(path, "w", encoding="utf-8") as fh:
                 fh.write(before)
+        shutil.rmtree(os.path.join(fx, "connectors"))
         gate("legal-after-include-restore", base_graph, 0)
 
         # ENC-1578: a stripper that blanks nothing over check A's list is
@@ -1363,33 +1392,31 @@ def selftest() -> int:
         expect_detected("A/engine-includes-a-plugin-header",
                         check_a_includes(tmp, [plugin_user], foreign))
 
-        # The composition root: it may reach a connector, it may not reach
-        # Arrow. This is the distinction the first real run of this script
-        # surfaced, so both halves of it are pinned here.  Its root list is
-        # empty BY DESIGN since data/ left (ENC-1573, ENC-1578).
+        # ENC-1570: the apps/ list with NO connector root is empty, and that
+        # is intended -- the prefix rule still bites on it.
+        no_conn = app_foreign_roots(tmp, [r for r in foreign if not _under(
+            os.path.realpath(r), os.path.realpath(os.path.join(tmp,
+                                                               "connectors")))])
+        if no_conn != []:
+            failures.append(f"SELFTEST: A/apps-roots-empty-without-connectors: "
+                            f"{no_conn}")
+        arrow_app = os.path.join(tmp, APPS_DIR, "engine_server", "arrow.cpp")
+        expect_detected("A/engine-server-includes-arrow-with-empty-roots",
+                        check_a_includes(tmp, [arrow_app], no_conn,
+                                         "engine server"))
+
+        # src/main.cpp left with krn_server (ENC-1570): one re-added is engine
+        # code -- walked, and held to the engine's rule, not a weaker one.
         main_cpp = os.path.join(tmp, "src", "main.cpp")
         with open(main_cpp, "w", encoding="utf-8") as fh:
             fh.write('#include "krn/market/MarketConnector.hpp"\n')
-        expect_clean("A/composition-root-may-use-a-connector",
-                     check_a_includes(tmp, [main_cpp], [], "composition root"))
-        expect_detected("A/composition-root-may-not-use-a-connector-as-engine",
-                        check_a_includes(tmp, [main_cpp], foreign))
-        main_bad = os.path.join(tmp, "src", "main_bad.cpp")
-        with open(main_bad, "w", encoding="utf-8") as fh:
-            fh.write('#include <arrow/api.h>\n')
-        expect_detected("A/composition-root-may-not-use-arrow",
-                        check_a_includes(tmp, [main_bad], [], "composition root"))
-
-        # The walk must exclude the composition root, and the cross-check must
-        # notice if CMake ever compiles it into krn_engine anyway.
         walked = set(walk_engine_trees(tmp))
-        if os.path.realpath(main_cpp) in walked:
-            failures.append("SELFTEST: walk_engine_trees did not exclude src/main.cpp")
+        if os.path.realpath(main_cpp) not in walked:
+            failures.append("SELFTEST: walk_engine_trees skipped src/main.cpp")
         if os.path.realpath(good) not in walked:
             failures.append("SELFTEST: walk_engine_trees missed a real engine source")
-        expect_detected("cross/main.cpp-in-engine-target",
-                        check_cmake_sources_stay_in_the_engine_trees(
-                            tmp, [main_cpp], walked))
+        expect_detected("A/src-main.cpp-is-engine-code",
+                        check_a_includes(tmp, sorted(walked), foreign))
         expect_detected("cross/data-source-in-engine-target",
                         check_cmake_sources_stay_in_the_engine_trees(
                             tmp, [os.path.join(tmp, "data", "src", "Schema.cpp")], walked))
