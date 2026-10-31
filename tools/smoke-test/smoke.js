@@ -91,7 +91,7 @@ const KEY_SETS = {
               inputs: [{ type: 'Listener', streamKey: 'NEXO', field: 'lastPrice' },
                        { type: 'Listener', streamKey: 'NEXO', field: 'volume' },
                        { type: 'Listener', streamKey: 'NEXO', field: 'sma_5' }] } },
-    { key: 99, streamKey: 'NEXO', field: 'no_such_field', label: 'BOGUS/no_such_field' },
+    { key: 61, streamKey: 'NEXO', field: 'lastPrice', label: 'NEXO/Aggregate(5) wrongpat', expectReject: /some other reason/, node: { type: 'Aggregate', arity: 5, inputs: [{ type: 'Listener', streamKey: 'NEXO', field: 'lastPrice' }] } },
   ],
 
   engine: [
