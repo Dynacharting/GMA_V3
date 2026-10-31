@@ -336,8 +336,13 @@ def check_cmake_sources_stay_in_the_engine_trees(
 
 
 def non_engine_header_roots(root: str) -> list[str]:
-    """Include roots that belong to krn_data, the connectors and the plugins."""
-    roots = [os.path.join(root, "data", "include")]
+    """Include roots that belong to the connectors and the plugins.
+
+    Enumerated, never named.  `data/include` was a named root, filtered out
+    by the isdir test once ENC-1573 deleted data/, which left the
+    composition-root rule checking an empty list in silence (ENC-1578).
+    """
+    roots = []
     for parent in ("connectors", "plugins"):
         base = os.path.join(root, parent)
         if not os.path.isdir(base):
@@ -1650,6 +1655,11 @@ def selftest() -> int:
                             "krn_data"))
 
     gate_cases = selftest_gate(failures)
+    strip_log: list[str] = []
+    strip_cases = selftest_stripper(failures, strip_log)
+    print(f"check E stripper ({strip_cases} cases):")
+    for line in strip_log:
+        print(line)
 
     if failures:
         for f in failures:
@@ -1658,7 +1668,8 @@ def selftest() -> int:
               file=sys.stderr)
         return 1
     print("selftest: all predicates detect their violation and pass legal input "
-          f"({gate_cases} whole-gate exit-code cases)")
+          f"({gate_cases} whole-gate exit-code cases, {strip_cases} stripper "
+          f"cases)")
     return 0
 
 
@@ -1705,8 +1716,6 @@ def evaluate(manifest: dict[str, str]
                                    and os.path.realpath(s) != os.path.realpath(
                                        os.path.join(root, COMPOSITION_ROOT))})
     foreign_roots = non_engine_header_roots(root)
-    data_only_roots = [r for r in foreign_roots
-                       if r.endswith(os.path.join("data", "include"))]
     # krn_engine_server: the apps/ walk plus CMake's own list for the target.
     app_foreign = app_foreign_roots(root, foreign_roots)
     app_walked = walk_tree(root, APPS_DIR)
@@ -1743,8 +1752,8 @@ def evaluate(manifest: dict[str, str]
             "not resolve (it links at least Threads::Threads)")
     if not foreign_roots:
         vacuous.append(
-            "found no non-engine include roots (data/include, "
-            "connectors/*/include, plugins/*/include) -- check A cannot "
+            "found no non-engine include roots (connectors/*/include, "
+            "plugins/*/include) -- check A cannot "
             "detect a layering "
             "violation it has no tree to resolve against")
     if not cmake_sources:
@@ -1824,8 +1833,21 @@ def evaluate(manifest: dict[str, str]
             f"has nothing to check, and the walk's exclusion is hiding "
             f"nothing rather than hiding main.cpp")
 
+    # Check E, part 1 (ENC-1578): strip check A's own list.  No vocabulary
+    # yet; a stripper that blanks nothing, or breaks a file's shape or an
+    # #include path, cannot be trusted with one.
+    _stripped, strip_stats, strip_bad = strip_sources(sources)
+    if strip_bad:
+        vacuous.append(f"the check E stripper damaged {len(strip_bad)} "
+                       f"file(s): {strip_bad[:5]}")
+    if sources and strip_stats["blanked"] == 0:
+        vacuous.append(f"the check E stripper blanked nothing in "
+                       f"{len(sources)} files -- it is not running")
+
     problems = (check_a_includes(root, sources, foreign_roots) +
-                (check_a_includes(root, [composition_root], data_only_roots,
+                # Prefix rule only: main.cpp may reach every connector and
+                # plugin, and data/ is not in this repo (ENC-1573, ENC-1578).
+                (check_a_includes(root, [composition_root], [],
                                   "composition root (src/main.cpp)")
                  if os.path.isfile(composition_root) else []) +
                 check_a_includes(root, app_sources, app_foreign,
@@ -1872,6 +1894,13 @@ def evaluate(manifest: dict[str, str]
                    f" (closure of all {len(graph) - (CONTROL_TARGET in graph)} "
                    f"other graphed target(s) read)")
     summary.append(f"  foreign roots   : {[os.path.relpath(r, root) for r in foreign_roots]}")
+    summary.append(
+        f"  E stripper      : {strip_stats['files']} files (check A's list), "
+        f"{strip_stats['blanked']} chars blanked, {strip_stats['includes']} "
+        f"#include paths kept verbatim, {strip_stats['includes_in_comments']} "
+        f"in comments; D11 sentinel {D11_SENTINEL_RE.pattern}: "
+        f"{strip_stats['sentinel_before']} before, "
+        f"{strip_stats['sentinel_after']} after (reported, not gated)")
 
     return vacuous, problems, summary
 
