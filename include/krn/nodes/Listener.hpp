@@ -23,8 +23,10 @@ class Listener final
 public:
   // Prefer Create() over the public constructor: it enforces the
   // ENC-101 push-vs-pull rule (see GMA_V3/docs/atomic-keys.md) by
-  // rejecting `ob.*` fields, which the dispatcher never notifies on
-  // and which would silently produce zero updates. The constructor
+  // rejecting fields in a namespace a plugin declared pipeline-only
+  // (AtomicProviderRegistry::markPipelineOnly; the market plugin
+  // declares `ob`), which the dispatcher never notifies on and which
+  // would silently produce zero updates. The constructor
   // remains public so unit tests can build a Listener with arbitrary
   // fields to exercise the reject path itself.
   //

@@ -4,7 +4,7 @@
 // else. No connector is constructed and no event computer is registered, so a
 // Dispatcher built in any test computes only what that test adds to it. The
 // market bootstrap, which also registers MarketConnector, is
-// tests/market/test_bootstrap.cpp and belongs to krn_market_tests.
+// krn-common's tests/market/test_bootstrap.cpp (krn_common_tests).
 
 #include "krn/FunctionRegistry.hpp"
 #include "krn/NodeRegistry.hpp"

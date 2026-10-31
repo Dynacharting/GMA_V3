@@ -30,7 +30,7 @@ node smoke.js [--url ws://localhost:8080] [--duration 30] [--verbose] [--target 
 | `--url`      | `ws://localhost:8080`  | GMA WebSocket server URL             |
 | `--duration` | `30`                   | Seconds to collect updates           |
 | `--verbose`  | off                    | Log every individual update received |
-| `--target`   | `market`               | Key set: `market` for `krn_server` (NEXO/VALT), `engine` for `krn_engine_server` (REF/SYN) |
+| `--target`   | `market`               | Key set: `market` for krn-common's `krn_server` (NEXO/VALT), `engine` for `krn_engine_server` (REF/SYN) |
 
 Each server gets its own key set, chosen explicitly, because `krn_engine_server`
 serves no market streams. Every key in the chosen set is gated; none is skipped.
@@ -58,8 +58,8 @@ With `--target market` the script subscribes to 23 keys across 6 tiers
 # Terminal 1 — feed simulator
 cd ~/Github/feed-simulator/go-feed && go run ./cmd/feedsim -port 8100
 
-# Terminal 2 — GMA server
-cd ~/Github/GMA_V3
+# Terminal 2 — krn-common's krn_server
+cd ~/Github/krn-common
 GMA_FEED_URL=ws://localhost:8100/feed ./build/krn_server 8080
 
 # Terminal 3 — smoke test
@@ -70,6 +70,7 @@ node smoke.js --url ws://localhost:8080 --duration 30 --verbose
 ### Option B: Public feed
 
 ```bash
+# krn_server is krn-common's: run it from that checkout, smoke.js from this one
 GMA_FEED_URL=wss://feed-sim.v3m.xyz/feed ./build/krn_server 8080
 node tools/smoke-test/smoke.js --url ws://localhost:8080 --duration 30
 ```

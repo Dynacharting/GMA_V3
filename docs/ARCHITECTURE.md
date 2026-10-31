@@ -7,32 +7,26 @@ This document is the authoritative reference for how KRN is put together. `CLAUD
 KRN is a **streaming-computation server**: JSON request trees come in over WebSocket, events come in from data feeds, and the node pipeline runs user-specified math on the stream and pushes results back out. The codebase is split into two layers:
 
 - **Engine** (`libkrn_engine`): everything that has no idea what it's processing — node pipeline, event routing, JSON tree builder, WebSocket transport, thread pool, atomic store.
-- **Connectors** (`libkrn_connector_market`, `libkrn_plugin_reference`, …): everything domain-specific — feed protocols, per-event computations (e.g. TA), order books, custom atomic provider namespaces, specialized node types.
+- **Connectors** (here only `libkrn_plugin_reference`): everything domain-specific — feed protocols, per-event computations, custom atomic provider namespaces, specialized node types. The market connector (order book, TA, ITCH, `FeedServer`, `WsFeedClient`) and `krn_server` live in [krn-common](https://github.com/Dynacharting/krn-common); the data layer (`krn_data`, Arrow, ClickHouse, ingest) lives in [krn-data](https://github.com/Dynacharting/krn-data). Both consume this repo through `FetchContent`.
 
-**The core invariant:** adding a new connector touches only the connector's own directory plus one line at the composition root. No engine edits. If a change to the engine is ever required to support a new connector, something went wrong in the extension-point design.
+**The core invariant:** adding a new connector touches only the connector's own directory plus one factory in a binary's `HostOptions::connectors`. No engine edits. If a change to the engine is ever required to support a new connector, something went wrong in the extension-point design.
 
 ## 2. Library topology
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│ krn_server  (composition root; main.cpp, ~160 lines)         │
-└──────────────────────┬───────────────────────────────────────┘
-                       │ links
-                       ▼
-┌──────────────────────────────────────────────────────────────┐
-│ krn  (INTERFACE target — transitive convenience alias)       │
+│ krn_engine_server  (apps/engine_server/main.cpp)             │
 └───────────┬──────────────────────┬───────────────────────────┘
-            │                      │
+            │ links                │ links
             ▼                      ▼
 ┌───────────────────────┐ ┌────────────────────────────────────┐
-│ libkrn_connector_     │ │                                    │
-│   market              │ │                                    │
-│   (OB, TA, ITCH,      │ │                                    │
-│    FeedServer,        │ │                                    │
-│    WsFeedClient)      │ │                                    │
-└──────┬────────────────┘ │                                    │
-       │ depends on       │                                    │
-       ▼                  ▼                                    │
+│ libkrn_host           │ │ libkrn_plugin_reference            │
+│   src/host/Host.cpp:  │ │   ReferenceConnector +             │
+│   the composition     │ │   ReferenceComputer,               │
+│   (hostMain/runHost)  │ │   SyntheticConnector               │
+└──────┬────────────────┘ └──────┬─────────────────────────────┘
+       │ depends on              │ depends on
+       ▼                         ▼
 ┌──────────────────────────────────────────────────────────────┐
 │ libkrn_engine                                                │
 │   Dispatcher, TreeBuilder, Node pipeline, WebSocketServer,   │
@@ -41,9 +35,19 @@ KRN is a **streaming-computation server**: JSON request trees come in over WebSo
 └──────────────────────────────────────────────────────────────┘
 ```
 
-`libkrn_plugin_reference` sits next to the market connector (also depending on `krn_engine`) but is only linked into `krn_tests` — it exists as a demo + regression check, not a production feature.
+`krn_host` names no plugin: a binary passes its connectors in `HostOptions` (`include/krn/host/Host.hpp`). `krn_engine_server` is the connector-free server: `krn_host` plus the reference plugin. krn-common's `krn_server` is `krn_host` plus its market connector. Under `FetchContent` / `add_subdirectory` only the library targets are defined (`krn_engine`, `krn_host`, `krn_plugin_reference`); `cmake --install` + `find_package(krn CONFIG)` gives `krn::krn_engine` and `krn::krn_host`.
 
-Engine isolation is enforced via CMake include scoping: `krn_engine`'s PUBLIC include path is `include/` only, so any accidental `#include "krn/book/..."` or `#include "krn/market/..."` from inside engine code fails at compile time.
+Engine isolation is enforced twice. CMake include scoping: `krn_engine`'s PUBLIC include path is `include/` only, so an engine `#include` of a plugin header fails to compile. And `tools/check_engine_isolation.py`, run as the ctest cases `krn_engine_isolation` and `krn_engine_isolation_selftest`:
+
+| Check | What it rejects |
+|---|---|
+| A textual | an engine translation unit including an Arrow / Parquet / ClickHouse / DuckDB header, or a `connectors/*` / `plugins/*` header |
+| B include | an in-repo include directory on `krn_engine` other than `include/` or a vendored `third_party/` tree |
+| C link | `krn_data` / Arrow / Parquet / ClickHouse anywhere in `krn_engine`'s transitive link closure |
+| D profile | the same in the closures of `krn_host`, `krn_engine_server` and `krn_tests`; and `krn_connector_market` reachable from any graphed target |
+| E lexical | part 1 (ENC-1578) is the comment/literal stripper over check A's file list; its vocabulary is ENC-1579 |
+
+The positive control is `krn_isolation_control`, a scan-only target whose closure must trip a forbidden pattern. Exit 0 is a verified pass, 1 a violation, 2 could not run (including a missing or silent control).
 
 ## 3. Event lifecycle (the hot path)
 
@@ -57,7 +61,7 @@ struct Event {
 };
 ```
 
-Where events come from, end-to-end, using the market connector as the example:
+Where events come from, end-to-end, using krn-common's market connector as the example (`FeedServer`, `WsFeedClient`, `ItchAdapter` and `MarketTickComputer` are all krn-common's):
 
 ```
   TCP socket (port 9001)                External wss:// feed
@@ -121,9 +125,9 @@ Where events come from, end-to-end, using the market connector as the example:
 
 Key semantics:
 
-- **Type routing.** `Dispatcher` invokes only computers whose `eventType()` matches the event's `type`. This is how market + synthetic computers coexist on the same dispatcher.
+- **Type routing.** `Dispatcher` invokes only computers whose `eventType()` matches the event's `type`. This is how the reference and synthetic computers (or market and synthetic ones) coexist on the same dispatcher.
 - **TA atomics are not directly subscribable.** `sma_5`, `rsi_14`, etc. are written to `AtomicStore` but delivered to listeners only when a client adds an `AtomicAccessor` node to its pipeline. Subscribing directly on field `sma_5` does nothing by itself.
-- **FunctionMap builtins are subscribable.** `mean`, `sum`, `stddev`, etc. are computed per-field per-tick inside `Dispatcher::computeAndStoreAtomics` and fan out to matching listeners. By default they are stored under the **bare** function name — one slot per symbol, shared by every field, so two fields driving the same builtin overwrite each other. Set `atomicKeyNamespaceByField = true` to store them as `<field>.<fn>` instead; Listener push is unchanged either way. See [atomic-keys.md](atomic-keys.md#derived-atomic-key-shape--atomickeynamespacebyfield-enc-1008) for what flipping it breaks.
+- **FunctionMap builtins are subscribable.** `mean`, `sum`, `stddev`, etc. are computed per-field per-tick inside `Dispatcher::computeAndStoreAtomics` and fan out to matching listeners. By default they are stored under the **bare** function name — one slot per symbol, shared by every field, so two fields driving the same builtin overwrite each other. Set `atomicKeyNamespaceByField = true` to store them as `<field>.<fn>` instead; Listener push is unchanged either way. See krn-common's [atomic-keys.md](https://github.com/Dynacharting/krn-common/blob/main/docs/atomic-keys.md#derived-atomic-key-shape--atomickeynamespacebyfield-enc-1008) for what flipping it breaks.
 - **Per-field raw path.** If a listener subscribed on `(AAPL, lastPrice)` and the payload has `lastPrice`, the dispatcher reads it and delivers directly — no TA involvement.
 
 ### Two ingress shapes, one body (ENC-1486)
@@ -175,7 +179,7 @@ Consequences worth knowing before you touch either:
   a field and the clock nodes are untouched.
 
 Design: `specs/2026-10-14-krn-data-layer/SPEC.md` D1/D3/D9,
-`docs/data-layer.md` §C2/§C6/§6. Pinned by
+krn-data's `docs/data-layer.md` §C2/§C6/§6. Pinned by
 krn-data's `data/tests/RecordIngressParityTest.cpp` and
 `tests/dispatch/RecordIngressEngineTest.cpp`.
 
@@ -186,14 +190,15 @@ All live under `include/krn/engine/`. Most are header-only static singletons wit
 | Registry | Purpose | Who consumes |
 |---|---|---|
 | `EventTypeRegistry` | name → `EventSchema` (known fields, dispatchable flag) | Future validator integration |
-| `EventComputerRegistry` | event type → list of `IEventComputer` **factories** (not instances — each dispatcher gets a fresh set, for state isolation) | Used as a scaffold today; `Dispatcher` currently consults the `DefaultComputerFactory` hook instead — see §5 |
+| `EventComputerRegistry` | event type → list of `IEventComputer` **factories** (not instances — each dispatcher gets a fresh set, for state isolation) | **Live** — `Dispatcher` calls `createAll(type)` on the first event of each type and caches the result per dispatcher |
 | `NodeTypeRegistry` | type name → `NodeBuilderFn(spec, defaultSymbol, Deps, downstream) → shared_ptr<INode>` | `TreeBuilder::buildOne` + `JsonValidator::validateNode` |
 | `AtomicProviderRegistry` | namespace (e.g. `"ob"`) → `double(symbol, fullKey)` | `AtomicAccessor` when a store lookup misses |
 | `FunctionMap` | fn name (e.g. `"mean"`) → `double(vector<double>)` | `TreeBuilder`'s worker builder |
-| `IngressRegistry` | kind (e.g. `"market.feedserver"`, `"market.wsclient"`) → ingress factory | **Live (ENC-31)** — the composition root instantiates each `cfg.ingress[]` entry by kind |
-| `ConfigNamespaceRegistry` | prefix (e.g. `"market"`) → reader function | **Live (ENC-35)** — populates connector config (e.g. `market.source.*` → `MarketFieldMap`) on `dispatchPendingKeys()` |
+| `IngressRegistry` | kind (e.g. krn-common's `"market.feedserver"`, `"market.wsclient"`) → ingress factory | **Live (ENC-31)** — `krn_host` instantiates each `cfg.ingress[]` entry by kind |
+| `ProtocolIngressRegistry` | forum connector protocol → ingress kind (ENC-1574) | **Live** — `ConnectorsClient` maps each forum row; an unregistered protocol is logged and skipped |
+| `ConfigNamespaceRegistry` | prefix (e.g. `"market"`) → reader function | **Live (ENC-35)** — populates connector config on `dispatchPendingKeys()` |
 
-**What's actually used today by the hot path:** `NodeTypeRegistry`, `AtomicProviderRegistry`, `FunctionMap`, and the `Dispatcher::DefaultComputerFactory` hook. The other registries are scaffolding — they work, have unit tests, and are ready to replace direct wiring when we pull more config/construction through them.
+`EventTypeRegistry` is the one registry nothing on the hot path consults yet.
 
 ## 5. Connector contract
 
@@ -202,61 +207,61 @@ All live under `include/krn/engine/`. Most are header-only static singletons wit
 ```cpp
 namespace krn::engine {
 
-struct EngineRegistries {
+struct EngineRegistries {            // include/krn/engine/EngineRegistries.hpp
   const util::Config*      cfg;
+  ConfigNamespaceRegistry* configNs;
   rt::ThreadPool*          pool;
   AtomicStore*             store;
   Dispatcher*              dispatcher;
   rt::ShutdownCoordinator* shutdown;
   boost::asio::io_context* io;
+  EventTypeRegistry*       events;
+  EventComputerRegistry*   computers;
+  NodeTypeRegistry*        nodes;
+  IngressRegistry*         ingress;
+  AtomicProviderRegistry*  providers;
+  FunctionMap*             functions;
+  util::Logger*            log;
 };
 
 class IConnector {
 public:
   virtual ~IConnector() = default;
   virtual std::string_view name() const = 0;
-  virtual void registerWith(EngineRegistries&) = 0;
+  virtual void registerWith(EngineRegistries&) = 0;  // allocate + register; no live sockets/timers
+  virtual void start() = 0;                          // bring sources online
+  virtual void stop() noexcept = 0;                  // tear down
 };
 
 }
 ```
 
-`EngineRegistries` bundles the live, per-boot pieces. Static registries (`NodeTypeRegistry`, `FunctionMap`, …) are not in the struct — connectors access them through their singletons.
+### Boot sequence (see `src/host/Host.cpp`, `krn::host::runHost`)
 
-### Boot sequence (see `src/main.cpp`)
+1. **Config** — `argv[1]` = wsPort, `argv[2]` = config file; `argv[3]` onward belong to the binary (`HostHooks::applyExtraArgs`).
+2. **Engine builtins** — `registerBuiltinFunctions()` populates `FunctionMap`; `registerBuiltinNodeTypes()` populates `NodeTypeRegistry`.
+3. **Engine components** — `ThreadPool`, `AtomicStore`, `Dispatcher`, metrics, `io_context`, `WebSocketServer`, with their shutdown steps.
+4. **Connector registration** — each `HostOptions::connectors` factory is constructed and `registerWith(regs)`'d, in order.
+5. **Ingress** — the forum pull (when `forumUrl` is set), `cfg.dispatchPendingKeys()`, then each `cfg.ingress[]` entry is built by kind from `IngressRegistry` and started.
+6. **Connector start** — `start()` in registration order; one `connectors-stop` step (priority 30) calls `stop()` in reverse.
+7. **Run** — `ioc.run()` until SIGINT/SIGTERM; `ShutdownCoordinator::stop()` drains registered steps in order.
 
-1. **Engine builtins** — `registerBuiltinFunctions()` populates `FunctionMap`; `registerBuiltinNodeTypes()` populates `NodeTypeRegistry`.
-2. **Connector-side pre-dispatcher hooks** — e.g. `MarketConnector::installDefaults()` sets `Dispatcher::setDefaultComputerFactory(...)`. This **must** happen before any `Dispatcher` is constructed — the factory is consulted inside `Dispatcher`'s constructor so each new dispatcher gets its own fresh set of stateful computers.
-3. **Engine components** — `ThreadPool`, `AtomicStore`, `Dispatcher`, `io_context`, `WebSocketServer`, `ExecutionContext`. Register shutdown steps.
-4. **Connector registration** — construct connector objects and call `registerWith(regs)`. This is the "one line per connector" moment:
+A binary is a list of factories (`apps/engine_server/main.cpp`):
 
-   ```cpp
-   krn::engine::EngineRegistries regs{
-     &cfg, krn::gThreadPool.get(), store.get(),
-     dispatcher.get(), &shutdown, &ioc
-   };
-   krn::market::MarketConnector marketConnector;
-   marketConnector.registerWith(regs);
-   // (future) krn::crypto::CoinbaseConnector{}.registerWith(regs);
-   ```
+```cpp
+krn::host::HostOptions opts;
+opts.programName = "krn_engine_server";
+opts.connectors.push_back([] { return std::make_unique<krn::synthetic::ReferenceConnector>(); });
+opts.connectors.push_back([] { return std::make_unique<krn::synthetic::SyntheticConnector>(); });
+return krn::host::hostMain(argc, argv, opts);
+```
 
-5. **Run** — `ioc.run()` until signal; `ShutdownCoordinator::stop()` drains registered steps in order.
+### What `ReferenceConnector::registerWith` does
 
-### What `MarketConnector::registerWith` actually does (~100 lines)
+- Registers the `ReferenceComputer` factory for `reference.tick` on `reg.computers`, so each `Dispatcher` gets its own computer.
+- Creates its timer on `reg.io`. `start()` arms it: every `tickMs` it emits a `reference.tick` event on stream `REF` whose `sample` field is `sampleBase + n`.
 
-- Registers the TA tick-computer factory (with the connector-owned
-  `MarketFieldMap`) so each `Dispatcher` gets a fresh `MarketTickComputer`
-- Registers the `market` / `source` config namespaces on `ConfigNamespaceRegistry`,
-  which populate the `MarketFieldMap` from `market.source.*` keys
-- Constructs `OrderBookManager` + `FunctionalSnapshotSource` + `ob::Provider`
-- Registers `"ob"` namespace with `AtomicProviderRegistry` so `AtomicAccessor` can fetch OB-derived keys (`ob.best.bid.price`, `ob.spread`, …)
-- **Registers ingress factories** on `IngressRegistry` — `market.feedserver`
-  (TCP market-JSON ingest) and `market.wsclient` (external WS feed + adapter).
-  **It does not construct or start any feed itself.** The composition root reads
-  `cfg.ingress[]`, looks each entry's `kind` up in `IngressRegistry`, and drives
-  the matching factory's `start()`/`stop()` centrally (ENC-31). Adding an
-  ingress kind is a factory registration + an `ingress.N.*` INI edit — never a
-  `main.cpp` change, and there is no per-connector `feed-stop` shutdown step.
+`ReferenceComputer` (`plugins/reference/include/krn/reference/ReferenceComputer.hpp`) is deterministic and history-dependent: per stream it writes the running sum and sum of squares of `sample` to `reference.sum` / `reference.sumsq`, NaN during a 3-event warm-up. Its header declares the output shape so tests assert it by name. `SyntheticConnector` emits `synthetic.tick` on `SYN` and writes `synthetic.sin` / `synthetic.cos`.
 
 ## 6. Adding a new connector (cookbook)
 
@@ -265,42 +270,43 @@ Concrete recipe to add a connector named `cool`:
 1. **Directory layout**
 
    ```
-   connectors/cool/
+   plugins/cool/
      include/krn/cool/CoolConnector.hpp
      src/CoolConnector.cpp
    ```
 
-2. **CMake** — append to `CMakeLists.txt`:
+   A connector can equally live in its own repo that pulls this one in with `FetchContent` and links `krn::krn_host`, as krn-common does.
+
+2. **CMake** — explicit source lists, no globs (ENC-1551):
 
    ```cmake
-   file(GLOB_RECURSE KRN_COOL_SOURCES "${CMAKE_SOURCE_DIR}/connectors/cool/src/*.cpp")
-   add_library(krn_connector_cool STATIC ${KRN_COOL_SOURCES})
-   target_include_directories(krn_connector_cool PUBLIC
-     "${CMAKE_SOURCE_DIR}/connectors/cool/include")
-   target_link_libraries(krn_connector_cool PUBLIC krn_engine)
+   add_library(krn_plugin_cool STATIC
+     "${PROJECT_SOURCE_DIR}/plugins/cool/src/CoolConnector.cpp")
+   target_include_directories(krn_plugin_cool PUBLIC
+     "${PROJECT_SOURCE_DIR}/plugins/cool/include")
+   target_link_libraries(krn_plugin_cool PUBLIC krn_engine)
    ```
 
-   Link into `krn` (if you want the prod binary to use it) and/or into `krn_tests`.
+   The isolation gate picks the new target up from `BUILDSYSTEM_TARGETS`; nothing else to register.
 
 3. **Implement `CoolConnector : public engine::IConnector`.** The `registerWith(EngineRegistries&)` method decides what you publish:
 
    - **Custom atomic namespace:** `AtomicProviderRegistry::registerNamespace("cool", ...)`.
    - **Custom node type:** `engine::NodeTypeRegistry::registerNodeType("CoolNode", builder)`. JSON trees can now specify `"type":"CoolNode"`.
-   - **Per-event computation:** write a class that implements `engine::IEventComputer` — one method, `compute(const std::string& symbol, const engine::FieldSource& fields, ComputeContext&)`; read your inputs through `fields.tryGetNumber(name, out)` and your computer works on BOTH ingress paths with no further work (§3, "Two ingress shapes"). Then either `reg.dispatcher->addComputer(std::make_unique<YourComputer>())` for a per-instance add, or install via a `Dispatcher::setDefaultComputerFactory` hook if you want every dispatcher in the program to get one.
-   - **Ingress source:** construct your listener/timer/client against `reg.io` and register a shutdown step on `reg.shutdown`.
+   - **Per-event computation:** write a class that implements `engine::IEventComputer` — one method, `compute(const std::string& symbol, const engine::FieldSource& fields, ComputeContext&)`; read your inputs through `fields.tryGetNumber(name, out)` and your computer works on BOTH ingress paths with no further work (§3, "Two ingress shapes"). Register a factory with `reg.computers->registerFactory(type, ...)`, or `reg.dispatcher->addComputer(...)` for a per-instance add.
+   - **Ingress source:** register a factory on `reg.ingress` and name its kind in `ingress.N.kind`, or build a timer/client against `reg.io` and arm it in `start()`.
 
-4. **Add one line to `main.cpp`** (the composition root):
+4. **Add one factory to the binary's `HostOptions::connectors`:**
 
    ```cpp
-   krn::cool::CoolConnector coolConnector;
-   coolConnector.registerWith(regs);
+   opts.connectors.push_back([] { return std::make_unique<krn::cool::CoolConnector>(); });
    ```
 
 That's the entire integration. You shouldn't need to touch any file under `include/` or `src/`.
 
 **Reference implementations:**
-- `connectors/market/` — full production connector with OB, TA, two feed paths, custom provider namespace.
-- `plugins/reference/` — ~120 LOC proof-of-concept. Emits a sine wave on a timer. Looked at alongside `tests/connectors/SyntheticConnectorTest.cpp` it's a complete worked example.
+- `plugins/reference/` — `ReferenceConnector` + `ReferenceComputer` and the sine-wave `SyntheticConnector`. With `tests/connectors/SyntheticConnectorTest.cpp` it is a complete worked example.
+- krn-common's `connectors/market/` — full production connector with OB, TA, two feed paths, custom provider namespace.
 
 ## 7. Node pipeline
 
@@ -340,9 +346,8 @@ Built-in node types (all registered by `registerBuiltinNodeTypes()`):
 ### WebSocket (port `cfg.wsPort`) — `ClientSession`
 
 > **Port default:** the compiled-in default `wsPort` is **8080**
-> (`include/krn/util/Config.hpp`). The shipped `src/util/krn.conf` overrides it
-> to **4000**, so `./krn_server <wsPort> krn.conf` listens on 4000 while
-> `./krn_server` with no config file listens on 8080. See §"Configuration".
+> (`include/krn/util/Config.hpp`); `argv[1]` and a config file's `wsPort`
+> override it. krn-common's `conf/krn.conf` sets **4000**.
 
 Subscribe (each request lives in a top-level `requests` array):
 ```json
@@ -453,39 +458,29 @@ session degrades, tagged with the policy that fired) and the counters:
 | `ws.outbox_shed_newest` | the **arriving** value was dropped. Only possible when all 4096 queued frames are lossless, so there is no value frame to trade against and protocol state must not be dropped for a sample. Non-zero means a stream really did lose its head value |
 | `ws.outbox_overflow` | the queue was entirely lossless at the cap and a further lossless frame arrived — the session is closed |
 
-### TCP feed (port `cfg.feedPort`, default 9001) — `FeedServer` (market connector)
+### TCP feed and vendor feeds
 
-Default tick shape (no explicit `type`, routed as market tick):
-```json
-{"symbol":"AAPL", "lastPrice":187.42, "volume":350, "bid":187.40, "ask":187.43}
-```
-
-Market-specific OB messages:
-```json
-{"type":"ob",       "action":"add|update|delete|trade|ticksize", ...}
-{"type":"control",  "action":"reset", "symbol":"AAPL", "epoch":2}
-```
-
-The `ob`/`control` schema is market-connector-owned. A different connector's feed server would route differently.
+The TCP feed server (`cfg.feedPort`, the `ob` / `control` message schema) and the vendor feed adapters are market-connector-owned and live in krn-common; see its [feed-adapters.md](https://github.com/Dynacharting/krn-common/blob/main/docs/feed-adapters.md).
 
 ## 9. Shutdown sequencing
 
-`rt::ShutdownCoordinator` (local in `main`, not a global). Steps are registered with `(name, order, fn)`; `stop()` runs them in ascending order exactly once. Signal handler triggers `stop()` via a static pointer.
+`rt::ShutdownCoordinator` (local in `runHost`, not a global). Steps are registered with `(name, order, fn)`; `stop()` runs them in ascending order exactly once. SIGINT/SIGTERM trigger `stop()` through an asio `signal_set`.
 
-Typical order: `ws-stop-accept=5, metrics-stop=10, ws-close-sessions=40, ob-provider-clear=50, feed-stop=55, feed-ws-stop=56, asio-stop=60, pool-drain=80, pool-destroy=85`.
+Order in `src/host/Host.cpp`: `ws-stop-accept=5, metrics-stop=10, connectors-stop=30, ingress-stop=35, ws-close-sessions=40, asio-stop=60, pool-drain=80, pool-destroy=85`. Connectors never register their own steps.
 
 ## 10. Tests
 
-Two gtest executables, both run by `ctest`: `krn_tests` (the engine cases; links no market code) and `krn_market_tests` (`tests/market/` plus the `book/`, `ob/` and `feed/` files that test the market connector; ENC-1562). Organization under `tests/`:
+One gtest executable, `krn_tests` (links no market code), plus script and gate cases, all run by `ctest`. Organization under `tests/`:
 
 - `engine/` — engine registry unit tests
-- `connectors/` — synthetic connector tests (proves routing invariant)
-- `book/`, `ob/`, `feed/` — market connector (in `krn_market_tests`, except `feed/GapFixesTest.cpp`)
-- `market/` — the other market-dependent cases (`krn_market_tests`)
-- `dispatch/`, `nodes/`, `treebuilder/`, `validation/`, `registry/` — engine pipeline
-- `integration/`, `ws/`, `connection/` — end-to-end
+- `connectors/` — reference and synthetic connector tests (proves routing invariant)
+- `dispatch/`, `nodes/`, `treebuilder/`, `validation/`, `registry/`, `core/`, `context/`, `mapping/`, `feed/`, `forum/` — engine pipeline
+- `integration/`, `ws/`, `connection/`, `server/` — end-to-end
+- `consumer/` — the `FetchContent` and `find_package` consumer smoke projects
+- `scripts/` — `krn_engine_server_reference` and `krn_port_conflict_ws`
 - `test_bootstrap.cpp` — `krn_tests`' gtest Environment: registers builtins, no connector
-- `market/test_bootstrap.cpp` — `krn_market_tests`': builtins + the market tick-computer factory
+
+The market connector's tests (its `book/`, `ob/`, `feed/` and `market/`) are krn-common's `krn_common_tests`; the data layer's are krn-data's `krn_data_tests`.
 
 `DispatcherRoutesByEventType` in `tests/connectors/SyntheticConnectorTest.cpp` is the regression check for "two computers on different event types must not interfere": with the synthetic computer and the reference plugin's `ReferenceComputer` both added to one Dispatcher, a `synthetic.tick` event writes no `reference.*` key and a `reference.tick` event writes no `synthetic.*` key. If that fails, the type-routing contract is broken.
 
@@ -495,16 +490,11 @@ Minor architectural debts that are deliberately unresolved — none block adding
 
 - **Source field mapping is connector-owned (ENC-35).** The old engine-level
   `include/krn/SourceProfile.hpp` and the `util::Config::sourceProfile` member
-  are **gone**. The replacement is `krn::market::MarketFieldMap`
-  (`connectors/market/include/krn/market/MarketFieldMap.hpp`:
-  `name`/`priceFields`/`volumeFields`/`bidFields`/`askFields`/`timestampField`/
-  `taEnabled`), owned by `MarketConnector` and populated from the
-  `market.source.*` config namespace via `ConfigNamespaceRegistry` (the legacy
-  bare `source.*` prefix is a one-release deprecation alias). The engine no
-  longer knows about market-flavored fields.
+  are **gone**. The replacement is krn-common's `krn::market::MarketFieldMap`,
+  populated from the `market.source.*` config namespace via
+  `ConfigNamespaceRegistry`. The engine no longer knows about market-flavored
+  fields.
 - **JSON wire type name `"SymbolSplit"`** was preserved for backward compatibility when the class was renamed to `GroupSplit`. The string literal is correct and intentional; don't "fix" it.
-- **No CI check yet** for the zero-core-changes invariant. The synthetic connector + its test prove it works today, but nothing prevents a future commit from re-introducing an engine → connector dependency. Plan §6 sketches a grep-based check.
-- **`IngressRegistry` (ENC-31) and `ConfigNamespaceRegistry` (ENC-35) are now live** — ingress sources are constructed from `cfg.ingress[]` by kind, and connector config (e.g. `market.source.*`) flows through registered namespace readers. `EventComputerRegistry` is the remaining registry still being pulled fully onto the hot path; wiring it up is a future simplification, not a correctness issue.
 
 ## 12. Key files
 
@@ -514,8 +504,9 @@ If you need to find something quickly:
 |---|---|
 | Add a new node type | `include/krn/engine/NodeTypeRegistry.hpp`, register in your connector's `registerWith` |
 | Add a math function | `FunctionMap::instance().registerFunction(...)` in your connector or in `src/core/BuiltinFunctions.cpp` for engine-wide defaults |
-| Understand a TA value | `connectors/market/src/MarketTA.cpp::computeAllAtomicValues` |
+| Write a computer | `plugins/reference/src/ReferenceComputer.cpp` |
 | Trace an incoming WS request | `src/server/ClientSession.cpp::handleSubscribe` → `src/core/TreeBuilder.cpp::buildForRequest` |
-| Trace an incoming tick | `connectors/market/src/server/FeedServer.cpp::handleLine` → `src/core/Dispatcher.cpp::onTick` |
-| Change shutdown order | `src/main.cpp` (engine steps) + `connectors/market/src/MarketConnector.cpp` (market steps) |
-| Look at the boot flow | `src/main.cpp` top-to-bottom — it's ~160 lines and narrates every stage |
+| Trace an incoming tick | `src/core/Dispatcher.cpp::onTick` |
+| Change shutdown order | `src/host/Host.cpp` |
+| Look at the boot flow | `src/host/Host.cpp::runHost` top-to-bottom; `apps/engine_server/main.cpp` for a binary |
+| Check the layering | `tools/check_engine_isolation.py` |

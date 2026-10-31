@@ -29,7 +29,7 @@ compile_commands.json
 # VS intermediate output folders
 /[Bb]uild/
 # Suffixed build trees. `/[Bb]uild/` alone matched only `build/`, so the second
-# build dir data/README.md asks for (`build-liveonly`, SPEC D14's live-only
+# build dir krn-data's data/README.md asks for (`build-liveonly`, SPEC D14's live-only
 # profile) and any `build-<whatever>` landed as untracked noise in `git status`
 # — which the workspace checkpoint daemon snapshots and someone eventually
 # `git add -A`s. ENC-1481.
