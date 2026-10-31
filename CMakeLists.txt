@@ -916,11 +916,17 @@ endif()
 if (KRN_BUILD_DATA)
   add_subdirectory(data)
 else()
+  # The gate exists only top-level with tests on (ENC-1561: a consumer's log
+  # must not claim it runs).
+  set(_krn_data_gate_note "")
+  if (_krn_top_level AND KRN_BUILD_TESTS)
+    set(_krn_data_gate_note
+      " krn_engine_isolation still runs, on its krn_isolation_control positive control.")
+  endif()
   message(STATUS
     "krn_data: DISABLED (KRN_BUILD_DATA=OFF) — SPEC D14's live-only client "
     "variant. No Arrow is fetched or built, and krn_data_tests is not "
-    "registered with ctest. krn_engine_isolation still runs, on its "
-    "krn_isolation_control positive control.")
+    "registered with ctest.${_krn_data_gate_note}")
 endif()
 
 # =======================
@@ -948,12 +954,18 @@ endif()
 # with no row is treated as a leaf and only pattern-matched, which is correct
 # for system and imported libraries and wrong for ours.
 #
-# THE CHECKED ROOTS are krn_engine, krn_server and krn_tests. krn_tests is
+# THE CHECKED ROOTS are krn_engine, krn_host, krn_engine_server, krn_server
+# and krn_tests (ENC-1561, purity SPEC D11.2). krn_tests is
 # there because data/CMakeLists.txt names "the engine test suite is built
 # against an Arrow-free include path" as the thing being protected, and a
-# prose claim with no check behind it is what finding 1 was about. krn_tests
-# alone is also barred from krn_connector_market (ENC-1562); the market cases
-# build as krn_market_tests, which is not a checked root.
+# prose claim with no check behind it is what finding 1 was about. All but
+# krn_server are also barred from krn_connector_market (D11.1); the market
+# cases build as krn_market_tests, which is not a checked root.
+#
+# A MISSING ROOT IS A CONFIGURE ERROR under KRN_BUILD_TESTS=ON (D11.2). It
+# used to be a warning, and a missing src/main.cpp then dropped ctest from
+# seven cases to three, green. krn_server is listed until the market server
+# leaves this repo (D12 step 22); that ticket deletes it from the list.
 #
 # THE POSITIVE CONTROL IS krn_isolation_control (ENC-1507, purity SPEC Q7).
 # Its closure must trip a forbidden pattern, or the patterns match nothing in
@@ -978,7 +990,22 @@ endif()
 # command line because the properties are generator expressions, and because a
 # resolved list on an add_test COMMAND would be split into separate arguments
 # at every semicolon.
-if (_krn_top_level AND KRN_BUILD_TESTS AND TARGET krn_server)
+set(_krn_iso_roots krn_engine krn_host krn_engine_server krn_server)
+set(_krn_iso_missing "")
+foreach (_krn_iso_r IN LISTS _krn_iso_roots)
+  if (NOT TARGET ${_krn_iso_r})
+    list(APPEND _krn_iso_missing ${_krn_iso_r})
+  endif()
+endforeach()
+if (_krn_top_level AND KRN_BUILD_TESTS AND _krn_iso_missing)
+  message(FATAL_ERROR
+    "krn_engine_isolation cannot run: root target(s) ${_krn_iso_missing} "
+    "not defined (roots: ${_krn_iso_roots}). The SPEC D14 / purity SPEC D11 "
+    "invariant would not be checked, so this is an error under "
+    "KRN_BUILD_TESTS=ON. If a root left the repo on purpose, remove it from "
+    "_krn_iso_roots in CMakeLists.txt.")
+endif()
+if (_krn_top_level AND KRN_BUILD_TESTS)
   set(KRN_ISOLATION_MANIFEST "${PROJECT_BINARY_DIR}/krn_engine_isolation.manifest")
 
   # The gate's positive control. Scanned, never linked: the checker fails if
@@ -1032,6 +1059,8 @@ root=${PROJECT_SOURCE_DIR}
 engine_include_dirs=$<JOIN:$<TARGET_PROPERTY:krn_engine,INCLUDE_DIRECTORIES>,|>
 engine_interface_include_dirs=$<JOIN:$<TARGET_PROPERTY:krn_engine,INTERFACE_INCLUDE_DIRECTORIES>,|>
 engine_cmake_sources=$<JOIN:$<TARGET_PROPERTY:krn_engine,SOURCES>,|>
+host_cmake_sources=$<JOIN:$<TARGET_PROPERTY:krn_host,SOURCES>,|>
+engine_server_cmake_sources=$<JOIN:$<TARGET_PROPERTY:krn_engine_server,SOURCES>,|>
 krn_data_enabled=${KRN_BUILD_DATA}
 rapidjson_include_dir=${RAPIDJSON_INCLUDE_DIR}
 ${_krn_iso_link_rows}")
@@ -1057,11 +1086,6 @@ ${_krn_iso_link_rows}")
       "krn_engine_isolation test SKIPPED: no Python3 interpreter. The SPEC D14 "
       "engine-isolation invariant is NOT being checked in this build.")
   endif()
-elseif (KRN_BUILD_TESTS)
-  message(WARNING
-    "krn_engine_isolation test SKIPPED: no krn_server target (src/main.cpp is "
-    "absent), so check D cannot read its link libraries. The SPEC D14 "
-    "engine-isolation invariant is NOT being checked in this build.")
 endif()
 
 # =======================
