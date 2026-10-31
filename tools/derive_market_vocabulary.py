@@ -186,6 +186,21 @@ def render(words: dict[str, set[str]]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def drift(path: str, derived: str) -> str | None:
+    """Why the file at `path` is not `derived`, or None when it is."""
+    try:
+        with open(path, encoding="utf-8") as fh:
+            committed = fh.read()
+    except OSError as exc:
+        return f"cannot read {path}: {exc}"
+    if committed == derived:
+        return None
+    have = {ln for ln in committed.split("\n") if not ln.startswith("#")}
+    want = {ln for ln in derived.split("\n") if not ln.startswith("#")}
+    return (f"{path} differs from its derivation: missing "
+            f"{sorted(want - have)[:5]}, extra {sorted(have - want)[:5]}")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -202,14 +217,9 @@ def main() -> int:
             fh.write(text)
         return 0
     if args.check:
-        try:
-            with open(VOCAB_FILE, encoding="utf-8") as fh:
-                committed = fh.read()
-        except OSError as exc:
-            print(f"error: {exc}", file=sys.stderr)
-            return 2
-        if committed != text:
-            print(f"{VOCAB_FILE} differs from its derivation", file=sys.stderr)
+        why = drift(VOCAB_FILE, text)
+        if why:
+            print(why, file=sys.stderr)
             return 1
         return 0
     sys.stdout.write(text)
