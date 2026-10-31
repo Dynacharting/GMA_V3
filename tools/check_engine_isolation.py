@@ -31,7 +31,7 @@ FOUR CHECKS, each closing a different route in:
 
   A  textual   no engine translation unit includes an Arrow / Parquet /
                ClickHouse / DuckDB header, nor a header that exists only under
-               `data/include`, `connectors/*/include` or `plugins/*/include`.
+               `connectors/*/include` or `plugins/*/include`.
   B  include   krn_engine's include directories, restricted to paths inside
                the repo, are `<root>/include` or a VENDORED THIRD-PARTY tree
                under `<root>/third_party` whose name is not itself a forbidden
@@ -49,6 +49,11 @@ FOUR CHECKS, each closing a different route in:
                this whole file is a reaction to.  krn_engine, krn_host,
                krn_engine_server and krn_tests are also barred from
                krn_connector_market (ENC-1561, ENC-1562).
+
+  E  lexical   (purity SPEC D11.3; part 1, ENC-1578, is the stripper only)
+               check A's own file list with comments and literal bodies
+               blanked, so prose documenting the invariant is not a use of
+               it.  No vocabulary yet; that is ENC-1579.  See strip_cpp.
 
 CHECK B IS THE WEAKEST OF THE FOUR, AND ITS HOLE IS DELIBERATE.  (ENC-1497)
 Its rule used to be "any in-repo include dir that is not `<root>/include`",
@@ -336,8 +341,13 @@ def check_cmake_sources_stay_in_the_engine_trees(
 
 
 def non_engine_header_roots(root: str) -> list[str]:
-    """Include roots that belong to krn_data, the connectors and the plugins."""
-    roots = [os.path.join(root, "data", "include")]
+    """Include roots that belong to the connectors and the plugins.
+
+    Enumerated, never named.  `data/include` was a named root, filtered out
+    by the isdir test once ENC-1573 deleted data/, which left the
+    composition-root rule checking an empty list in silence (ENC-1578).
+    """
+    roots = []
     for parent in ("connectors", "plugins"):
         base = os.path.join(root, parent)
         if not os.path.isdir(base):
@@ -360,9 +370,8 @@ def check_a_includes(root: str, sources: list[str], foreign_roots: list[str],
     """No file in `sources` includes a forbidden header or a foreign-only one.
 
     `foreign_roots` is the set of include trees this file may not reach into.
-    For engine proper that is data/include AND every connector; for the
-    composition root it is data/include only, since main.cpp's whole job is to
-    wire connectors up.
+    For engine proper that is every connector and plugin; for the composition
+    root it is none, since main.cpp's whole job is to wire connectors up.
     """
     engine_include = os.path.join(root, "include")
     problems: list[str] = []
@@ -703,6 +712,377 @@ def control_reachers(graph: dict[str, list[str]]) -> list[str]:
     return problems
 
 
+# --- check E, part 1: the comment and literal stripper (ENC-1578) ----------
+# Purity SPEC D11.3.  Check E is lexical, so prose that documents the
+# invariant must not count as a use of what it documents.  strip_cpp blanks
+# every comment and the body of every string/char literal, and nothing else.
+#
+# Output has the input's length and its newlines in the same places, so a
+# line or column in the stripped text is the same line or column in the file.
+# Blanked characters become spaces.  Quotes and literal prefixes stay
+# (`R"`, `u8"`, `'`); the raw-string delimiter is blanked with the body.
+#
+# A header-name is not a string literal: in `#include "a/b.hpp"` and
+# `__has_include("a/b.hpp")` the path is kept verbatim, `//` and all.
+#
+# Over-stripping is as bad as under-stripping: code mistaken for a comment or
+# a literal is code check E never sees.  The selftest pins both directions.
+ENCODING_PREFIXES = frozenset(("u8", "u", "U", "L"))
+RAW_PREFIXES = frozenset(("R", "u8R", "uR", "UR", "LR"))
+INCLUDE_DIRECTIVES = frozenset(("include", "include_next", "import"))
+HAS_INCLUDE = frozenset(("__has_include", "__has_include_next"))
+RAW_DELIM_MAX = 16
+
+
+def _ident_char(ch: str) -> bool:
+    return ch.isalnum() or ch == "_"
+
+
+def strip_cpp(text: str) -> str:
+    """`text` with comments and literal bodies blanked.  See the block above."""
+    n = len(text)
+    out = list(text)
+
+    def skip(i: int) -> int:
+        # Past any line splices (phase 2) at i.
+        while True:
+            if text.startswith("\\\n", i):
+                i += 2
+            elif text.startswith("\\\r\n", i):
+                i += 3
+            else:
+                return i
+
+    def blank(a: int, b: int) -> None:
+        for k in range(a, min(b, n)):
+            if text[k] not in "\r\n":
+                out[k] = " "
+
+    def literal(q: int) -> int:
+        # text[q] is the opening quote of an ordinary string/char literal.
+        quote = text[q]
+        m = q + 1
+        while m < n:
+            ch = text[m]
+            if ch == "\\":
+                m += 3 if text.startswith("\\\r\n", m) else 2
+                continue
+            if ch == quote or ch == "\n":
+                break
+            m += 1
+        m = min(m, n)
+        blank(q + 1, m)
+        return m + 1 if m < n and text[m] == quote else m
+
+    def raw(q: int) -> int:
+        # text[q] is the `"` of a raw string.  Splices are reverted inside a
+        # raw string ([lex.pptoken]), so this reads the physical text.
+        p = q + 1
+        while (p < n and p - q - 1 <= RAW_DELIM_MAX
+               and text[p] not in '() \\\t\v\f\r\n"'):
+            p += 1
+        if p >= n or text[p] != "(" or p - q - 1 > RAW_DELIM_MAX:
+            return literal(q)  # ill-formed; lex it as an ordinary string
+        close = ")" + text[q + 1:p] + '"'
+        e = text.find(close, p + 1)
+        end = n if e < 0 else e + len(close) - 1
+        blank(q + 1, end)
+        return min(end + 1, n)
+
+    # Where we are in a directive, for header-names:
+    # line -> `#` -> hash -> `include` -> include;  `__has_include` -> has
+    # -> `(` -> has_paren.  Whitespace and comments leave it unchanged.
+    state = "line"
+    i = skip(0)
+    while i < n:
+        c = text[i]
+        j = skip(i + 1)
+        c2 = text[j] if j < n else ""
+        if c == "/" and c2 == "/":
+            k = j + 1
+            while True:
+                k = skip(k)
+                if k >= n or text[k] == "\n":
+                    break
+                k += 1
+            blank(i, k)
+            i = k
+            continue
+        if c == "/" and c2 == "*":
+            k = skip(j + 1)
+            end = n
+            while k < n:
+                k2 = skip(k + 1)
+                if text[k] == "*" and k2 < n and text[k2] == "/":
+                    end = k2 + 1
+                    break
+                k = k2
+            blank(i, end)
+            i = skip(end)
+            continue
+        if c == "\n":
+            state = "line"
+            i = j
+            continue
+        if c in " \t\r\v\f":
+            i = j
+            continue
+        if c in '"<' and state in ("include", "has_paren"):
+            closing = '"' if c == '"' else ">"
+            k = i + 1
+            while k < n and text[k] not in (closing, "\n"):
+                k += 1
+            state = "none"
+            i = skip(k + 1) if k < n and text[k] == closing else k
+            continue
+        if c.isalpha() or c == "_":
+            k, word = i, []
+            while k < n and _ident_char(text[k]):
+                word.append(text[k])
+                k = skip(k + 1)
+            w = "".join(word)
+            if k < n and text[k] == '"' and w in RAW_PREFIXES:
+                state, i = "none", skip(raw(k))
+            elif k < n and text[k] in "\"'" and w in ENCODING_PREFIXES:
+                state, i = "none", skip(literal(k))
+            else:
+                if state == "hash" and w in INCLUDE_DIRECTIVES:
+                    state = "include"
+                elif w in HAS_INCLUDE:
+                    state = "has"
+                else:
+                    state = "none"
+                i = k
+            continue
+        if c.isdigit() or (c == "." and c2.isdigit()):
+            # A pp-number, so `1'000` and `0x1'F` keep their `'`.
+            k, prev = i, ""
+            while k < n:
+                ch = text[k]
+                if _ident_char(ch) or ch == ".":
+                    prev, k = ch, skip(k + 1)
+                elif ch in "+-" and prev in ("e", "E", "p", "P"):
+                    prev, k = ch, skip(k + 1)
+                elif ch == "'":
+                    k2 = skip(k + 1)
+                    if k2 < n and _ident_char(text[k2]):
+                        prev, k = "'", k2
+                    else:
+                        break
+                else:
+                    break
+            state, i = "none", k
+            continue
+        if c in "\"'":
+            state, i = "none", skip(literal(i))
+            continue
+        if c == "#":
+            state = "hash" if state == "line" else "none"
+        elif c == "(":
+            state = "has_paren" if state == "has" else "none"
+        else:
+            state = "none"
+        i = j
+    return "".join(out)
+
+
+def include_paths(text: str) -> list[tuple[int, str]]:
+    """(line number, path) of every line INCLUDE_RE matches."""
+    return [(no, m.group(1))
+            for no, line in enumerate(text.split("\n"), start=1)
+            for m in (INCLUDE_RE.match(line),) if m]
+
+
+def strip_defects(text: str, stripped: str) -> list[str]:
+    """What is wrong with `stripped` as the stripping of `text`.
+
+    Shape: same length, newlines in the same places.  Includes: every
+    `#include` path that survives is the one in the file, on the same line,
+    and none is invented.  One that vanished was inside a comment.
+    """
+    if len(stripped) != len(text):
+        return [f"length {len(text)} became {len(stripped)}"]
+    bad = [k for k, (a, b) in enumerate(zip(text, stripped))
+           if (a in "\r\n" or b in "\r\n") and a != b]
+    if bad:
+        return [f"a line break moved at offset {bad[0]}"]
+    raw_inc = dict(include_paths(text))
+    return [f"line {no}: #include path {path!r} is not the file's "
+            f"({raw_inc.get(no)!r})"
+            for no, path in include_paths(stripped)
+            if raw_inc.get(no) != path]
+
+
+# The comment mentions purity SPEC D11.3 counts (seven at b4c67e8).  REPORTED,
+# not gated: check E's vocabulary is ENC-1579, and it is derived, not this.
+D11_SENTINEL_RE = re.compile(r"\bMarket(?:TickComputer|FieldMap)\b")
+
+
+def strip_sources(sources: list[str]) -> tuple[dict[str, str], dict, list[str]]:
+    """Strip each file of check A's list: (stripped, stats, defects)."""
+    stripped: dict[str, str] = {}
+    stats = {"files": 0, "blanked": 0, "includes": 0, "includes_in_comments": 0,
+             "sentinel_before": 0, "sentinel_after": 0}
+    defects: list[str] = []
+    for path in sources:
+        try:
+            with open(path, "r", encoding="utf-8", errors="replace",
+                      newline="") as fh:
+                text = fh.read()
+        except OSError as exc:
+            defects.append(f"{path}: cannot read ({exc})")
+            continue
+        s = strip_cpp(text)
+        stripped[path] = s
+        stats["files"] += 1
+        stats["blanked"] += sum(1 for a, b in zip(text, s) if a != b)
+        kept, raw_inc = include_paths(s), include_paths(text)
+        stats["includes"] += len(kept)
+        stats["includes_in_comments"] += len(raw_inc) - len(kept)
+        stats["sentinel_before"] += len(D11_SENTINEL_RE.findall(text))
+        stats["sentinel_after"] += len(D11_SENTINEL_RE.findall(s))
+        defects += [f"{path}: {d}" for d in strip_defects(text, s)]
+    return stripped, stats, defects
+
+
+def selftest_stripper(failures: list[str], log: list[str]) -> int:
+    """Check E's stripper, both directions, with mutants that prove they applied.
+
+    A MUTANT is (base text, substring, replacement, sentinel).  It first
+    asserts the substitution changed the text and logs that; only then does it
+    judge the verdict, which is whether the sentinel survives stripping.  The
+    verdict must DIFFER between base and mutant, so a mutant whose base
+    already gives the mutant's answer fails too.  A no-op substitution fails
+    the selftest: that is asserted below on a deliberately no-op mutant.
+    """
+    ran = 0
+
+    def survives(text: str, word: str) -> bool:
+        return re.search(rf"\b{word}\b", strip_cpp(text)) is not None
+
+    def check_shape(name: str, text: str) -> None:
+        for d in strip_defects(text, strip_cpp(text)):
+            failures.append(f"SELFTEST: E/{name}: {d}")
+
+    def mutant(name, base, old, new, word, base_survives, sink=failures,
+               out=log):
+        mutated = base.replace(old, new, 1)
+        if old not in base or mutated == base:
+            sink.append(f"SELFTEST: E/{name}: substitution {old!r} -> {new!r} "
+                        f"did not change the text; its verdict proves nothing")
+            out.append(f"  E/{name}: substitution NOT applied -- FAIL")
+            return
+        first = next((k for k, (a, b) in enumerate(zip(base, mutated))
+                      if a != b), min(len(base), len(mutated)))
+        out.append(f"  E/{name}: substitution applied (text differs from "
+                   f"offset {first}, {len(base)} -> {len(mutated)} chars); {word} {'survives' if base_survives else 'is stripped'}"
+                   f" in base, {'is stripped' if base_survives else 'survives'}"
+                   f" in mutant")
+        for label, text, want in (("base", base, base_survives),
+                                  ("mutant", mutated, not base_survives)):
+            check_shape(f"{name}/{label}", text)
+            if survives(text, word) != want:
+                sink.append(f"SELFTEST: E/{name}: {word} "
+                            f"{'was stripped' if want else 'survived'} in the "
+                            f"{label} {text!r} -> {strip_cpp(text)!r}")
+
+    # (name, base, substring, replacement, sentinel, sentinel survives in base)
+    # Each moves the sentinel across a comment or literal boundary.
+    cases = (
+        ("line-comment", "int a; // Hit\n", "// Hit", "Hit //", "Hit", False),
+        ("block-comment", "int a; /* Hit */ int b;\n", "/* Hit */",
+         "/* */ Hit", "Hit", False),
+        ("string", 'auto s = "Hit";\n', '"Hit"', 'Hit ""', "Hit", False),
+        ("char", "auto c = 'Hit';\n", "'Hit'", "Hit", "Hit", False),
+        ("raw-string", 'auto s = R"(Hit)";\n', 'R"(Hit)"', 'R"()" Hit',
+         "Hit", False),
+        ("raw-string-delimiter", 'auto s = R"x(a)" Hit )x"; int b;\n',
+         'R"x(', 'R"(', "Hit", False),
+        ("u8R-raw-string", 'auto s = u8R"(// Hit)";\n', 'u8R"(// Hit)"',
+         'u8R"(//)" Hit', "Hit", False),
+        ("LR-raw-string", 'auto s = LR"(Hit)";\n', 'LR"(Hit)"', 'LR"()" Hit',
+         "Hit", False),
+        ("encoding-prefix-string", 'auto s = u8"Hit";\n', 'u8"Hit"',
+         'u8"" Hit', "Hit", False),
+        ("line-continuation", "int a; // x \\\nHit;\n", "\\\n", "\n",
+         "Hit", False),
+        ("spliced-comment-opener", "int a; /\\\n/ Hit\n", "/\\\n/", "/ \n/",
+         "Hit", False),
+        ("nested-looking-block", "/* /* */ Keep; */\n", "/* /* */", "/* /* ",
+         "Keep", True),
+        # The traps: real code beside a comment or literal must survive.
+        ("slashes-in-string", 'auto u = "http://x"; Keep;\n', '"http://x"',
+         "http://x", "Keep", True),
+        ("slashes-in-raw-string", 'std::regex r(R"(^(http)://)"); Keep;\n',
+         'R"(^(http)://)"', "R//", "Keep", True),
+        ("quote-in-comment", '/* " */ Keep; // "\n', '/* " */', '" ',
+         "Keep", True),
+        ("quote-in-line-comment", '// "\nKeep;\n', '// "\n', '"',
+         "Keep", True),
+        ("dquote-in-char", "char c = '\"'; Keep; char d = '\"';\n", "'\"'",
+         "'", "Keep", True),
+        ("escaped-quote-in-string", 'auto s = "a\\"b"; Keep;\n', '\\"', '"',
+         "Keep", True),
+        ("escaped-backslash", 'auto s = "a\\\\"; Keep; "b";\n', '\\\\"', '\\"',
+         "Keep", True),
+        ("escaped-squote", "char c = '\\''; Keep; char d = 'x';\n", "\\'", "'",
+         "Keep", True),
+        ("digit-separator", "int n = 1'000; Keep; char c = 'x';\n", "1'000",
+         "'000", "Keep", True),
+        ("hex-digit-separator", "int n = 0x1'F; Keep; char c = 'x';\n",
+         "0x1'F", "x'1F", "Keep", True),
+        ("division-is-not-a-comment", "int q = a / b; Keep;\n", "a / b",
+         "a //b", "Keep", True),
+        ("line-comment-ends-at-newline", "// note\nKeep;\n", "\n", " ",
+         "Keep", True),
+        ("block-comment-ends", "/* a */ Keep;\n", "*/", "*", "Keep", True),
+        ("raw-string-ends-at-its-delimiter",
+         'auto s = R"x(a)" b)x"; Keep;\n', ')x";', ')y";', "Keep", True),
+        ("identifier-is-not-a-prefix", 'auto s = MyR"(a"; Keep; ")";\n',
+         "MyR", "R", "Keep", True),
+    )
+    for case in cases:
+        mutant(*case)
+        ran += 1
+
+    # #include paths are header-names, not literals: kept verbatim, even with
+    # `//` in them, and stripped only when the directive is in a comment.
+    inc = '#include "krn/a//b.hpp"\n#  include <krn/c.hpp> // tail\n'
+    s = strip_cpp(inc)
+    got = [p for _, p in include_paths(s)]
+    log.append(f"  E/include-paths-kept: {got}")
+    if got != ["krn/a//b.hpp", "krn/c.hpp"]:
+        failures.append(f"SELFTEST: E/include-paths-kept: {got!r} from {s!r}")
+    if "tail" in s:
+        failures.append("SELFTEST: E/include-paths-kept: the trailing comment "
+                        "survived")
+    mutant("include-path-is-not-a-string", '#include "krn/Keep.hpp"\n',
+           "#include", "auto x =", "Keep", True)
+    mutant("has-include-path", '#if __has_include("krn/Keep.hpp")\n',
+           "__has_include", "__has_includes", "Keep", True)
+    mutant("include-in-block-comment", '/*\n#include "krn/Keep.hpp"\n*/\n',
+           "/*\n", "\n", "Keep", False)
+    ran += 4
+    check_shape("crlf-and-splices", "a; // x\r\nb \\\r\nc; /* \\\r\n */ d;\r\n")
+    ran += 1
+
+    # The harness itself: a mutant whose substitution changes nothing must
+    # fail, whatever the stripper does.  Run into a private sink.
+    sink: list[str] = []
+    noop_log: list[str] = []
+    mutant("deliberate-no-op", "int a; // Hit\n", "// Hit", "// Hit", "Hit",
+           False, sink=sink, out=noop_log)
+    mutant("deliberate-absent", "int a; // Hit\n", "/* Hit */", "Hit", "Hit",
+           False, sink=sink, out=noop_log)
+    if len(sink) != 2:
+        failures.append(f"SELFTEST: E/no-op-mutant-is-rejected: a no-op "
+                        f"substitution was not refused: {sink}")
+    log.append(f"  E/no-op-mutant-is-rejected: {len(sink)} of 2 no-op "
+               f"mutants refused")
+    ran += 1
+    return ran
+
+
 def selftest_gate(failures: list[str]) -> int:
     """The whole gate, exit code included, on a fixture manifest.  (ENC-1507)
 
@@ -717,7 +1097,6 @@ def selftest_gate(failures: list[str]) -> int:
     with tempfile.TemporaryDirectory(prefix="enc1507-gate-") as fx:
         os.makedirs(os.path.join(fx, "include", "krn"))
         os.makedirs(os.path.join(fx, "src", "core"))
-        os.makedirs(os.path.join(fx, "data", "include"))
         os.makedirs(os.path.join(fx, "src", "host"))
         os.makedirs(os.path.join(fx, APPS_DIR, "engine_server"))
         mkt = os.path.join(fx, "connectors", "market", "include", "krn",
@@ -733,7 +1112,8 @@ def selftest_gate(failures: list[str]) -> int:
         sources = []
         for i in range(MIN_ENGINE_FILES + 5):
             path = os.path.join(fx, "src", "core", f"E{i}.cpp")
-            open(path, "w").close()
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(f"int e{i}; // fixture\n")
             sources.append(path)
         open(os.path.join(fx, COMPOSITION_ROOT), "w").close()
         inc = os.path.join(fx, "include")
@@ -870,6 +1250,23 @@ def selftest_gate(failures: list[str]) -> int:
                 fh.write(before)
         gate("legal-after-include-restore", base_graph, 0)
 
+        # ENC-1578: a stripper that blanks nothing over check A's list is
+        # "could not run".  The mutation drops every comment from the fixture.
+        kept = {}
+        for path in sources:
+            with open(path, encoding="utf-8") as fh:
+                kept[path] = fh.read()
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(kept[path].split("//")[0] + "\n")
+        if all(open(p, encoding="utf-8").read() == kept[p] for p in sources):
+            failures.append("SELFTEST: gate/stripper-blanks-nothing: mutation "
+                            "did not apply")
+        gate("stripper-blanks-nothing", base_graph, 2, "stripper")
+        for path, text in kept.items():
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(text)
+        gate("legal-after-comment-restore", base_graph, 0)
+
         # Scanned, never linked: the stub or the control target in a real one.
         gate("stub-in-krn_engine",
              mutant("stub-in-krn_engine",
@@ -933,7 +1330,7 @@ def selftest() -> int:
         expect_clean("A/legal-SymbolTable.hpp", check_a_includes(tmp, [good], foreign))
 
         # apps/ (krn_engine_server, ENC-1561): a plugin header is legal, a
-        # market, data/ or Arrow header is not.
+        # market or Arrow header is not.
         app_roots = app_foreign_roots(tmp, foreign)
         if len(app_roots) != len(foreign) - 1:
             failures.append(f"SELFTEST: app_foreign_roots did not drop exactly "
@@ -942,7 +1339,6 @@ def selftest() -> int:
         for label, inc, bad in (
                 ("plugin", "krn/reference/SyntheticConnector.hpp", False),
                 ("market", "krn/market/MarketConnector.hpp", True),
-                ("data", "krn/data/Schema.hpp", True),
                 ("arrow", "arrow/api.h", True)):
             app = os.path.join(tmp, APPS_DIR, "engine_server", f"{label}.cpp")
             with open(app, "w", encoding="utf-8") as fh:
@@ -957,21 +1353,21 @@ def selftest() -> int:
                         check_a_includes(tmp, [plugin_user], foreign))
 
         # The composition root: it may reach a connector, it may not reach
-        # Arrow or data/. This is the distinction the first real run of this
-        # script surfaced, so both halves of it are pinned here.
+        # Arrow. This is the distinction the first real run of this script
+        # surfaced, so both halves of it are pinned here.  Its root list is
+        # empty BY DESIGN since data/ left (ENC-1573, ENC-1578).
         main_cpp = os.path.join(tmp, "src", "main.cpp")
         with open(main_cpp, "w", encoding="utf-8") as fh:
             fh.write('#include "krn/market/MarketConnector.hpp"\n')
-        data_only = [r for r in foreign if r.endswith(os.path.join("data", "include"))]
         expect_clean("A/composition-root-may-use-a-connector",
-                     check_a_includes(tmp, [main_cpp], data_only, "composition root"))
+                     check_a_includes(tmp, [main_cpp], [], "composition root"))
         expect_detected("A/composition-root-may-not-use-a-connector-as-engine",
                         check_a_includes(tmp, [main_cpp], foreign))
         main_bad = os.path.join(tmp, "src", "main_bad.cpp")
         with open(main_bad, "w", encoding="utf-8") as fh:
             fh.write('#include <arrow/api.h>\n')
         expect_detected("A/composition-root-may-not-use-arrow",
-                        check_a_includes(tmp, [main_bad], data_only, "composition root"))
+                        check_a_includes(tmp, [main_bad], [], "composition root"))
 
         # The walk must exclude the composition root, and the cross-check must
         # notice if CMake ever compiles it into krn_engine anyway.
@@ -995,11 +1391,19 @@ def selftest() -> int:
         expect_detected("A/arrow-include",
                         check_a_includes(tmp, [bad_arrow], foreign))
 
-        bad_schema = os.path.join(tmp, "src", "core", "BadSchema.cpp")
-        with open(bad_schema, "w", encoding="utf-8") as fh:
-            fh.write('#include "krn/data/Schema.hpp"\n')
-        expect_detected("A/data-only-header",
-                        check_a_includes(tmp, [bad_schema], foreign))
+        # ENC-1578: the dead data/include root is DROPPED, not filtered.  The
+        # fixture has a data/include tree; it must not be a root, and every
+        # root returned must exist, so no named root can vanish in silence.
+        if not os.path.isdir(os.path.join(tmp, "data", "include")):
+            failures.append("SELFTEST: A/dead-data-root-dropped: the fixture "
+                            "has no data/include, so this proves nothing")
+        if any(_under(os.path.realpath(r), os.path.realpath(
+                os.path.join(tmp, "data"))) for r in foreign):
+            failures.append(f"SELFTEST: A/dead-data-root-dropped: data/include "
+                            f"is still a root: {foreign}")
+        if not foreign or not all(os.path.isdir(r) for r in foreign):
+            failures.append(f"SELFTEST: A/dead-data-root-dropped: a root is "
+                            f"missing or empty: {foreign}")
 
         # --- B: the include path, its ONE exemption, and that exemption's
         # --- bound.  Both directions, because B's defect was a FALSE
@@ -1279,6 +1683,11 @@ def selftest() -> int:
                             "krn_data"))
 
     gate_cases = selftest_gate(failures)
+    strip_log: list[str] = []
+    strip_cases = selftest_stripper(failures, strip_log)
+    print(f"check E stripper ({strip_cases} cases):")
+    for line in strip_log:
+        print(line)
 
     if failures:
         for f in failures:
@@ -1287,7 +1696,8 @@ def selftest() -> int:
               file=sys.stderr)
         return 1
     print("selftest: all predicates detect their violation and pass legal input "
-          f"({gate_cases} whole-gate exit-code cases)")
+          f"({gate_cases} whole-gate exit-code cases, {strip_cases} stripper "
+          f"cases)")
     return 0
 
 
@@ -1334,8 +1744,6 @@ def evaluate(manifest: dict[str, str]
                                    and os.path.realpath(s) != os.path.realpath(
                                        os.path.join(root, COMPOSITION_ROOT))})
     foreign_roots = non_engine_header_roots(root)
-    data_only_roots = [r for r in foreign_roots
-                       if r.endswith(os.path.join("data", "include"))]
     # krn_engine_server: the apps/ walk plus CMake's own list for the target.
     app_foreign = app_foreign_roots(root, foreign_roots)
     app_walked = walk_tree(root, APPS_DIR)
@@ -1372,8 +1780,8 @@ def evaluate(manifest: dict[str, str]
             "not resolve (it links at least Threads::Threads)")
     if not foreign_roots:
         vacuous.append(
-            "found no non-engine include roots (data/include, "
-            "connectors/*/include, plugins/*/include) -- check A cannot "
+            "found no non-engine include roots (connectors/*/include, "
+            "plugins/*/include) -- check A cannot "
             "detect a layering "
             "violation it has no tree to resolve against")
     if not cmake_sources:
@@ -1453,8 +1861,21 @@ def evaluate(manifest: dict[str, str]
             f"has nothing to check, and the walk's exclusion is hiding "
             f"nothing rather than hiding main.cpp")
 
+    # Check E, part 1 (ENC-1578): strip check A's own list.  No vocabulary
+    # yet; a stripper that blanks nothing, or breaks a file's shape or an
+    # #include path, cannot be trusted with one.
+    _stripped, strip_stats, strip_bad = strip_sources(sources)
+    if strip_bad:
+        vacuous.append(f"the check E stripper damaged {len(strip_bad)} "
+                       f"file(s): {strip_bad[:5]}")
+    if sources and strip_stats["blanked"] == 0:
+        vacuous.append(f"the check E stripper blanked nothing in "
+                       f"{len(sources)} files -- it is not running")
+
     problems = (check_a_includes(root, sources, foreign_roots) +
-                (check_a_includes(root, [composition_root], data_only_roots,
+                # Prefix rule only: main.cpp may reach every connector and
+                # plugin, and data/ is not in this repo (ENC-1573, ENC-1578).
+                (check_a_includes(root, [composition_root], [],
                                   "composition root (src/main.cpp)")
                  if os.path.isfile(composition_root) else []) +
                 check_a_includes(root, app_sources, app_foreign,
@@ -1501,6 +1922,13 @@ def evaluate(manifest: dict[str, str]
                    f" (closure of all {len(graph) - (CONTROL_TARGET in graph)} "
                    f"other graphed target(s) read)")
     summary.append(f"  foreign roots   : {[os.path.relpath(r, root) for r in foreign_roots]}")
+    summary.append(
+        f"  E stripper      : {strip_stats['files']} files (check A's list), "
+        f"{strip_stats['blanked']} chars blanked, {strip_stats['includes']} "
+        f"#include paths kept verbatim, {strip_stats['includes_in_comments']} "
+        f"in comments; D11 sentinel {D11_SENTINEL_RE.pattern}: "
+        f"{strip_stats['sentinel_before']} before, "
+        f"{strip_stats['sentinel_after']} after (reported, not gated)")
 
     return vacuous, problems, summary
 
