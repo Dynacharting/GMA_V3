@@ -249,7 +249,7 @@ ConnectorsClient::parseConnectorsJson(const std::string& body) {
     }
 
     krn::util::Config::Ingress ing;
-    ing.kind = *kind;
+    ing.kind = "market.wsclient";
     ing.params["url"] = endpoint;
     ing.params["adapter"] = protocol;
     ing.params["symbols"] = symbolsCsv;
