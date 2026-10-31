@@ -78,23 +78,22 @@ node tools/smoke-test/smoke.js --url ws://localhost:8080 --duration 30
 
 ```
 [smoke] Connected to ws://localhost:8080
-[smoke] Sent 20 subscribe requests
+[smoke] Sent 23 subscribe requests
 ...
 [smoke] === RESULTS ===
 
-  Key    Subscription                        Updates  First (s)
-  ---------------------------------------------------------------
-  1      NEXO/lastPrice                           47        0.3
-  3      NEXO/sma_5                               47        1.2
-  6      NEXO/rsi_14                              35        3.5
-  20     NEXO/Worker(mean)                        47        0.4
-  31     NEXO/Atomic(ob.spread)                   47        0.5
-  40     NEXO/Interval(sma_5)                     30        1.1
+  Key    Subscription                         Updates    Values   First (s)  Verdict
+  ----------------------------------------------------------------------------------
+  1      NEXO/lastPrice                           116       116         0.0  ok
+  6      NEXO/rsi_14                              116       116         0.0  ok
+  40     NEXO/Interval(sma_5)                      19        19         1.0  ok
+  60     NEXO/Aggregate(3)                        348       348         0.0  ok
   ...
 
 [smoke] === SUMMARY ===
-[smoke] Target: market | Duration: 30s | Total updates: 842
+[smoke] Target: market | Duration: 20s | Total updates: 2726
 [smoke] Keys with values: 23/23 | Asserted rejections: 0/0
+[smoke] Subscribe acks: 23/23
 [smoke] PASS
 ```
 

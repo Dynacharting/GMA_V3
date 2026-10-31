@@ -91,6 +91,7 @@ const KEY_SETS = {
               inputs: [{ type: 'Listener', streamKey: 'NEXO', field: 'lastPrice' },
                        { type: 'Listener', streamKey: 'NEXO', field: 'volume' },
                        { type: 'Listener', streamKey: 'NEXO', field: 'sma_5' }] } },
+    { key: 99, streamKey: 'NEXO', field: 'no_such_field', label: 'BOGUS/no_such_field' },
   ],
 
   engine: [
