@@ -23,12 +23,12 @@ else()
 endif()
 
 # ---- Default build type (ENC-1548) ----
-# An empty CMAKE_BUILD_TYPE breaks the fetched Arrow's configure (an unquoted
-# string(TOLOWER ${CMAKE_BUILD_TYPE} ...)), so default it to Release: the
-# configuration the quickstart, stack.sh and the -O3 block below all use.
-# Top-level and single-config only. A non-empty -DCMAKE_BUILD_TYPE always wins,
-# FORCE only replaces the empty entry project() creates, and a consumer's build
-# type is never touched.
+# An empty CMAKE_BUILD_TYPE on a single-config generator compiles with no
+# optimisation flags at all, and the Release block below (-O3, -march baseline,
+# LTO) never runs. Default it to Release, the configuration the quickstart and
+# stack.sh pass, matching krn-data (ENC-1586). Top-level and single-config only.
+# A non-empty -DCMAKE_BUILD_TYPE always wins, FORCE only replaces the empty entry
+# project() creates, and a consumer's build type is never touched.
 get_property(_krn_multi_config GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
 if (_krn_top_level AND NOT _krn_multi_config AND "${CMAKE_BUILD_TYPE}" STREQUAL "")
   set(CMAKE_BUILD_TYPE Release CACHE STRING

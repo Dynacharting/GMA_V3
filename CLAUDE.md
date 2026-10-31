@@ -36,7 +36,7 @@ cd build && ctest --output-on-failure
 ```
 
 **An empty `CMAKE_BUILD_TYPE` defaults to `Release` (ENC-1548)** on a single-config generator,
-top-level only: the fetched Arrow fails to configure without one. An explicit
+top-level only, so an untyped configure still gets `-O3` and LTO. An explicit
 `-DCMAKE_BUILD_TYPE` always wins, and a multi-config generator or a consumer is left alone.
 
 **Consuming the engine (ENC-1553).** Under `FetchContent` / `add_subdirectory` the root
