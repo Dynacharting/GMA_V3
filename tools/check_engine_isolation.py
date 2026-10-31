@@ -41,9 +41,9 @@ FOUR CHECKS, each closing a different route in:
   D  profile   nothing matching them is reachable from krn_host's,
                krn_engine_server's or (while it is built) krn_server's either,
                which is what makes the LIVE-ONLY VARIANT of SPEC D14's client
-               profile (KRN_BUILD_DATA=OFF) actually buildable rather than
+               profile actually buildable rather than
                nominally so.  `krn_tests` is checked on the same rule, because
-               data/CMakeLists.txt names "the engine test suite is built
+               krn-data's data/CMakeLists.txt names "the engine test suite is built
                against an Arrow-free include path" as the thing being
                protected, and a prose claim with no check behind it is what
                this whole file is a reaction to.  krn_engine, krn_host,
@@ -102,7 +102,7 @@ wrong place to look.  `krn_server` links the `krn` umbrella and nothing else
 (`link.krn_server=krn|Boost::system|Threads::Threads|RapidJSON::rapidjson`),
 so a single `target_link_libraries(krn INTERFACE krn_data)` -- or `krn::arrow`
 on `krn_connector_market`, which `krn` also pulls in -- makes
-`KRN_BUILD_DATA=OFF` unlinkable while krn_engine's and krn_server's OWN
+the live-only variant unlinkable while krn_engine's and krn_server's OWN
 properties stay spotless.  That is precisely the "one line and nothing would
 say so" failure this file exists to close, so a one-level check does not close
 it.  CMake emits one row per first-party target (`link.<target>` /
@@ -116,10 +116,9 @@ CONTROL_PROBE below, which the existing `arrow` pattern matches.  It has a
 manifest row like any first-party target, and its closure MUST trip a
 forbidden pattern and reach the stub.  If it does not, the patterns match
 nothing in this build and a clean verdict about krn_engine is a verdict from a
-search that cannot find anything.  It is declared in this repo, not in data/,
-so it exists with KRN_BUILD_DATA=OFF and survives data/ leaving the repo.  It
-is scanned, never linked: any other target whose closure reaches it is a
-violation.  krn_data's closure is a second control when krn_data is built.
+search that cannot find anything.  It is declared in this repo, and since
+data/ left for krn-data (ENC-1573) it is the only control.  It is scanned,
+never linked: any other target whose closure reaches it is a violation.
 
 EXIT CODES.  0 verified pass; 1 a violation was found; 2 could not run --
 including vacuous input and a missing or silent control.  "Could not check"
@@ -131,7 +130,7 @@ CMakeLists removes it from krn_engine's sources and compiles it into
 `krn_server` against the `krn` umbrella, so it legitimately includes
 `krn/market/MarketConnector.hpp` -- which the first run of this script flagged,
 correctly, as a connector header reached from `src/`.  It still must not reach
-Arrow or `data/`, because krn_server has to link with KRN_BUILD_DATA=OFF.
+Arrow or `data/`, because krn_server has to link without Arrow.
 
 `apps/` (krn_engine_server's sources, ENC-1561) is scanned by a middle rule:
 it composes the reference plugin, so `plugins/*/include` is allowed, but it is
@@ -577,25 +576,6 @@ def link_item_candidates(item: str) -> list[str]:
     return [c for c in out if c]
 
 
-def cmake_true(value: str) -> bool:
-    """CMake's truthiness, for the boolean strings the manifest carries.
-
-    `option()` does not normalise, so `-DKRN_BUILD_DATA=1` reaches the manifest
-    as "1", not "ON".  Anything unrecognised is false, which is also CMake's
-    rule and is the safe direction: an unparseable value then DISAGREES with
-    the link graph and is reported rather than quietly believed.
-    """
-    v = value.strip().upper()
-    if v in ("ON", "YES", "TRUE", "Y"):
-        return True
-    if v in ("OFF", "NO", "FALSE", "N", "IGNORE", "NOTFOUND", ""):
-        return False
-    try:
-        return int(v) != 0
-    except ValueError:
-        return False
-
-
 def parse_link_graph(manifest: dict[str, str]) -> dict[str, list[str]]:
     """target -> its link libraries, from the manifest's `link.<target>` rows.
 
@@ -662,7 +642,7 @@ def forbidden_links(graph: dict[str, list[str]], root: str) -> list[str]:
     first-party library -- `krn_store`, say -- would arrive with no row, be
     treated as a LEAF, and have its own dependencies never walked; an ALIAS
     (`add_library(krn::data ALIAS krn_data)`) does the same thing without even
-    being a new target.  Either one makes KRN_BUILD_DATA=OFF unlinkable while
+    being a new target.  Either one makes the live-only variant unlinkable while
     rule one stays clean.  So a reached name that LOOKS first-party and has no
     row is itself a failure: not "this links something forbidden" but "this
     subtree was never searched, so a clean verdict about it is a verdict from
@@ -774,23 +754,22 @@ def selftest_gate(failures: list[str]) -> int:
             CONTROL_TARGET: [CONTROL_PROBE],
         }
 
-        def manifest(graph: dict[str, list[str]], data: str) -> dict[str, str]:
+        def manifest(graph: dict[str, list[str]]) -> dict[str, str]:
             m = {"root": fx, "engine_include_dirs": inc,
                  "engine_interface_include_dirs": inc,
                  "engine_cmake_sources": "|".join(sources),
                  "host_cmake_sources": host_cpp,
                  "engine_server_cmake_sources": app_main,
-                 "krn_data_enabled": data,
                  "rapidjson_include_dir": "/usr/include"}
             for t, libs in graph.items():
                 m[f"link.{t}"] = "|".join(libs)
             return m
 
-        def gate(name, graph, data, want, vacuity_mentions=None):
+        def gate(name, graph, want, vacuity_mentions=None):
             # Through the file, so read_manifest is exercised too.
             path = os.path.join(fx, f"{len(os.listdir(fx))}.manifest")
             with open(path, "w", encoding="utf-8") as fh:
-                for k, v in manifest(graph, data).items():
+                for k, v in manifest(graph).items():
                     fh.write(f"{k}={v}\n")
             vac, probs, summary = evaluate(read_manifest(path))
             got = exit_code(vac, probs)
@@ -812,35 +791,36 @@ def selftest_gate(failures: list[str]) -> int:
                 failures.append(f"SELFTEST: gate/{name}: mutation did not apply")
             return g
 
-        # The legal fixture passes, and its control fires FROM THE STUB with
-        # the data layer off -- the configuration that used to be vacuous.
-        summary = gate("legal-data-OFF", base_graph, "OFF", 0)
+        # The legal fixture passes, and its control fires FROM THE STUB -- the
+        # only control since data/ left (ENC-1573).
+        summary = gate("legal", base_graph, 0)
         if not any(f"ok ({CONTROL_TARGET} -> {CONTROL_PROBE}" in ln
                    for ln in summary):
-            failures.append("SELFTEST: gate/legal-data-OFF: positive control "
+            failures.append("SELFTEST: gate/legal: positive control "
                             "is not reported as ok from the stub")
         expect = forbidden_links(base_graph, CONTROL_TARGET)
         if not expect:
             failures.append("SELFTEST: the control stub does not fire")
 
-        with_data = mutant("legal-data-ON", lambda g: g.update(
+        # An Arrow-linking target no checked root reaches is not a violation.
+        with_data = mutant("legal-unreached-krn_data", lambda g: g.update(
             {"krn_data": ["krn_engine", "krn::arrow"]}))
-        gate("legal-data-ON", with_data, "ON", 0)
+        gate("legal-unreached-krn_data", with_data, 0)
 
-        # The ticket's case: data layer off, no control -> must not exit 0.
-        no_ctl = mutant("data-OFF-no-control", lambda g: g.pop(CONTROL_TARGET))
-        gate("data-OFF-no-control", no_ctl, "OFF", 2, CONTROL_TARGET)
-        # krn_data alone is not a substitute: it leaves with data/.
+        # No control -> must not exit 0.
+        no_ctl = mutant("no-control", lambda g: g.pop(CONTROL_TARGET))
+        gate("no-control", no_ctl, 2, CONTROL_TARGET)
+        # Another target that trips a pattern is not a substitute.
         data_no_ctl = dict(no_ctl, krn_data=["krn_engine", "krn::arrow"])
-        gate("data-ON-krn_data-only", data_no_ctl, "ON", 2, CONTROL_TARGET)
+        gate("krn_data-only", data_no_ctl, 2, CONTROL_TARGET)
         # A control row that matches nothing is no control.
         silent = mutant("control-silent", lambda g: g.update(
             {CONTROL_TARGET: ["Threads::Threads"]}))
-        gate("control-silent", silent, "OFF", 2, CONTROL_TARGET)
+        gate("control-silent", silent, 2, CONTROL_TARGET)
         # One that fires but not through the stub has drifted from CMake.
         drifted = mutant("control-without-stub", lambda g: g.update(
             {CONTROL_TARGET: ["krn::arrow"]}))
-        gate("control-without-stub", drifted, "OFF", 2, CONTROL_TARGET)
+        gate("control-without-stub", drifted, 2, CONTROL_TARGET)
 
         # ENC-1562: the whole gate exits 1 when krn_tests links the market
         # connector -- the CMake line `target_link_libraries(krn_tests
@@ -848,7 +828,7 @@ def selftest_gate(failures: list[str]) -> int:
         gate("krn_tests-links-market",
              mutant("krn_tests-links-market",
                     lambda g: g["krn_tests"].append("krn_connector_market")),
-             "OFF", 1)
+             1)
 
         # ENC-1561 (D11.1): the market connector in krn_engine's, krn_host's
         # or krn_engine_server's closure -- direct, and via the umbrella.
@@ -859,7 +839,7 @@ def selftest_gate(failures: list[str]) -> int:
                     continue  # krn -> krn_engine: a cycle, not a shape
                 name = f"{r}-links-market-{how}"
                 gate(name, mutant(name, lambda g, r=r, lib=lib:
-                                  g[r].append(lib)), "OFF", 1)
+                                  g[r].append(lib)), 1)
 
         # D11.2: a missing root is "could not run", never a pass.  krn_host
         # is removed with its edges, else the unregistered-name rule fires.
@@ -869,11 +849,11 @@ def selftest_gate(failures: list[str]) -> int:
                 g[t] = ["krn_engine" if x == r else x for x in g[t]]
         for r in ("krn_host", "krn_engine_server"):
             gate(f"no-{r}-row", mutant(f"no-{r}-row",
-                                       lambda g, r=r: drop(g, r)), "OFF", 2, r)
+                                       lambda g, r=r: drop(g, r)), 2, r)
         # ... and krn_server leaving (D12 step 22) is not a failure.
         gate("krn_server-not-built",
              mutant("krn_server-not-built", lambda g: g.pop("krn_server")),
-             "OFF", 0)
+             0)
 
         # ENC-1561: a market header included from krn_engine_server's or
         # krn_host's source is caught by check A.
@@ -886,24 +866,24 @@ def selftest_gate(failures: list[str]) -> int:
                 if fh.read() == before:
                     failures.append(f"SELFTEST: gate/{label}-includes-market: "
                                     f"mutation did not apply")
-            gate(f"{label}-includes-market", base_graph, "OFF", 1)
+            gate(f"{label}-includes-market", base_graph, 1)
             with open(path, "w", encoding="utf-8") as fh:
                 fh.write(before)
-        gate("legal-after-include-restore", base_graph, "OFF", 0)
+        gate("legal-after-include-restore", base_graph, 0)
 
         # Scanned, never linked: the stub or the control target in a real one.
         gate("stub-in-krn_engine",
              mutant("stub-in-krn_engine",
-                    lambda g: g["krn_engine"].append(CONTROL_PROBE)), "OFF", 1)
+                    lambda g: g["krn_engine"].append(CONTROL_PROBE)), 1)
         gate("control-in-krn_engine",
              mutant("control-in-krn_engine",
-                    lambda g: g["krn_engine"].append(CONTROL_TARGET)), "OFF", 1)
+                    lambda g: g["krn_engine"].append(CONTROL_TARGET)), 1)
         # ...and in a target none of the checked roots reach, which only the
         # control_reachers rule can see.
         gate("control-in-unreached-target",
              mutant("control-in-unreached-target",
                     lambda g: g.update({"krn_other": [CONTROL_TARGET]})),
-             "OFF", 1)
+             1)
     return len(ran)
 
 
@@ -1178,7 +1158,7 @@ def selftest() -> int:
                             forbidden_links(mut, r))
 
         # THE CASE THAT MOTIVATED THE CLOSURE. One line on the umbrella makes
-        # KRN_BUILD_DATA=OFF unlinkable; neither krn_engine's nor krn_server's
+        # the live-only variant unlinkable; neither krn_engine's nor krn_server's
         # own property changes at all.
         umbrella = dict(legal)
         umbrella["krn"] = ["krn_engine", "krn_connector_market", "krn_data"]
@@ -1282,21 +1262,13 @@ def selftest() -> int:
         expect_detected("closure/cycle-safe",
                         forbidden_links({"a": ["b"], "b": ["a", "krn_data"]}, "a"))
 
-        # The positive control itself: krn_data's closure must trip a pattern,
-        # since that is what main() asserts about the live build.
+        # krn_data's closure must trip a pattern: it is forbidden by name and
+        # by what it links, wherever it is built from.
         expect_detected("control/krn_data-reaches-arrow",
                         forbidden_links(
                             {"krn_data": ["krn_engine", "krn::arrow"],
                              "krn_engine": ["Threads::Threads"]},
                             "krn_data"))
-
-        # cmake_true, because the positive control's verdict depends on it.
-        for truthy in ("ON", "on", "1", "TRUE", "yes", "Y", "2"):
-            if not cmake_true(truthy):
-                failures.append(f"SELFTEST: cmake_true({truthy!r}) is False")
-        for falsy in ("OFF", "off", "0", "FALSE", "no", "", "NOTFOUND", "junk"):
-            if cmake_true(falsy):
-                failures.append(f"SELFTEST: cmake_true({falsy!r}) is True")
 
     gate_cases = selftest_gate(failures)
 
@@ -1341,7 +1313,6 @@ def evaluate(manifest: dict[str, str]
     host_sources = dedupe(split_list(manifest.get("host_cmake_sources", "")))
     app_cmake_sources = dedupe(
         split_list(manifest.get("engine_server_cmake_sources", "")))
-    data_enabled = manifest.get("krn_data_enabled", "?")
     rapidjson_dir = manifest.get("rapidjson_include_dir", "")
 
     walked = walk_engine_trees(root)
@@ -1468,29 +1439,6 @@ def evaluate(manifest: dict[str, str]
         else:
             control = (f"ok ({CONTROL_TARGET} -> {CONTROL_PROBE}: "
                        f"{len(ctl_hits)} forbidden link(s) seen)")
-    # krn_data is a second control when it is in the build.  Driven by the
-    # GRAPH, not by the krn_data_enabled string, and the two are cross-checked:
-    # `-DKRN_BUILD_DATA=1` reaches the manifest as "1", not "ON".
-    have_krn_data = "krn_data" in graph
-    if have_krn_data:
-        hits = forbidden_links(graph, "krn_data")
-        if not hits:
-            vacuous.append(
-                "krn_data's own link closure trips NO forbidden pattern, but it "
-                "links krn::arrow by construction -- the patterns do not match "
-                "what this build actually links")
-            control += "; krn_data: FAILED (its closure trips no pattern)"
-        else:
-            control += f"; krn_data: ok ({len(hits)} forbidden link(s))"
-    else:
-        control += (f"; krn_data: not in this build "
-                    f"(krn_data_enabled={data_enabled!r})")
-    if have_krn_data != cmake_true(data_enabled):
-        vacuous.append(
-            f"krn_data_enabled={data_enabled!r} but the manifest "
-            f"{'has' if have_krn_data else 'has no'} link.krn_data row -- the "
-            f"two disagree, so the positive control's verdict describes a "
-            f"build this manifest is not")
     if have_server and not os.path.isfile(composition_root):
         vacuous.append(
             f"{COMPOSITION_ROOT} does not exist -- the composition-root rule "
@@ -1545,7 +1493,6 @@ def evaluate(manifest: dict[str, str]
                    f" (closure of all {len(graph) - (CONTROL_TARGET in graph)} "
                    f"other graphed target(s) read)")
     summary.append(f"  foreign roots   : {[os.path.relpath(r, root) for r in foreign_roots]}")
-    summary.append(f"  krn_data built  : {data_enabled}")
 
     return vacuous, problems, summary
 
