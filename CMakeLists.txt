@@ -472,6 +472,7 @@ if (KRN_BUILD_TESTS)
     tests/core/AtomicStoreTest.cpp
     tests/core/ConfigNamespaceDispatchTest.cpp
     tests/core/ConfigTest.cpp
+    tests/core/ConfigUnclaimedKeysTest.cpp
     tests/core/ExprTest.cpp
     tests/core/JsonUtilNonFiniteTest.cpp
     tests/core/LoggerTest.cpp
@@ -633,6 +634,13 @@ if (KRN_BUILD_TESTS AND TARGET krn_engine_server AND Python3_Interpreter_FOUND)
             "${PROJECT_SOURCE_DIR}/tests/scripts/port_conflict_test.py"
             "$<TARGET_FILE:krn_engine_server>" ws)
   set_tests_properties(krn_port_conflict_ws PROPERTIES TIMEOUT 120)
+
+  # ENC-1595: one WARN per config key nobody claims, and the server still starts.
+  add_test(NAME krn_config_unclaimed_keys
+    COMMAND "${Python3_EXECUTABLE}"
+            "${PROJECT_SOURCE_DIR}/tests/scripts/config_unclaimed_keys_test.py"
+            "$<TARGET_FILE:krn_engine_server>")
+  set_tests_properties(krn_config_unclaimed_keys PROPERTIES TIMEOUT 120)
 endif()
 
 # Benchmarks (opt-in)
