@@ -87,10 +87,15 @@ string(REPLACE "," ";" _expected "${KRN_SMOKE_EXPECTED_TARGETS}")
 list(SORT _expected)
 _check("_all STREQUAL _expected"
   "(b) engine targets are exactly [${_expected}]; got [${_all}]")
-foreach (_t IN ITEMS krn_connector_market krn_server krn_engine_server krn_tests
-                     krn_market_tests krn krn_isolation_control
+# Top-level-only targets: defined in a top-level build, never here.
+foreach (_t IN ITEMS krn_engine_server krn_tests krn krn_isolation_control
                      krn_benchmarks gtest gtest_main benchmark)
   _check("NOT TARGET ${_t}" "(b) no target ${_t}")
+endforeach()
+# Gone from this repo in every mode (krn-common's since ENC-1570). Kept, so a
+# re-added one fails here rather than reaching a consumer.
+foreach (_t IN ITEMS krn_connector_market krn_server krn_market_tests)
+  _check("NOT TARGET ${_t}" "(b) no target ${_t} (left for krn-common)")
 endforeach()
 # The control's IMPORTED stub is directory-scoped, so `if(TARGET)` from here
 # cannot see it: read the engine's IMPORTED_TARGETS, positive control first.
