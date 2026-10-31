@@ -10,10 +10,11 @@ closed form of ReferenceConnector's inputs (sample_n = 100 + n):
     reference.sum   S_n = sum_{i<=n} (100 + i)
     reference.sumsq Q_n = sum_{i<=n} (100 + i)^2
 
-Warm-up values (n in 1..3) are NaN. Today the server writes NaN as an empty
-JSON value (`"value":}`, ENC-1584); that exact frame is counted as a warm-up
-frame and accepted only for the first 3 updates per key. Then it sends SIGTERM
-and requires exit 0 with the "stopped" log line.
+Warm-up values (n in 1..3) are NaN, which the wire encodes as JSON null
+(ENC-1584): each warm-up frame must be byte-exactly NULL_FRAME, at least one
+and at most 3 per key, all before the first finite value, which must be tick
+4. Every frame is parsed strictly (no NaN/Infinity literals, no duplicate
+keys). Then it sends SIGTERM and requires exit 0 with the "stopped" log line.
 
 Usage: engine_server_reference_test.py <path-to-krn_engine_server>
 """
@@ -21,7 +22,6 @@ Usage: engine_server_reference_test.py <path-to-krn_engine_server>
 import base64
 import json
 import os
-import re
 import signal
 import socket
 import struct
@@ -35,7 +35,23 @@ READ_TIMEOUT_S = 20
 WANT_PER_KEY = 5
 BASE = 100.0
 WARMUP = 3
-NAN_FRAME = re.compile(r'^\{"type":"update","key":(\d+),"streamKey":"REF","value":\}$')
+NULL_FRAME = '{"type":"update","key":%d,"streamKey":"REF","value":null}'
+
+
+def _reject_constant(name):
+    raise ValueError("non-JSON constant %s" % name)
+
+
+def _reject_duplicates(pairs):
+    keys = [k for k, _ in pairs]
+    if len(keys) != len(set(keys)):
+        raise ValueError("duplicate key in %r" % keys)
+    return dict(pairs)
+
+
+def strict_loads(text):
+    return json.loads(text, parse_constant=_reject_constant,
+                      object_pairs_hook=_reject_duplicates)
 
 
 def free_port():
@@ -177,19 +193,10 @@ def main():
                         break
                     print("<<< %s" % msg)
                     try:
-                        frame = json.loads(msg)
-                    except ValueError:
-                        # ENC-1584: NaN serialises as nothing. Accept only that
-                        # exact shape, and only as a warm-up value.
-                        m = NAN_FRAME.match(msg)
-                        if not m:
-                            problems.append("unparseable frame: %s" % msg)
-                            break
-                        k = int(m.group(1))
-                        nulls[k] = nulls.get(k, 0) + 1
-                        if got.get(k):
-                            problems.append("NaN after a finite value for key %d" % k)
-                        continue
+                        frame = strict_loads(msg)
+                    except ValueError as ex:
+                        problems.append("not strict JSON (%s): %s" % (ex, msg))
+                        break
                     if frame.get("type") == "error":
                         problems.append("server error frame: %s" % msg)
                         break
@@ -201,16 +208,26 @@ def main():
                         continue
                     if frame.get("streamKey") != "REF":
                         problems.append("update on the wrong stream: %s" % msg)
-                    v = frame.get("value")
+                    if "value" not in frame:
+                        problems.append("update without a value: %s" % msg)
+                        continue
+                    v = frame["value"]
                     if v is None:
+                        if msg != NULL_FRAME % k:
+                            problems.append("warm-up frame is not %s: %s" % (NULL_FRAME % k, msg))
+                        if got[k]:
+                            problems.append("null after a finite value for key %d" % k)
                         nulls[k] += 1
+                        continue
+                    if not isinstance(v, (int, float)) or isinstance(v, bool):
+                        problems.append("non-numeric value: %s" % msg)
                         continue
                     got[k].append(v)
                 ws.close()
 
                 for k in nulls:
-                    if nulls[k] > WARMUP:
-                        problems.append("key %d: %d warm-up values, at most %d expected"
+                    if not 1 <= nulls[k] <= WARMUP:
+                        problems.append("key %d: %d warm-up null frames, wanted 1..%d"
                                         % (k, nulls[k], WARMUP))
                 for k, table, name in ((1, sums, "reference.sum"), (2, sumsqs, "reference.sumsq")):
                     if len(got[k]) < WANT_PER_KEY:
@@ -221,9 +238,12 @@ def main():
                             problems.append("%s: %r is not S_n/Q_n for any n > %d" % (name, v, WARMUP))
                         else:
                             ns.append(table[v])
+                    if nulls[k] and ns and ns[0] != WARMUP + 1:
+                        problems.append("%s: first finite value at tick %d, wanted %d"
+                                        % (name, ns[0], WARMUP + 1))
                     if ns != sorted(set(ns)):
                         problems.append("%s: tick indices not strictly increasing: %s" % (name, ns))
-                    print("%s: %d values at ticks %s (+%d warm-up NaN frames)"
+                    print("%s: %d values at ticks %s (+%d warm-up null frames)"
                           % (name, len(got[k]), ns, nulls[k]))
 
                 print("$ kill -TERM %d" % proc.pid)
