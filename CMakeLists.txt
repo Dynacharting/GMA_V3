@@ -997,9 +997,14 @@ ${_krn_iso_link_rows}")
               --selftest)
     set_tests_properties(krn_engine_isolation_selftest PROPERTIES TIMEOUT 120)
   else()
-    message(WARNING
-      "krn_engine_isolation test SKIPPED: no Python3 interpreter. The SPEC D14 "
-      "engine-isolation invariant is NOT being checked in this build.")
+    # An error, not a warning (ENC-1585): a skip here left ctest green with
+    # two fewer cases and the invariant unchecked, the same failure as a
+    # missing root above.
+    message(FATAL_ERROR
+      "krn_engine_isolation cannot run: no Python3 interpreter found "
+      "(Python3_EXECUTABLE='${Python3_EXECUTABLE}'). The SPEC D14 / purity "
+      "SPEC D11 invariant would not be checked, so this is an error under "
+      "KRN_BUILD_TESTS=ON. Install python3 or pass -DPython3_EXECUTABLE=<path>.")
   endif()
 endif()
 
