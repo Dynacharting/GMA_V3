@@ -10,10 +10,14 @@ Two cases are covered, because the server binds two independent sockets:
   * wsPort   -> krn::WebSocketServer's acceptor (opened in its constructor)
   * feedPort -> the market.feedserver ingress (opened in FeedServer::run)
 
-For each: occupy the port from this process, launch krn_server, and assert it
+For each: occupy the port from this process, launch the server, and assert it
 exits non-zero, without "terminate called", and names the port + the OS error.
 
-Usage: port_conflict_test.py <path-to-krn_server>
+ENC-1561 splits the two cases (purity SPEC D6): `ws` runs against
+krn_engine_server (krn_port_conflict_ws), `feed` against krn_server
+(krn_port_conflict).  With no case argument both run.
+
+Usage: port_conflict_test.py <server> [ws|feed]
 """
 
 import os
@@ -43,14 +47,19 @@ def free_port():
 
 
 def run_server(server, ws_port, feed_port, workdir):
+    """feed_port=None: no feedPort anywhere (krn_engine_server's CLI)."""
     # Both the INI and argv carry the ports, and since ENC-1331 they agree:
     # ingress synthesis (which fixes the feed acceptor's port) happens in the
     # composition root, after argv[3] has been applied. See
     # feed_port_override_test.py for the case where they deliberately differ.
     conf = os.path.join(workdir, "port_conflict.conf")
     with open(conf, "w") as fh:
-        fh.write("wsPort=%d\nfeedPort=%d\nthreadPoolSize=2\nmetricsEnabled=false\n"
-                 % (ws_port, feed_port))
+        fh.write("wsPort=%d\nthreadPoolSize=2\nmetricsEnabled=false\n" % ws_port)
+        if feed_port is not None:
+            fh.write("feedPort=%d\n" % feed_port)
+    argv = [server, str(ws_port), conf]
+    if feed_port is not None:
+        argv.append(str(feed_port))
 
     env = dict(os.environ)
     # A configured forum would replace the ingress list and change what binds.
@@ -58,7 +67,7 @@ def run_server(server, ws_port, feed_port, workdir):
         env.pop(key, None)
 
     proc = subprocess.run(
-        [server, str(ws_port), conf, str(feed_port)],
+        argv,
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
         cwd=workdir, env=env, timeout=TIMEOUT_S,
     )
@@ -82,30 +91,34 @@ def check(name, rc, out):
 
 
 def main():
-    if len(sys.argv) != 2:
-        print("usage: port_conflict_test.py <krn_server>", file=sys.stderr)
+    if len(sys.argv) not in (2, 3) or sys.argv[2:] not in ([], ["ws"], ["feed"]):
+        print("usage: port_conflict_test.py <server> [ws|feed]", file=sys.stderr)
         return 2
     server = sys.argv[1]
+    cases = sys.argv[2:] or ["ws", "feed"]
 
     held = []
     ok = True
     try:
         with tempfile.TemporaryDirectory() as workdir:
-            # Case 1: wsPort occupied.
-            ws_taken = bind_held(held)
-            rc, out = run_server(server, ws_taken, free_port(), workdir)
-            ok &= check("wsPort occupied (%d)" % ws_taken, rc, out)
-            if str(ws_taken) not in out:
-                print("FAIL [wsPort]: message does not name port %d" % ws_taken, file=sys.stderr)
-                ok = False
+            # Case 1: wsPort occupied.  Alone, it passes no feedPort.
+            if "ws" in cases:
+                ws_taken = bind_held(held)
+                feed = None if cases == ["ws"] else free_port()
+                rc, out = run_server(server, ws_taken, feed, workdir)
+                ok &= check("wsPort occupied (%d)" % ws_taken, rc, out)
+                if str(ws_taken) not in out:
+                    print("FAIL [wsPort]: message does not name port %d" % ws_taken, file=sys.stderr)
+                    ok = False
 
             # Case 2: feedPort occupied, wsPort free.
-            feed_taken = bind_held(held)
-            rc, out = run_server(server, free_port(), feed_taken, workdir)
-            ok &= check("feedPort occupied (%d)" % feed_taken, rc, out)
-            if str(feed_taken) not in out:
-                print("FAIL [feedPort]: message does not name port %d" % feed_taken, file=sys.stderr)
-                ok = False
+            if "feed" in cases:
+                feed_taken = bind_held(held)
+                rc, out = run_server(server, free_port(), feed_taken, workdir)
+                ok &= check("feedPort occupied (%d)" % feed_taken, rc, out)
+                if str(feed_taken) not in out:
+                    print("FAIL [feedPort]: message does not name port %d" % feed_taken, file=sys.stderr)
+                    ok = False
     finally:
         for s in held:
             s.close()

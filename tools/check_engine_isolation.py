@@ -38,15 +38,17 @@ FOUR CHECKS, each closing a different route in:
                dependency.  See CHECK B IS THE WEAKEST OF THE FOUR below.
   C  link      nothing matching krn_data / arrow / parquet / clickhouse is
                reachable from krn_engine's link libraries — TRANSITIVELY.
-  D  profile   nothing matching them is reachable from krn_server's either,
+  D  profile   nothing matching them is reachable from krn_host's,
+               krn_engine_server's or (while it is built) krn_server's either,
                which is what makes the LIVE-ONLY VARIANT of SPEC D14's client
                profile (KRN_BUILD_DATA=OFF) actually buildable rather than
                nominally so.  `krn_tests` is checked on the same rule, because
                data/CMakeLists.txt names "the engine test suite is built
                against an Arrow-free include path" as the thing being
                protected, and a prose claim with no check behind it is what
-               this whole file is a reaction to.  krn_tests alone is also
-               barred from krn_connector_market (ENC-1562).
+               this whole file is a reaction to.  krn_engine, krn_host,
+               krn_engine_server and krn_tests are also barred from
+               krn_connector_market (ENC-1561, ENC-1562).
 
 CHECK B IS THE WEAKEST OF THE FOUR, AND ITS HOLE IS DELIBERATE.  (ENC-1497)
 Its rule used to be "any in-repo include dir that is not `<root>/include`",
@@ -131,6 +133,10 @@ CMakeLists removes it from krn_engine's sources and compiles it into
 correctly, as a connector header reached from `src/`.  It still must not reach
 Arrow or `data/`, because krn_server has to link with KRN_BUILD_DATA=OFF.
 
+`apps/` (krn_engine_server's sources, ENC-1561) is scanned by a middle rule:
+it composes the reference plugin, so `plugins/*/include` is allowed, but it is
+the connector-free server, so data/ and `connectors/*/include` are not.
+
 The file list for check A comes from CMake's own
 `$<TARGET_PROPERTY:krn_engine,SOURCES>`, not from this script re-deriving the
 glob.  A second derivation of the same set is a second thing to keep in sync,
@@ -179,11 +185,19 @@ FORBIDDEN_LINK_PATTERNS = (
     re.compile(r"duckdb", re.IGNORECASE),
 )
 
-# Check D, krn_tests only (ENC-1562, purity SPEC D11.1/D13): the engine test
-# binary must not reach the market connector.  Its market cases build as
-# krn_market_tests, which is not a checked root.
+# Per-root bans (purity SPEC D11.1): the market connector leaves this repo, so
+# the engine, the host and the engine server must not reach it (ENC-1561), nor
+# the engine test binary (ENC-1562).  krn_server and krn_market_tests are the
+# market half; they are not in the table.
 MARKET_CONNECTOR_LINK = re.compile(r"(?:^|[:/])krn_connector_market$")
-ROOT_FORBIDDEN_LINKS = {"krn_tests": (MARKET_CONNECTOR_LINK,)}
+ROOT_FORBIDDEN_LINKS = {r: (MARKET_CONNECTOR_LINK,) for r in
+                        ("krn_engine", "krn_host", "krn_engine_server",
+                         "krn_tests")}
+
+# Roots that must have a manifest row (ENC-1561, D11.2).  krn_server is checked
+# while it is built and is not required: it leaves with the market connector.
+REQUIRED_ROOTS = ("krn_engine", "krn_host", "krn_engine_server")
+SERVER_ROOT = "krn_server"
 
 # The positive control (ENC-1507).  Must match root CMakeLists.txt.
 CONTROL_TARGET = "krn_isolation_control"
@@ -267,6 +281,19 @@ SOURCE_SUFFIXES = (".cpp", ".hpp", ".h", ".cc", ".cxx", ".ipp")
 
 # Compiled into krn_server, not krn_engine -- see the docstring.
 COMPOSITION_ROOT = os.path.join("src", "main.cpp")
+# krn_engine_server's tree (ENC-1561).
+APPS_DIR = "apps"
+
+
+def walk_tree(root: str, sub: str) -> list[str]:
+    """Every source/header under `root/sub`, as realpaths."""
+    found: list[str] = []
+    for dirpath, dirnames, filenames in os.walk(os.path.join(root, sub)):
+        dirnames[:] = [d for d in dirnames if d not in (".git", "build")]
+        for name in filenames:
+            if name.endswith(SOURCE_SUFFIXES):
+                found.append(os.path.realpath(os.path.join(dirpath, name)))
+    return sorted(found)
 
 
 def walk_engine_trees(root: str) -> list[str]:
@@ -275,20 +302,14 @@ def walk_engine_trees(root: str) -> list[str]:
     Not connectors/, not data/, not tests/.  The composition root is excluded
     because CMake excludes it from the target.
     """
-    found: list[str] = []
-    for sub in ("src", "include"):
-        base = os.path.join(root, sub)
-        for dirpath, dirnames, filenames in os.walk(base):
-            dirnames[:] = [d for d in dirnames if d not in (".git", "build")]
-            for name in filenames:
-                if name.endswith(SOURCE_SUFFIXES):
-                    found.append(os.path.realpath(os.path.join(dirpath, name)))
+    found = walk_tree(root, "src") + walk_tree(root, "include")
     composition = os.path.realpath(os.path.join(root, COMPOSITION_ROOT))
     return sorted(f for f in found if f != composition)
 
 
 def check_cmake_sources_stay_in_the_engine_trees(
-        root: str, cmake_sources: list[str], walked: set[str]) -> list[str]:
+        root: str, cmake_sources: list[str], walked: set[str],
+        target: str = "krn_engine") -> list[str]:
     """Nothing from outside src/ and include/ is compiled into krn_engine.
 
     The other direction of check A: if krn_engine ever started compiling a file
@@ -303,13 +324,13 @@ def check_cmake_sources_stay_in_the_engine_trees(
             continue
         if real == composition:
             problems.append(
-                "krn_engine compiles src/main.cpp -- the composition root "
+                f"{target} compiles src/main.cpp -- the composition root "
                 "belongs to krn_server, and pulling it into the engine library "
                 "drags the market connector in with it")
             continue
         if real not in walked:
             problems.append(
-                f"krn_engine compiles {os.path.relpath(real, root)}, which is "
+                f"{target} compiles {os.path.relpath(real, root)}, which is "
                 f"outside src/ and include/ -- engine sources must come from "
                 f"the engine's own trees")
     return problems
@@ -327,6 +348,12 @@ def non_engine_header_roots(root: str) -> list[str]:
             if os.path.isdir(candidate):
                 roots.append(candidate)
     return [r for r in roots if os.path.isdir(r)]
+
+
+def app_foreign_roots(root: str, foreign: list[str]) -> list[str]:
+    """The roots apps/ may not reach: `foreign` minus plugins/*/include."""
+    plugins = os.path.realpath(os.path.join(root, "plugins"))
+    return [r for r in foreign if not _under(os.path.realpath(r), plugins)]
 
 
 def check_a_includes(root: str, sources: list[str], foreign_roots: list[str],
@@ -649,8 +676,9 @@ def forbidden_links(graph: dict[str, list[str]], root: str) -> list[str]:
             shown = market if market == name else f"{name}' (as '{market}"
             problems.append(
                 f"{root} links '{shown}' via {' -> '.join(chain)} -- "
-                f"{root} carries no market code (ENC-1562); market cases "
-                f"build as krn_market_tests")
+                f"{root} carries no market code (purity SPEC D11.1); the "
+                f"market connector reaches only krn_server and "
+                f"krn_market_tests")
             continue
         hit = next((c for c in cands
                     for p in FORBIDDEN_LINK_PATTERNS if p.search(c)), None)
@@ -711,6 +739,18 @@ def selftest_gate(failures: list[str]) -> int:
         os.makedirs(os.path.join(fx, "include", "krn"))
         os.makedirs(os.path.join(fx, "src", "core"))
         os.makedirs(os.path.join(fx, "data", "include"))
+        os.makedirs(os.path.join(fx, "src", "host"))
+        os.makedirs(os.path.join(fx, APPS_DIR, "engine_server"))
+        mkt = os.path.join(fx, "connectors", "market", "include", "krn",
+                           "market")
+        os.makedirs(mkt)
+        open(os.path.join(mkt, "MarketConnector.hpp"), "w").close()
+        app_main = os.path.join(fx, APPS_DIR, "engine_server", "main.cpp")
+        with open(app_main, "w", encoding="utf-8") as fh:
+            fh.write("#include <memory>\n")
+        host_cpp = os.path.join(fx, "src", "host", "Host.cpp")
+        with open(host_cpp, "w", encoding="utf-8") as fh:
+            fh.write("#include <memory>\n")
         sources = []
         for i in range(MIN_ENGINE_FILES + 5):
             path = os.path.join(fx, "src", "core", f"E{i}.cpp")
@@ -723,8 +763,10 @@ def selftest_gate(failures: list[str]) -> int:
             "krn_engine": ["Threads::Threads"],
             "krn": ["krn_engine", "krn_connector_market"],
             "krn_connector_market": ["krn_engine"],
-            "krn_server": ["krn", "Threads::Threads"],
+            "krn_server": ["krn_host", "krn", "Threads::Threads"],
             "krn_plugin_reference": ["krn_engine"],
+            "krn_host": ["krn_engine"],
+            "krn_engine_server": ["krn_host", "krn_plugin_reference"],
             "krn_tests": ["krn_engine", "krn_plugin_reference",
                           "GTest::gtest_main"],
             "krn_market_tests": ["krn", "krn_plugin_reference",
@@ -736,6 +778,8 @@ def selftest_gate(failures: list[str]) -> int:
             m = {"root": fx, "engine_include_dirs": inc,
                  "engine_interface_include_dirs": inc,
                  "engine_cmake_sources": "|".join(sources),
+                 "host_cmake_sources": host_cpp,
+                 "engine_server_cmake_sources": app_main,
                  "krn_data_enabled": data,
                  "rapidjson_include_dir": "/usr/include"}
             for t, libs in graph.items():
@@ -806,6 +850,47 @@ def selftest_gate(failures: list[str]) -> int:
                     lambda g: g["krn_tests"].append("krn_connector_market")),
              "OFF", 1)
 
+        # ENC-1561 (D11.1): the market connector in krn_engine's, krn_host's
+        # or krn_engine_server's closure -- direct, and via the umbrella.
+        for r in ("krn_engine", "krn_host", "krn_engine_server"):
+            for how, lib in (("direct", "krn_connector_market"),
+                             ("via-umbrella", "krn")):
+                if r == "krn_engine" and how == "via-umbrella":
+                    continue  # krn -> krn_engine: a cycle, not a shape
+                name = f"{r}-links-market-{how}"
+                gate(name, mutant(name, lambda g, r=r, lib=lib:
+                                  g[r].append(lib)), "OFF", 1)
+
+        # D11.2: a missing root is "could not run", never a pass.  krn_host
+        # is removed with its edges, else the unregistered-name rule fires.
+        def drop(g, r):
+            g.pop(r)
+            for t in g:
+                g[t] = ["krn_engine" if x == r else x for x in g[t]]
+        for r in ("krn_host", "krn_engine_server"):
+            gate(f"no-{r}-row", mutant(f"no-{r}-row",
+                                       lambda g, r=r: drop(g, r)), "OFF", 2, r)
+        # ... and krn_server leaving (D12 step 22) is not a failure.
+        gate("krn_server-not-built",
+             mutant("krn_server-not-built", lambda g: g.pop("krn_server")),
+             "OFF", 0)
+
+        # ENC-1561: a market header included from krn_engine_server's or
+        # krn_host's source is caught by check A.
+        for label, path in (("apps-main", app_main), ("host-cpp", host_cpp)):
+            with open(path, encoding="utf-8") as fh:
+                before = fh.read()
+            with open(path, "a", encoding="utf-8") as fh:
+                fh.write('#include "krn/market/MarketConnector.hpp"\n')
+            with open(path, encoding="utf-8") as fh:
+                if fh.read() == before:
+                    failures.append(f"SELFTEST: gate/{label}-includes-market: "
+                                    f"mutation did not apply")
+            gate(f"{label}-includes-market", base_graph, "OFF", 1)
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(before)
+        gate("legal-after-include-restore", base_graph, "OFF", 0)
+
         # Scanned, never linked: the stub or the control target in a real one.
         gate("stub-in-krn_engine",
              mutant("stub-in-krn_engine",
@@ -867,6 +952,25 @@ def selftest() -> int:
 
         foreign = non_engine_header_roots(tmp)
         expect_clean("A/legal-SymbolTable.hpp", check_a_includes(tmp, [good], foreign))
+
+        # apps/ (krn_engine_server, ENC-1561): a plugin header is legal, a
+        # market, data/ or Arrow header is not.
+        app_roots = app_foreign_roots(tmp, foreign)
+        if len(app_roots) != len(foreign) - 1:
+            failures.append(f"SELFTEST: app_foreign_roots did not drop exactly "
+                            f"plugins/reference/include: {app_roots}")
+        os.makedirs(os.path.join(tmp, APPS_DIR, "engine_server"))
+        for label, inc, bad in (
+                ("plugin", "krn/reference/SyntheticConnector.hpp", False),
+                ("market", "krn/market/MarketConnector.hpp", True),
+                ("data", "krn/data/Schema.hpp", True),
+                ("arrow", "arrow/api.h", True)):
+            app = os.path.join(tmp, APPS_DIR, "engine_server", f"{label}.cpp")
+            with open(app, "w", encoding="utf-8") as fh:
+                fh.write(f'#include "{inc}"\n')
+            got = check_a_includes(tmp, [app], app_roots, "engine server")
+            (expect_detected if bad else expect_clean)(
+                f"A/engine-server-includes-{label}", got)
         plugin_user = os.path.join(tmp, "UsesPlugin.cpp")
         with open(plugin_user, "w", encoding="utf-8") as fh:
             fh.write('#include "krn/reference/SyntheticConnector.hpp"\n')
@@ -1027,6 +1131,8 @@ def selftest() -> int:
                            "OpenSSL::Crypto"],
             "krn_connector_market": ["krn_engine"],
             "krn_plugin_reference": ["krn_engine"],
+            "krn_host": ["krn_engine"],
+            "krn_engine_server": ["krn_host", "krn_plugin_reference"],
             "krn_tests": ["krn_engine", "Boost::system", "Threads::Threads",
                           "RapidJSON::rapidjson", "GTest::gtest_main",
                           "krn_plugin_reference"],
@@ -1049,8 +1155,27 @@ def selftest() -> int:
                                 f"mutation did not apply")
             expect_detected(f"D/krn_tests-links-market-{label}",
                             forbidden_links(mut, "krn_tests"))
-        expect_clean("D/market-ban-is-krn_tests-only",
+        expect_clean("D/market-ban-is-not-krn_market_tests'",
                      forbidden_links(legal, "krn_market_tests"))
+        expect_clean("D/market-ban-is-not-krn_server's",
+                     forbidden_links(legal, "krn_server"))
+
+        # ENC-1561 (D11.1): the same ban on krn_engine, krn_host and
+        # krn_engine_server, direct and through the umbrella.
+        for r in ("krn_host", "krn_engine_server"):
+            expect_clean(f"D/closure-legal-{r}", forbidden_links(legal, r))
+        for r, label, lib in (
+                ("krn_engine", "direct", "krn_connector_market"),
+                ("krn_host", "direct", "krn_connector_market"),
+                ("krn_host", "via-umbrella", "krn"),
+                ("krn_engine_server", "direct", "krn_connector_market"),
+                ("krn_engine_server", "via-umbrella", "krn")):
+            mut = dict(legal, **{r: legal[r] + [lib]})
+            if mut == legal:
+                failures.append(f"SELFTEST: D/{r}-market-{label}: "
+                                f"mutation did not apply")
+            expect_detected(f"D/{r}-links-market-{label}",
+                            forbidden_links(mut, r))
 
         # THE CASE THAT MOTIVATED THE CLOSURE. One line on the umbrella makes
         # KRN_BUILD_DATA=OFF unlinkable; neither krn_engine's nor krn_server's
@@ -1204,12 +1329,18 @@ def evaluate(manifest: dict[str, str]
         split_list(manifest.get("engine_interface_include_dirs", "")))
     graph = parse_link_graph(manifest)
     link_libs = graph.get("krn_engine", [])
-    server_libs = graph.get("krn_server", [])
+    have_server = SERVER_ROOT in graph
+    server_libs = graph.get(SERVER_ROOT, [])
     engine_closure = link_closure(graph, "krn_engine")
-    server_closure = link_closure(graph, "krn_server")
+    server_closure = link_closure(graph, SERVER_ROOT)
+    host_closure = link_closure(graph, "krn_host")
+    app_closure = link_closure(graph, "krn_engine_server")
     tests_closure = (link_closure(graph, "krn_tests")
                      if "krn_tests" in graph else [])
     cmake_sources = dedupe(split_list(manifest.get("engine_cmake_sources", "")))
+    host_sources = dedupe(split_list(manifest.get("host_cmake_sources", "")))
+    app_cmake_sources = dedupe(
+        split_list(manifest.get("engine_server_cmake_sources", "")))
     data_enabled = manifest.get("krn_data_enabled", "?")
     rapidjson_dir = manifest.get("rapidjson_include_dir", "")
 
@@ -1218,13 +1349,20 @@ def evaluate(manifest: dict[str, str]
     # Scan the union: CMake's list is authoritative for what krn_engine
     # compiles, and the walk catches a header CMake's glob pattern happens not
     # to match.
-    sources = sorted(walked_set | {os.path.realpath(s) for s in cmake_sources
+    sources = sorted(walked_set | {os.path.realpath(s)
+                                   for s in cmake_sources + host_sources
                                    if s.endswith(SOURCE_SUFFIXES)
                                    and os.path.realpath(s) != os.path.realpath(
                                        os.path.join(root, COMPOSITION_ROOT))})
     foreign_roots = non_engine_header_roots(root)
     data_only_roots = [r for r in foreign_roots
                        if r.endswith(os.path.join("data", "include"))]
+    # krn_engine_server: the apps/ walk plus CMake's own list for the target.
+    app_foreign = app_foreign_roots(root, foreign_roots)
+    app_walked = walk_tree(root, APPS_DIR)
+    app_sources = sorted(set(app_walked) | {
+        os.path.realpath(s) for s in app_cmake_sources
+        if s.endswith(SOURCE_SUFFIXES)})
     composition_root = os.path.join(root, COMPOSITION_ROOT)
 
     # --- anti-vacuity: an empty input is a failure, not a pass --------------
@@ -1263,22 +1401,48 @@ def evaluate(manifest: dict[str, str]
         vacuous.append(
             "the manifest lists no krn_engine sources -- the generator "
             "expression did not resolve, so the cross-check is inert")
-    if not server_libs:
+    # The gate's roots (ENC-1561, D11.2).  CMake refuses to configure without
+    # them; a manifest that lacks one is stale or hand-made.
+    for r in REQUIRED_ROOTS:
+        if r not in graph:
+            vacuous.append(
+                f"the manifest has no link.{r} row -- {r} is a root of this "
+                f"gate, so checks C/D were not run on it")
+    names = {name for name, _, _ in app_closure}
+    if not {"krn_host", "krn_engine"} <= names:
         vacuous.append(
-            "the manifest lists no krn_server link libraries -- check D is "
-            "inert (krn_server links at least the `krn` umbrella)")
-    if "krn" not in graph:
+            "krn_engine_server's link closure does not reach krn_host and "
+            "krn_engine -- it goes krn_engine_server -> krn_host -> "
+            "krn_engine, so check D on it never traversed an edge")
+    if not any(name == "krn_engine" for name, _, _ in host_closure):
         vacuous.append(
-            "the link graph has no row for the `krn` umbrella -- the manifest "
-            "is one-level-deep again, and the umbrella is exactly where the "
-            "review found the hole (CMake must emit link.<target> for every "
-            "first-party target)")
-    if not any(name == "krn_engine" for name, _, _ in server_closure):
+            "krn_host's link closure does not reach krn_engine -- check D on "
+            "krn_host never traversed an edge")
+    if not app_sources:
         vacuous.append(
-            "krn_server's link closure does not reach krn_engine -- it goes "
-            "krn_server -> krn -> krn_engine, so a closure that does not "
-            "contain krn_engine never traversed an edge and check D is a "
-            "one-level check wearing a closure's name")
+            f"found no krn_engine_server source under {APPS_DIR}/ or in the "
+            f"manifest -- its include scan has nothing to check")
+    if not app_cmake_sources:
+        vacuous.append(
+            "the manifest lists no krn_engine_server sources -- the generator "
+            "expression did not resolve, so files outside apps/ are unscanned")
+    if have_server:
+        if not server_libs:
+            vacuous.append(
+                "the manifest lists no krn_server link libraries -- check D "
+                "is inert (krn_server links at least the `krn` umbrella)")
+        if "krn" not in graph:
+            vacuous.append(
+                "the link graph has no row for the `krn` umbrella -- the "
+                "manifest is one-level-deep again, and the umbrella is exactly "
+                "where the review found the hole (CMake must emit "
+                "link.<target> for every first-party target)")
+        if not any(name == "krn_engine" for name, _, _ in server_closure):
+            vacuous.append(
+                "krn_server's link closure does not reach krn_engine -- it "
+                "goes krn_server -> krn -> krn_engine, so a closure that does "
+                "not contain krn_engine never traversed an edge and check D "
+                "is a one-level check wearing a closure's name")
     # POSITIVE CONTROL (ENC-1507): the patterns must be shown to match
     # something in THIS build before a clean engine verdict means anything.
     # The primary control is krn_isolation_control, which exists in every
@@ -1327,7 +1491,7 @@ def evaluate(manifest: dict[str, str]
             f"{'has' if have_krn_data else 'has no'} link.krn_data row -- the "
             f"two disagree, so the positive control's verdict describes a "
             f"build this manifest is not")
-    if not os.path.isfile(composition_root):
+    if have_server and not os.path.isfile(composition_root):
         vacuous.append(
             f"{COMPOSITION_ROOT} does not exist -- the composition-root rule "
             f"has nothing to check, and the walk's exclusion is hiding "
@@ -1337,11 +1501,17 @@ def evaluate(manifest: dict[str, str]
                 (check_a_includes(root, [composition_root], data_only_roots,
                                   "composition root (src/main.cpp)")
                  if os.path.isfile(composition_root) else []) +
+                check_a_includes(root, app_sources, app_foreign,
+                                 "engine server (krn_engine_server)") +
                 check_cmake_sources_stay_in_the_engine_trees(
                     root, cmake_sources, walked_set) +
+                check_cmake_sources_stay_in_the_engine_trees(
+                    root, host_sources, walked_set, "krn_host") +
                 check_b_include_dirs(root, include_dirs) +
                 forbidden_links(graph, "krn_engine") +
-                forbidden_links(graph, "krn_server") +
+                forbidden_links(graph, "krn_host") +
+                forbidden_links(graph, "krn_engine_server") +
+                (forbidden_links(graph, SERVER_ROOT) if have_server else []) +
                 (forbidden_links(graph, "krn_tests")
                  if "krn_tests" in graph else []) +
                 control_reachers(graph))
@@ -1349,7 +1519,11 @@ def evaluate(manifest: dict[str, str]
     summary.append("krn_engine isolation (ENC-1481, SPEC D14)")
     summary.append(f"  root            : {root}")
     summary.append(f"  engine files    : {len(sources)} "
-                   f"({len(cmake_sources)} from CMake, {len(walked)} walked)")
+                   f"({len(cmake_sources)} from CMake, {len(walked)} walked, "
+                   f"{len(host_sources)} krn_host)")
+    summary.append(f"  engine server   : {len(app_sources)} file(s) "
+                   f"({len(app_cmake_sources)} from CMake, "
+                   f"{len(app_walked)} under {APPS_DIR}/)")
     summary.append(f"  include dirs    : {len(include_dirs)}")
     # Printed unconditionally and on both verdicts: it is the field that
     # explains why two checkouts of one commit can disagree (ENC-1497).
@@ -1357,9 +1531,13 @@ def evaluate(manifest: dict[str, str]
     summary.append(f"  link libraries  : {len(link_libs)} engine, {len(server_libs)} server "
                    f"(direct)")
     summary.append(f"  link closure    : {len(engine_closure)} from krn_engine, "
-                   f"{len(server_closure)} from krn_server, "
+                   f"{len(host_closure)} from krn_host, "
+                   f"{len(app_closure)} from krn_engine_server, "
+                   f"{len(server_closure) if have_server else 'not built'} "
+                   f"from krn_server, "
                    f"{len(tests_closure)} from krn_tests, over "
                    f"{len(graph)} graphed target(s): {sorted(graph)}")
+    summary.append(f"  market-free     : {sorted(ROOT_FORBIDDEN_LINKS)}")
     summary.append(f"  positive control: {control}")
     reachers = control_reachers(graph)
     summary.append(f"  control linked  : "
@@ -1411,10 +1589,10 @@ def run_gate(manifest_path: str) -> int:
     if code == 0:
         print("\nOK: no Arrow/ClickHouse include in engine code or the composition "
               "root, no data/ or connector header reached from the engine, engine "
-              "include path is include/ or a non-forbidden vendored tree, and no "
-              "data-layer library anywhere "
-              "in the TRANSITIVE link closure of krn_engine, krn_server or "
-              "krn_tests.")
+              "include path is include/ or a non-forbidden vendored tree, no "
+              "data-layer library in the TRANSITIVE link closure of any checked "
+              "root, and no market connector in krn_engine's, krn_host's, "
+              "krn_engine_server's or krn_tests'.")
     return code
 
 
