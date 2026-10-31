@@ -304,7 +304,7 @@ TEST(AtomicKeyNamespaceTest, AtomicAccessorOnABareBuiltinMovesWhenFlagFlips) {
           << "with the flag on, no builtin writes the bare key and `alpha`/"
              "`beta` are the only raw fields — an AtomicAccessor bound to a "
              "bare builtin name stops resolving. This is the documented "
-             "migration break (docs/atomic-keys.md), not an accident.\n"
+             "migration break (krn-common's docs/atomic-keys.md), not an accident.\n"
              "NOTE: `alpha`/`beta` are not market fields, so nothing else "
              "writes the bare key here. On a symbol carrying a price field, "
              "MarketTA also writes bare `mean`/`median`/`spread` and the key "

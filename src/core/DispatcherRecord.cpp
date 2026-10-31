@@ -1,7 +1,7 @@
 // Dispatcher::onRecord — the non-JSON ingress path (ENC-1486).
 //
 // Design: specs/2026-10-14-krn-data-layer/SPEC.md D1, D3, D9, D13;
-//         docs/data-layer.md §C2, §C6, §C7, §6.
+//         krn-data's docs/data-layer.md §C2, §C6, §C7, §6.
 //
 // WHY THIS IS ITS OWN TRANSLATION UNIT, AND NOT THREE MORE FUNCTIONS IN
 // src/core/Dispatcher.cpp
@@ -140,7 +140,7 @@ void Dispatcher::onRecord(data::SymbolId symbolId,
 
   // Fields resolved by the caller — no DOM, no per-field allocation, no name
   // lookup by string hash. For a `TickRecord` the source is krn_data's
-  // `RecordFieldSource` (data/include/krn/data/RecordFieldSource.hpp), whose
+  // `RecordFieldSource` (krn-data's data/include/krn/data/RecordFieldSource.hpp), whose
   // mapping table also *defines* "the equivalent tick" the parity test drives
   // down the JSON path.
   ingest(symbol, recordEventType(), fields);
