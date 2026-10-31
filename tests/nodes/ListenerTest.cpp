@@ -5,6 +5,7 @@
 #include "krn/StreamValue.hpp"
 #include "krn/nodes/INode.hpp"
 #include "krn/atomic/AtomicProviderRegistry.hpp"
+#include "krn/reference/ReferenceComputer.hpp"
 #include "krn/reference/ReferenceConnector.hpp"
 #include "krn/engine/Registries.hpp"
 #include "support/ScopedPipelineOnly.hpp"
