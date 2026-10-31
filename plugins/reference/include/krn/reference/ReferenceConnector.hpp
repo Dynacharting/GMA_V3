@@ -37,8 +37,11 @@ public:
 
   // The forum connector protocol this plugin registers, and the ingress kind
   // it maps to (ENC-1574). No ingress factory is registered for the kind.
+  // registerWith() calls registerProtocols(); tests call it alone, because
+  // registerWith() also appends a computer factory to a process-wide registry.
   static constexpr std::string_view kProtocol    = "reference";
   static constexpr std::string_view kIngressKind = "reference.ingress";
+  static void registerProtocols(engine::EngineRegistries& reg);
 
   std::string_view name() const override { return "reference"; }
   void registerWith(engine::EngineRegistries& reg) override;

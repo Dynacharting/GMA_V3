@@ -20,6 +20,13 @@ ReferenceConnector::ReferenceConnector() = default;
 ReferenceConnector::ReferenceConnector(Options opts) : _opts(std::move(opts)) {}
 ReferenceConnector::~ReferenceConnector() = default;
 
+void ReferenceConnector::registerProtocols(engine::EngineRegistries& reg) {
+  if (!reg.protocols) {
+    throw std::runtime_error("ReferenceConnector: EngineRegistries has no protocol registry");
+  }
+  reg.protocols->registerProtocol(std::string(kProtocol), std::string(kIngressKind));
+}
+
 void ReferenceConnector::registerWith(engine::EngineRegistries& reg) {
   if (!reg.dispatcher || !reg.io || !reg.computers || !reg.protocols) {
     throw std::runtime_error("ReferenceConnector: incomplete EngineRegistries");
@@ -27,7 +34,7 @@ void ReferenceConnector::registerWith(engine::EngineRegistries& reg) {
   reg.computers->registerFactory(std::string(ReferenceComputer::kEventType), [] {
     return std::make_unique<ReferenceComputer>();
   });
-  reg.protocols->registerProtocol(std::string(kProtocol), std::string(kIngressKind));
+  registerProtocols(reg);
   _timer = std::make_unique<boost::asio::steady_timer>(*reg.io);
   _dispatcher = reg.dispatcher;
 }
