@@ -41,9 +41,9 @@ FOUR CHECKS, each closing a different route in:
   D  profile   nothing matching them is reachable from krn_host's,
                krn_engine_server's or (while it is built) krn_server's either,
                which is what makes the LIVE-ONLY VARIANT of SPEC D14's client
-               profile (KRN_BUILD_DATA=OFF) actually buildable rather than
+               profile actually buildable rather than
                nominally so.  `krn_tests` is checked on the same rule, because
-               data/CMakeLists.txt names "the engine test suite is built
+               krn-data's data/CMakeLists.txt names "the engine test suite is built
                against an Arrow-free include path" as the thing being
                protected, and a prose claim with no check behind it is what
                this whole file is a reaction to.  krn_engine, krn_host,
@@ -102,7 +102,7 @@ wrong place to look.  `krn_server` links the `krn` umbrella and nothing else
 (`link.krn_server=krn|Boost::system|Threads::Threads|RapidJSON::rapidjson`),
 so a single `target_link_libraries(krn INTERFACE krn_data)` -- or `krn::arrow`
 on `krn_connector_market`, which `krn` also pulls in -- makes
-`KRN_BUILD_DATA=OFF` unlinkable while krn_engine's and krn_server's OWN
+the live-only variant unlinkable while krn_engine's and krn_server's OWN
 properties stay spotless.  That is precisely the "one line and nothing would
 say so" failure this file exists to close, so a one-level check does not close
 it.  CMake emits one row per first-party target (`link.<target>` /
@@ -116,10 +116,9 @@ CONTROL_PROBE below, which the existing `arrow` pattern matches.  It has a
 manifest row like any first-party target, and its closure MUST trip a
 forbidden pattern and reach the stub.  If it does not, the patterns match
 nothing in this build and a clean verdict about krn_engine is a verdict from a
-search that cannot find anything.  It is declared in this repo, not in data/,
-so it exists with KRN_BUILD_DATA=OFF and survives data/ leaving the repo.  It
-is scanned, never linked: any other target whose closure reaches it is a
-violation.  krn_data's closure is a second control when krn_data is built.
+search that cannot find anything.  It is declared in this repo, and since
+data/ left for krn-data (ENC-1573) it is the only control.  It is scanned,
+never linked: any other target whose closure reaches it is a violation.
 
 EXIT CODES.  0 verified pass; 1 a violation was found; 2 could not run --
 including vacuous input and a missing or silent control.  "Could not check"
@@ -131,7 +130,7 @@ CMakeLists removes it from krn_engine's sources and compiles it into
 `krn_server` against the `krn` umbrella, so it legitimately includes
 `krn/market/MarketConnector.hpp` -- which the first run of this script flagged,
 correctly, as a connector header reached from `src/`.  It still must not reach
-Arrow or `data/`, because krn_server has to link with KRN_BUILD_DATA=OFF.
+Arrow or `data/`, because krn_server has to link without Arrow.
 
 `apps/` (krn_engine_server's sources, ENC-1561) is scanned by a middle rule:
 it composes the reference plugin, so `plugins/*/include` is allowed, but it is
@@ -577,25 +576,6 @@ def link_item_candidates(item: str) -> list[str]:
     return [c for c in out if c]
 
 
-def cmake_true(value: str) -> bool:
-    """CMake's truthiness, for the boolean strings the manifest carries.
-
-    `option()` does not normalise, so `-DKRN_BUILD_DATA=1` reaches the manifest
-    as "1", not "ON".  Anything unrecognised is false, which is also CMake's
-    rule and is the safe direction: an unparseable value then DISAGREES with
-    the link graph and is reported rather than quietly believed.
-    """
-    v = value.strip().upper()
-    if v in ("ON", "YES", "TRUE", "Y"):
-        return True
-    if v in ("OFF", "NO", "FALSE", "N", "IGNORE", "NOTFOUND", ""):
-        return False
-    try:
-        return int(v) != 0
-    except ValueError:
-        return False
-
-
 def parse_link_graph(manifest: dict[str, str]) -> dict[str, list[str]]:
     """target -> its link libraries, from the manifest's `link.<target>` rows.
 
@@ -662,7 +642,7 @@ def forbidden_links(graph: dict[str, list[str]], root: str) -> list[str]:
     first-party library -- `krn_store`, say -- would arrive with no row, be
     treated as a LEAF, and have its own dependencies never walked; an ALIAS
     (`add_library(krn::data ALIAS krn_data)`) does the same thing without even
-    being a new target.  Either one makes KRN_BUILD_DATA=OFF unlinkable while
+    being a new target.  Either one makes the live-only variant unlinkable while
     rule one stays clean.  So a reached name that LOOKS first-party and has no
     row is itself a failure: not "this links something forbidden" but "this
     subtree was never searched, so a clean verdict about it is a verdict from
@@ -1178,7 +1158,7 @@ def selftest() -> int:
                             forbidden_links(mut, r))
 
         # THE CASE THAT MOTIVATED THE CLOSURE. One line on the umbrella makes
-        # KRN_BUILD_DATA=OFF unlinkable; neither krn_engine's nor krn_server's
+        # the live-only variant unlinkable; neither krn_engine's nor krn_server's
         # own property changes at all.
         umbrella = dict(legal)
         umbrella["krn"] = ["krn_engine", "krn_connector_market", "krn_data"]
@@ -1290,13 +1270,6 @@ def selftest() -> int:
                              "krn_engine": ["Threads::Threads"]},
                             "krn_data"))
 
-        # cmake_true, because the positive control's verdict depends on it.
-        for truthy in ("ON", "on", "1", "TRUE", "yes", "Y", "2"):
-            if not cmake_true(truthy):
-                failures.append(f"SELFTEST: cmake_true({truthy!r}) is False")
-        for falsy in ("OFF", "off", "0", "FALSE", "no", "", "NOTFOUND", "junk"):
-            if cmake_true(falsy):
-                failures.append(f"SELFTEST: cmake_true({falsy!r}) is True")
 
     gate_cases = selftest_gate(failures)
 
@@ -1341,7 +1314,6 @@ def evaluate(manifest: dict[str, str]
     host_sources = dedupe(split_list(manifest.get("host_cmake_sources", "")))
     app_cmake_sources = dedupe(
         split_list(manifest.get("engine_server_cmake_sources", "")))
-    data_enabled = manifest.get("krn_data_enabled", "?")
     rapidjson_dir = manifest.get("rapidjson_include_dir", "")
 
     walked = walk_engine_trees(root)
@@ -1468,29 +1440,6 @@ def evaluate(manifest: dict[str, str]
         else:
             control = (f"ok ({CONTROL_TARGET} -> {CONTROL_PROBE}: "
                        f"{len(ctl_hits)} forbidden link(s) seen)")
-    # krn_data is a second control when it is in the build.  Driven by the
-    # GRAPH, not by the krn_data_enabled string, and the two are cross-checked:
-    # `-DKRN_BUILD_DATA=1` reaches the manifest as "1", not "ON".
-    have_krn_data = "krn_data" in graph
-    if have_krn_data:
-        hits = forbidden_links(graph, "krn_data")
-        if not hits:
-            vacuous.append(
-                "krn_data's own link closure trips NO forbidden pattern, but it "
-                "links krn::arrow by construction -- the patterns do not match "
-                "what this build actually links")
-            control += "; krn_data: FAILED (its closure trips no pattern)"
-        else:
-            control += f"; krn_data: ok ({len(hits)} forbidden link(s))"
-    else:
-        control += (f"; krn_data: not in this build "
-                    f"(krn_data_enabled={data_enabled!r})")
-    if have_krn_data != cmake_true(data_enabled):
-        vacuous.append(
-            f"krn_data_enabled={data_enabled!r} but the manifest "
-            f"{'has' if have_krn_data else 'has no'} link.krn_data row -- the "
-            f"two disagree, so the positive control's verdict describes a "
-            f"build this manifest is not")
     if have_server and not os.path.isfile(composition_root):
         vacuous.append(
             f"{COMPOSITION_ROOT} does not exist -- the composition-root rule "
@@ -1545,7 +1494,6 @@ def evaluate(manifest: dict[str, str]
                    f" (closure of all {len(graph) - (CONTROL_TARGET in graph)} "
                    f"other graphed target(s) read)")
     summary.append(f"  foreign roots   : {[os.path.relpath(r, root) for r in foreign_roots]}")
-    summary.append(f"  krn_data built  : {data_enabled}")
 
     return vacuous, problems, summary
 
