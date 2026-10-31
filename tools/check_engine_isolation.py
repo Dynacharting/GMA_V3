@@ -1862,11 +1862,8 @@ def evaluate(manifest: dict[str, str]
                 check_cmake_sources_stay_in_the_engine_trees(
                     root, host_sources, walked_set, "krn_host") +
                 check_b_include_dirs(root, include_dirs) +
-                forbidden_links(graph, "krn_engine") +
-                forbidden_links(graph, "krn_host") +
-                forbidden_links(graph, "krn_engine_server") +
-                (forbidden_links(graph, "krn_tests")
-                 if "krn_tests" in graph else []) +
+                [p for r in CHECKED_ROOTS if r in graph
+                 for p in forbidden_links(graph, r)] +
                 market_reachers(graph) +
                 control_reachers(graph))
 
@@ -1898,16 +1895,12 @@ def evaluate(manifest: dict[str, str]
                    f" (closure of all {len(graph) - (CONTROL_TARGET in graph)} "
                    f"other graphed target(s) read)")
     summary.append(f"  foreign roots   : {[os.path.relpath(r, root) for r in foreign_roots]}")
-    summary.append(f"  apps/ rule      : {len(app_sources)} file(s) against "
-                   f"include prefixes {list(FORBIDDEN_INCLUDE_PREFIXES)} and "
-                   f"connector roots "
-                   f"{[os.path.relpath(r, root) for r in app_foreign]} "
-                   f"(none is intended: no connectors/ here, ENC-1570)"
-                   if not app_foreign else
-                   f"  apps/ rule      : {len(app_sources)} file(s) against "
-                   f"include prefixes {list(FORBIDDEN_INCLUDE_PREFIXES)} and "
-                   f"connector roots "
-                   f"{[os.path.relpath(r, root) for r in app_foreign]}")
+    summary.append(
+        f"  apps/ rule      : {len(app_sources)} file(s) against include "
+        f"prefixes {list(FORBIDDEN_INCLUDE_PREFIXES)} and connector roots "
+        f"{[os.path.relpath(r, root) for r in app_foreign]}"
+        + ("" if app_foreign else
+           " (empty is intended: no connectors/ in this repo, ENC-1570)"))
     summary.append(
         f"  E stripper      : {strip_stats['files']} files (check A's list), "
         f"{strip_stats['blanked']} chars blanked, {strip_stats['includes']} "
