@@ -226,6 +226,10 @@ Two layers, and they intentionally differ — keep them straight:
 The market keys (`feedPort`, the TA periods, the legacy feed keys, `allowNegativePrices`) are not engine keys
 (ENC-1574); krn-common's connector owns them.
 
+A key that no engine field, `ConfigNamespaceRegistry` reader or `Config::markConsumed()`
+call claims is logged once as `WARN config.unclaimed_key key=… file=…` and ignored; startup
+never fails on it (ENC-1595). A plugin that re-reads the file marks its keys from a hook.
+
 Other engine keys parsed by `src/util/Config.cpp` (defaults from `Config.hpp`):
 
 - **Memory bounds:** `maxSymbols` (10000), `maxFieldsPerSymbol` (200).
