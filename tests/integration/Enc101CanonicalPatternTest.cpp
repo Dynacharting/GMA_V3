@@ -25,7 +25,7 @@
 #include "krn/nodes/INode.hpp"
 #include "krn/nodes/Listener.hpp"
 #include "krn/rt/ThreadPool.hpp"
-#include "support/ScopedPipelineOnly.hpp"
+#include "../support/ScopedPipelineOnly.hpp"
 
 #include <gtest/gtest.h>
 

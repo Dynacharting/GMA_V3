@@ -11,7 +11,7 @@
 #include "krn/NodeRegistry.hpp"
 #include "krn/rt/ThreadPool.hpp"
 #include "krn/server/WebSocketServer.hpp"
-#include "support/ScopedPipelineOnly.hpp"
+#include "../support/ScopedPipelineOnly.hpp"
 
 #include <boost/asio/connect.hpp>
 #include <boost/asio/io_context.hpp>

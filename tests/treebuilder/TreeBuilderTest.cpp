@@ -6,7 +6,7 @@
 #include "krn/nodes/INode.hpp"
 #include "krn/nodes/Listener.hpp"
 #include "krn/JsonValidator.hpp"
-#include "support/ScopedPipelineOnly.hpp"
+#include "../support/ScopedPipelineOnly.hpp"
 #include <gtest/gtest.h>
 #include <rapidjson/document.h>
 #include <memory>

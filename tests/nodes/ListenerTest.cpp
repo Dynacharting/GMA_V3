@@ -8,7 +8,7 @@
 #include "krn/reference/ReferenceComputer.hpp"
 #include "krn/reference/ReferenceConnector.hpp"
 #include "krn/engine/Registries.hpp"
-#include "support/ScopedPipelineOnly.hpp"
+#include "../support/ScopedPipelineOnly.hpp"
 #include <boost/asio/io_context.hpp>
 #include <gtest/gtest.h>
 #include <memory>
