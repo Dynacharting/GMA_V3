@@ -127,7 +127,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full picture including 
   `include/krn/engine/SymbolTable.hpp` is still engine-side, Arrow-free. Every
   way of breaking the invariant still compiles and still passes every other test, so it is
   asserted by `tools/check_engine_isolation.py` as the ctest cases `krn_engine_isolation`
-  (checks A–D, plus check E's stripper; refuses to pass on vacuous input) and `krn_engine_isolation_selftest` (runs
+  (checks A–E; check E's market vocabulary is regenerated from git history by `tools/derive_market_vocabulary.py` and has a fixture control; refuses to pass on vacuous input) and `krn_engine_isolation_selftest` (runs
   each predicate against an input that violates it). Run them before claiming a layering
   change is safe; `--selftest` needs no build. **Checks C and D walk the transitive link
   closure**, because `krn_engine_server` links only `krn_host` and the plugin: one
