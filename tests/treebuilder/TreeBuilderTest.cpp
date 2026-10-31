@@ -6,6 +6,7 @@
 #include "krn/nodes/INode.hpp"
 #include "krn/nodes/Listener.hpp"
 #include "krn/JsonValidator.hpp"
+#include "../support/ScopedPipelineOnly.hpp"
 #include <gtest/gtest.h>
 #include <rapidjson/document.h>
 #include <memory>
@@ -297,6 +298,7 @@ TEST_F(TreeBuilderTestFixture, BuildForRequestBuildsListener) {
 // chain (src/server/ClientSession.cpp:456) propagates this to the WS
 // peer as `{"type":"error","where":"validate", ...}`.
 TEST_F(TreeBuilderTestFixture, BuildForRequestRejectsObListenerField) {
+    const krn::testsupport::ScopedPipelineOnly ob("ob");
     initDeps();
     auto terminal = std::make_shared<TerminalStub>();
     rapidjson::Document doc;
@@ -316,6 +318,7 @@ TEST_F(TreeBuilderTestFixture, BuildForRequestRejectsObListenerField) {
 }
 
 TEST_F(TreeBuilderTestFixture, BuildForRequestRejectsObSpread) {
+    const krn::testsupport::ScopedPipelineOnly ob("ob");
     initDeps();
     auto terminal = std::make_shared<TerminalStub>();
     rapidjson::Document doc;

@@ -10,6 +10,7 @@
 
 #include "krn/Dispatcher.hpp"
 #include "krn/Event.hpp"
+#include "krn/atomic/AtomicProviderRegistry.hpp"
 #include "krn/engine/EventComputerRegistry.hpp"
 #include "krn/reference/ReferenceComputer.hpp"
 
@@ -26,6 +27,7 @@ void ReferenceConnector::registerWith(engine::EngineRegistries& reg) {
   reg.computers->registerFactory(std::string(ReferenceComputer::kEventType), [] {
     return std::make_unique<ReferenceComputer>();
   });
+  AtomicProviderRegistry::markPipelineOnly(std::string(kPipelineOnlyNamespace));
   _timer = std::make_unique<boost::asio::steady_timer>(*reg.io);
   _dispatcher = reg.dispatcher;
 }
