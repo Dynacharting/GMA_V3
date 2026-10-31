@@ -1,5 +1,6 @@
 #include "krn/forum/ConnectorsClient.hpp"
 
+#include "krn/engine/ProtocolIngressRegistry.hpp"
 #include "krn/util/Logger.hpp"
 
 #include <chrono>
@@ -219,17 +220,21 @@ ConnectorsClient::parseConnectorsJson(const std::string& body) {
       continue;
     }
 
-    if (protocol != "itch") {
+    // The ingress kind comes from whichever plugin registered this protocol
+    // (ENC-1574). An unregistered protocol has no kind and no default: the row
+    // is logged and skipped, and an all-skipped pull is the composition
+    // root's empty_ingress refusal.
+    const auto kind = krn::engine::ProtocolIngressRegistry::find(protocol);
+    if (!kind) {
       krn::util::logger().log(
           krn::util::LogLevel::Warn,
           "forum.connectors.unknown_protocol",
-          {{"name", name}, {"protocol", protocol}});
+          {{"name", name}, {"protocol", protocol},
+           {"reason", "no ingress kind registered for protocol"}});
       continue;
     }
 
-    // Symbols → comma-joined string param (matches the existing
-    // krn.conf shape `ingress.1.symbols = NEXO,VALT,...` consumed
-    // by IngressFactoryRegistry's market.wsclient.
+    // Symbols → comma-joined string param, the `ingress.N.symbols` shape.
     std::string symbolsCsv;
     if (row.HasMember("symbols") && row["symbols"].IsArray()) {
       const auto& syms = row["symbols"];
@@ -240,20 +245,20 @@ ConnectorsClient::parseConnectorsJson(const std::string& body) {
       }
     }
     if (symbolsCsv.empty()) {
-      symbolsCsv = "*";  // wildcard — same default as Config::FeedConfig
+      symbolsCsv = "*";  // wildcard
     }
 
     krn::util::Config::Ingress ing;
-    ing.kind = "market.wsclient";
+    ing.kind = *kind;
     ing.params["url"] = endpoint;
-    ing.params["adapter"] = protocol;  // "itch"
+    ing.params["adapter"] = protocol;
     ing.params["symbols"] = symbolsCsv;
     out.push_back(std::move(ing));
 
     krn::util::logger().log(
         krn::util::LogLevel::Info,
         "forum.connectors.mapped",
-        {{"name", name}, {"endpoint", endpoint}, {"symbols", symbolsCsv}});
+        {{"name", name}, {"kind", *kind}, {"endpoint", endpoint}, {"symbols", symbolsCsv}});
   }
 
   return out;

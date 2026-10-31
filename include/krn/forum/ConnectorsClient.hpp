@@ -22,10 +22,11 @@ namespace forum {
 class ConnectorsClient {
 public:
   /// Fetch connectors for `tenantId` from `forumUrl`'s `/api/connectors`
-  /// endpoint and translate each `protocol == "itch"` entry into a
-  /// `market.wsclient` ingress with `url` / `adapter` / `symbols`
+  /// endpoint and translate each entry whose `protocol` a plugin has
+  /// registered in `engine::ProtocolIngressRegistry` into an ingress of the
+  /// registered kind, with `url` / `adapter` (= the protocol) / `symbols`
   /// params filled from the row. Connectors with empty `endpoint_url`
-  /// or unknown protocols are skipped (logged at Warn).
+  /// or an unregistered protocol are skipped (logged at Warn).
   ///
   /// `forumUrl` accepts `http://` and `https://` schemes; the path is
   /// always `/api/connectors`. `tenantId` becomes the `X-Tenant-Id`

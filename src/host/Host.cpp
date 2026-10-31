@@ -169,6 +169,7 @@ int runHost(int argc, char* argv[], const HostOptions& opts) {
     &krn::AtomicProviderRegistry::singleton(),
     &krn::FunctionMap::instance(),
     &krn::util::logger(),
+    &krn::engine::ProtocolIngressRegistry::singleton(),
   };
   std::vector<std::unique_ptr<krn::engine::IConnector>> owned;
   std::vector<krn::engine::IConnector*> connectors;
@@ -207,7 +208,7 @@ int runHost(int argc, char* argv[], const HostOptions& opts) {
 
         // Fail-fast per spec AC-6: a forum pull that parses cleanly but yields
         // zero ingress entries (forum returned [] or only rows that
-        // parseConnectorsJson skipped — non-itch protocol / missing endpoint)
+        // parseConnectorsJson skipped — unregistered protocol / missing endpoint)
         // would otherwise boot a server with no data source, silently. Treat an
         // empty post-pull ingress as fatal, exactly like a transport failure.
         if (cfg.ingress.empty()) {

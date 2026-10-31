@@ -36,6 +36,7 @@ TEST(EngineRegistriesShapeTest, AllFieldsPopulatable) {
     &AtomicProviderRegistry::singleton(),
     &FunctionMap::instance(),
     &util::logger(),
+    &engine::ProtocolIngressRegistry::singleton(),
   };
 
   // Per-instance engine objects.
@@ -55,6 +56,7 @@ TEST(EngineRegistriesShapeTest, AllFieldsPopulatable) {
   EXPECT_NE(regs.providers, nullptr);
   EXPECT_NE(regs.functions, nullptr);
   EXPECT_NE(regs.log,       nullptr);
+  EXPECT_NE(regs.protocols, nullptr);
 
   // Singleton accessors must return stable references across calls.
   EXPECT_EQ(&engine::EventTypeRegistry::singleton(),     &engine::EventTypeRegistry::singleton());
@@ -63,12 +65,13 @@ TEST(EngineRegistriesShapeTest, AllFieldsPopulatable) {
   EXPECT_EQ(&engine::IngressRegistry::singleton(),       &engine::IngressRegistry::singleton());
   EXPECT_EQ(&engine::ConfigNamespaceRegistry::singleton(),&engine::ConfigNamespaceRegistry::singleton());
   EXPECT_EQ(&AtomicProviderRegistry::singleton(),        &AtomicProviderRegistry::singleton());
+  EXPECT_EQ(&engine::ProtocolIngressRegistry::singleton(),&engine::ProtocolIngressRegistry::singleton());
 }
 
-TEST(EngineRegistriesShapeTest, FieldCountIs14) {
-  // Guard against accidental field removal: sizeof should equal 14 pointers.
-  // (Six per-instance + eight registry pointers, all 8-byte on x86_64.)
-  static_assert(sizeof(engine::EngineRegistries) == 14 * sizeof(void*),
-                "EngineRegistries must carry exactly 14 pointer-sized fields");
+TEST(EngineRegistriesShapeTest, FieldCountIs15) {
+  // Guard against accidental field removal: sizeof should equal 15 pointers.
+  // (Six per-instance + nine registry pointers, all 8-byte on x86_64.)
+  static_assert(sizeof(engine::EngineRegistries) == 15 * sizeof(void*),
+                "EngineRegistries must carry exactly 15 pointer-sized fields");
   SUCCEED();
 }

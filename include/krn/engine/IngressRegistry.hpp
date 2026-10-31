@@ -20,7 +20,7 @@ public:
 };
 
 // Per-instance INI-style parameters for one ingress entry, e.g. {"port":"9001"}
-// for `ingress.0.kind = market.feedserver, ingress.0.port = 9001`. Engine
+// for `ingress.0.kind = <kind>, ingress.0.port = 9001`. Engine
 // parses the entry's sub-keys and passes the map to the factory.
 using IngressParams = std::unordered_map<std::string, std::string>;
 
