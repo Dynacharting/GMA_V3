@@ -345,9 +345,8 @@ Built-in node types (all registered by `registerBuiltinNodeTypes()`):
 ### WebSocket (port `cfg.wsPort`) — `ClientSession`
 
 > **Port default:** the compiled-in default `wsPort` is **8080**
-> (`include/krn/util/Config.hpp`). The shipped `src/util/krn.conf` overrides it
-> to **4000**, so `./krn_server <wsPort> krn.conf` listens on 4000 while
-> `./krn_server` with no config file listens on 8080. See §"Configuration".
+> (`include/krn/util/Config.hpp`); `argv[1]` and a config file's `wsPort`
+> override it. krn-common's `conf/krn.conf` sets **4000**.
 
 Subscribe (each request lives in a top-level `requests` array):
 ```json
@@ -458,39 +457,29 @@ session degrades, tagged with the policy that fired) and the counters:
 | `ws.outbox_shed_newest` | the **arriving** value was dropped. Only possible when all 4096 queued frames are lossless, so there is no value frame to trade against and protocol state must not be dropped for a sample. Non-zero means a stream really did lose its head value |
 | `ws.outbox_overflow` | the queue was entirely lossless at the cap and a further lossless frame arrived — the session is closed |
 
-### TCP feed (port `cfg.feedPort`, default 9001) — `FeedServer` (market connector)
+### TCP feed and vendor feeds
 
-Default tick shape (no explicit `type`, routed as market tick):
-```json
-{"symbol":"AAPL", "lastPrice":187.42, "volume":350, "bid":187.40, "ask":187.43}
-```
-
-Market-specific OB messages:
-```json
-{"type":"ob",       "action":"add|update|delete|trade|ticksize", ...}
-{"type":"control",  "action":"reset", "symbol":"AAPL", "epoch":2}
-```
-
-The `ob`/`control` schema is market-connector-owned. A different connector's feed server would route differently.
+The TCP feed server (`cfg.feedPort`, the `ob` / `control` message schema) and the vendor feed adapters are market-connector-owned and live in krn-common; see its [feed-adapters.md](https://github.com/Dynacharting/krn-common/blob/main/docs/feed-adapters.md).
 
 ## 9. Shutdown sequencing
 
-`rt::ShutdownCoordinator` (local in `main`, not a global). Steps are registered with `(name, order, fn)`; `stop()` runs them in ascending order exactly once. Signal handler triggers `stop()` via a static pointer.
+`rt::ShutdownCoordinator` (local in `runHost`, not a global). Steps are registered with `(name, order, fn)`; `stop()` runs them in ascending order exactly once. SIGINT/SIGTERM trigger `stop()` through an asio `signal_set`.
 
-Typical order: `ws-stop-accept=5, metrics-stop=10, ws-close-sessions=40, ob-provider-clear=50, feed-stop=55, feed-ws-stop=56, asio-stop=60, pool-drain=80, pool-destroy=85`.
+Order in `src/host/Host.cpp`: `ws-stop-accept=5, metrics-stop=10, connectors-stop=30, ingress-stop=35, ws-close-sessions=40, asio-stop=60, pool-drain=80, pool-destroy=85`. Connectors never register their own steps.
 
 ## 10. Tests
 
-Two gtest executables, both run by `ctest`: `krn_tests` (the engine cases; links no market code) and `krn_market_tests` (`tests/market/` plus the `book/`, `ob/` and `feed/` files that test the market connector; ENC-1562). Organization under `tests/`:
+One gtest executable, `krn_tests` (links no market code), plus script and gate cases, all run by `ctest`. Organization under `tests/`:
 
 - `engine/` — engine registry unit tests
-- `connectors/` — synthetic connector tests (proves routing invariant)
-- `book/`, `ob/`, `feed/` — market connector (in `krn_market_tests`, except `feed/GapFixesTest.cpp`)
-- `market/` — the other market-dependent cases (`krn_market_tests`)
-- `dispatch/`, `nodes/`, `treebuilder/`, `validation/`, `registry/` — engine pipeline
-- `integration/`, `ws/`, `connection/` — end-to-end
+- `connectors/` — reference and synthetic connector tests (proves routing invariant)
+- `dispatch/`, `nodes/`, `treebuilder/`, `validation/`, `registry/`, `core/` — engine pipeline
+- `integration/`, `ws/`, `connection/`, `server/` — end-to-end
+- `consumer/` — the `FetchContent` and `find_package` consumer smoke projects
+- `scripts/` — `krn_engine_server_reference` and `krn_port_conflict_ws`
 - `test_bootstrap.cpp` — `krn_tests`' gtest Environment: registers builtins, no connector
-- `market/test_bootstrap.cpp` — `krn_market_tests`': builtins + the market tick-computer factory
+
+The market connector's tests (`book/`, `ob/`, `feed/`, `market/`) are krn-common's `krn_common_tests`; the data layer's are krn-data's `krn_data_tests`.
 
 `DispatcherRoutesByEventType` in `tests/connectors/SyntheticConnectorTest.cpp` is the regression check for "two computers on different event types must not interfere": with the synthetic computer and the reference plugin's `ReferenceComputer` both added to one Dispatcher, a `synthetic.tick` event writes no `reference.*` key and a `reference.tick` event writes no `synthetic.*` key. If that fails, the type-routing contract is broken.
 
@@ -500,16 +489,12 @@ Minor architectural debts that are deliberately unresolved — none block adding
 
 - **Source field mapping is connector-owned (ENC-35).** The old engine-level
   `include/krn/SourceProfile.hpp` and the `util::Config::sourceProfile` member
-  are **gone**. The replacement is `krn::market::MarketFieldMap`
-  (`connectors/market/include/krn/market/MarketFieldMap.hpp`:
-  `name`/`priceFields`/`volumeFields`/`bidFields`/`askFields`/`timestampField`/
-  `taEnabled`), owned by `MarketConnector` and populated from the
-  `market.source.*` config namespace via `ConfigNamespaceRegistry` (the legacy
-  bare `source.*` prefix is a one-release deprecation alias). The engine no
-  longer knows about market-flavored fields.
+  are **gone**. The replacement is krn-common's `krn::market::MarketFieldMap`,
+  populated from the `market.source.*` config namespace via
+  `ConfigNamespaceRegistry`. The engine no longer knows about market-flavored
+  fields.
 - **JSON wire type name `"SymbolSplit"`** was preserved for backward compatibility when the class was renamed to `GroupSplit`. The string literal is correct and intentional; don't "fix" it.
-- **No CI check yet** for the zero-core-changes invariant. The synthetic connector + its test prove it works today, but nothing prevents a future commit from re-introducing an engine → connector dependency. Plan §6 sketches a grep-based check.
-- **`IngressRegistry` (ENC-31) and `ConfigNamespaceRegistry` (ENC-35) are now live** — ingress sources are constructed from `cfg.ingress[]` by kind, and connector config (e.g. `market.source.*`) flows through registered namespace readers. `EventComputerRegistry` is the remaining registry still being pulled fully onto the hot path; wiring it up is a future simplification, not a correctness issue.
+- **`Config` still carries market keys** (`feedPort`, the TA periods, the legacy feed keys) that only krn-common's connector reads.
 
 ## 12. Key files
 
@@ -519,8 +504,9 @@ If you need to find something quickly:
 |---|---|
 | Add a new node type | `include/krn/engine/NodeTypeRegistry.hpp`, register in your connector's `registerWith` |
 | Add a math function | `FunctionMap::instance().registerFunction(...)` in your connector or in `src/core/BuiltinFunctions.cpp` for engine-wide defaults |
-| Understand a TA value | `connectors/market/src/MarketTA.cpp::computeAllAtomicValues` |
+| Write a computer | `plugins/reference/src/ReferenceComputer.cpp` |
 | Trace an incoming WS request | `src/server/ClientSession.cpp::handleSubscribe` → `src/core/TreeBuilder.cpp::buildForRequest` |
-| Trace an incoming tick | `connectors/market/src/server/FeedServer.cpp::handleLine` → `src/core/Dispatcher.cpp::onTick` |
-| Change shutdown order | `src/main.cpp` (engine steps) + `connectors/market/src/MarketConnector.cpp` (market steps) |
-| Look at the boot flow | `src/main.cpp` top-to-bottom — it's ~160 lines and narrates every stage |
+| Trace an incoming tick | `src/core/Dispatcher.cpp::onTick` |
+| Change shutdown order | `src/host/Host.cpp` |
+| Look at the boot flow | `src/host/Host.cpp::runHost` top-to-bottom; `apps/engine_server/main.cpp` for a binary |
+| Check the layering | `tools/check_engine_isolation.py` |
