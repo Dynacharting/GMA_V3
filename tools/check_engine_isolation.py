@@ -521,16 +521,15 @@ def classify_include_dir(root: str, path: str) -> str:
 # token can only cause a false FAILURE, which a human reads, while a missed one
 # causes a false pass, which nobody does.
 #
-# PROVENANCE, because it matters for how much these cases are worth: the
-# manifest this gate actually reads contains NONE of them today.
-# `$<TARGET_PROPERTY:...>` inside `file(GENERATE)` evaluates the property's own
-# generator expressions, and `link.krn_engine` really resolves to
-# `Boost::system|Threads::Threads|RapidJSON::rapidjson|OpenSSL::SSL|OpenSSL::Crypto`
-# -- no genex, no marker, and `$<LINK_ONLY:` appears nowhere in this repo.
-# They are handled because the producer is not the only possible producer of
-# this file and because the cost of being wrong is a silent pass; they are NOT
-# handled because they are observed.  The selftest cases for them are labelled
-# accordingly.
+# PROVENANCE: the manifest DOES carry such a form, so this matching is
+# load-bearing, not defensive.  `$<TARGET_PROPERTY:...>` inside
+# `file(GENERATE)` evaluates most of a property's generator expressions -- the
+# real `link.krn_engine` row is plain names -- but not `$<BUILD_INTERFACE:...>`.
+# ENC-1561 measured `link.krn_host=krn_engine|$<BUILD_INTERFACE:krn_connector_market>`
+# in a real manifest: a form that gets past install(EXPORT), configures and
+# builds, and is caught only because the entry is decoded here (ENC-1585;
+# selftest `D/build-interface-wrapped-market-link`).  The other forms above
+# are not observed yet and their selftest cases say so.
 GENEX_HEAD_RE = re.compile(r"^\$<(?:[A-Za-z_0-9]+|\$<[^<>]*>):(.*)>$")
 DIRSCOPE_RE = re.compile(r"::@\(?[^)]*\)?$")
 # `+`, `.` and `-` appear in real library names (`stdc++`, `libm.so`,
@@ -1224,12 +1223,10 @@ def selftest() -> int:
                                                             name]},
                                             "krn_engine"))
 
-        # DECORATED ENTRIES.  Labelled honestly: the manifest this gate reads
-        # carries none of these forms today (see the note above
-        # link_item_name), so these are defence against a producer other than
-        # the current one, not coverage of an observed case.  They are here
-        # because every one of them was a working bypass of the first version
-        # of this check.
+        # DECORATED ENTRIES.  These forms are not observed in the manifest
+        # yet (the observed one, BUILD_INTERFACE, is pinned below; see the
+        # note above link_item_name).  They are here because every one of
+        # them was a working bypass of the first version of this check.
         for label, entry in (
                 ("genex/LINK_ONLY", "$<LINK_ONLY:krn_data>"),
                 ("genex/IF", "$<IF:$<BOOL:ON>,krn_data,>"),
@@ -1240,6 +1237,17 @@ def selftest() -> int:
             expect_detected(f"C/{label} (defensive: not emitted today)",
                             forbidden_links({"krn_engine": [entry]},
                                             "krn_engine"))
+        # OBSERVED, not defensive (ENC-1585): the real manifest row from
+        # ENC-1561's experiment (c).  It must be caught on krn_host and,
+        # through it, on krn_engine_server.
+        observed = dict(legal, krn_host=split_list(
+            "krn_engine|$<BUILD_INTERFACE:krn_connector_market>"))
+        if observed == legal:
+            failures.append("SELFTEST: D/build-interface-wrapped-market-link: "
+                            "mutation did not apply")
+        for r in ("krn_host", "krn_engine_server"):
+            expect_detected(f"D/build-interface-wrapped-market-link-{r}",
+                            forbidden_links(observed, r))
         # A wrapped edge must still be TRAVERSED, not merely matched.
         expect_detected("D/wrapped-edge-is-still-walked (defensive)",
                         forbidden_links(
