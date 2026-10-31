@@ -4,7 +4,7 @@
 // arrived (ENC-1486).
 //
 // Design: specs/2026-10-14-krn-data-layer/SPEC.md D1, D3;
-//         docs/data-layer.md §C2, §C6, §6.
+//         krn-data's docs/data-layer.md §C2, §C6, §6.
 //
 // WHY THIS TYPE EXISTS
 // --------------------
@@ -23,7 +23,7 @@
 //
 // The only virtual dispatch is the per-field read. That is deliberate: the
 // cost this interface exists to remove is a rapidjson DOM plus a
-// `std::string` construction per member per tick (docs/data-layer.md §C6),
+// `std::string` construction per member per tick (krn-data's docs/data-layer.md §C6),
 // which is orders of magnitude above a virtual call.
 //
 // NON-OWNING. A FieldSource is a view over something else's storage — a

@@ -6,6 +6,10 @@ Split KRN into a domain-agnostic **core engine** + pluggable **connectors**. The
 
 **Invariant:** adding a connector should touch only (a) the new connector's own files and (b) a single registration line in the composition root.
 
+## Status
+
+Done, and then carried further by the engine-purity project (`specs/2026-10-15-gma-engine-purity/SPEC.md`). This repo is now the engine alone: `krn_engine`, `krn_host` (the composition, `src/host/Host.cpp`), `krn_engine_server` (`apps/engine_server/main.cpp`) and the reference plugin (`plugins/reference/`). The market connector, `krn_server` and their tests moved to [krn-common](https://github.com/Dynacharting/krn-common); the data layer moved to [krn-data](https://github.com/Dynacharting/krn-data). The zero-core-changes invariant is checked by `tools/check_engine_isolation.py`. The current picture is [ARCHITECTURE.md](ARCHITECTURE.md); the rest of this document is the original plan, with paths as they were then.
+
 ---
 
 ## 1. Current boundary map
@@ -105,7 +109,7 @@ libkrn_connector_market
 ├── types/                        TickEntry, MarketFieldMap (née SourceProfile)
 └── MarketConnector.cpp           registration entry point
 
-krn_server                        composition root
+krn_server                        composition root (now krn-common's)
 └── main.cpp                      instantiates engine; calls MarketConnector::registerWith(...)
 ```
 
@@ -336,13 +340,13 @@ Each step independently buildable + testable. `ctest --output-on-failure` must s
 - **Tests:** `tests/dispatch/DispatchTest.cpp` + add `tests/engine/DispatcherIsolationTest.cpp`.
 
 ### Step 7 — carve out `libkrn_connector_market` as a separate CMake target
-- Three targets: `krn_engine`, `krn_connector_market`, `krn_server`.
-- Move `include/krn/book/*`, `include/krn/ob/*`, `src/book/*`, `src/ob/*`, `src/feed/ItchAdapter.cpp`, `include/krn/feed/ItchAdapter.hpp`, `include/krn/feed/FeedEvent.hpp`, `src/core/MarketTA.cpp`, `src/core/MarketTickComputer.cpp`, `include/krn/SymbolHistory.hpp`, `include/krn/SourceProfile.hpp` (renamed) into `connectors/market/`.
+- Three targets: `krn_engine`, `krn_connector_market`, `krn_server` (the last two now krn-common's).
+- Move `include/krn/book/*`, `include/krn/ob/*`, `src/book/*`, `src/ob/*`, `src/feed/ItchAdapter.cpp`, `include/krn/feed/ItchAdapter.hpp`, `include/krn/feed/FeedEvent.hpp`, `src/core/MarketTA.cpp`, `src/core/MarketTickComputer.cpp`, `include/krn/SymbolHistory.hpp`, `include/krn/SourceProfile.hpp` (renamed) into `connectors/market/` (now krn-common's).
 - CMake check: engine target cannot include connector headers.
 - **Tests:** existing pass.
 
 ### Step 8 — formalize `IConnector` + `MarketConnector::registerWith`
-- Gather everything from `main.cpp:117-189, 204-251` into `connectors/market/MarketConnector.cpp::registerWith`.
+- Gather everything from `main.cpp:117-189, 204-251` into `connectors/market/MarketConnector.cpp::registerWith` (now krn-common's).
 - `main.cpp` shrinks to the composition root pattern above.
 - **Tests:** add `tests/integration/ConnectorBootTest.cpp`.
 
@@ -350,7 +354,7 @@ Each step independently buildable + testable. `ctest --output-on-failure` must s
 - Move `FeedEvent` variant fully into connector as `krn::market::MarketFeedEvent`.
 - Engine's `Event` becomes `{ string type; string streamKey; shared_ptr<rapidjson::Document> payload; }`.
 - `IFeedAdapter` moves to connector namespace; engine defines only `IIngressSource`.
-- **Tests:** `tests/feed/FeedEventDispatchTest.cpp` moves to `connectors/market/tests/`.
+- **Tests:** `tests/feed/FeedEventDispatchTest.cpp` moves to `connectors/market/tests/` (it landed in krn-common's `tests/feed/`).
 
 ### Step 10 — ship a trivial demonstration connector
 - `plugins/reference/src/SyntheticConnector.cpp`: event type `"synthetic.tick"`, a computer that emits a sine wave to `AtomicStore`, an ingress source that schedules itself on `Interval`. ~150 LOC.

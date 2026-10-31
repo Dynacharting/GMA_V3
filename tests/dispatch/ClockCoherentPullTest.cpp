@@ -80,7 +80,7 @@
 //
 //  6. `NoCorpusEntryEmitsADifferentSequenceUnderLiveIngress` — the same
 //     comparison driven across all 272 entries. It lives in
-//     tests/market/ClockCoherentCorpusSweepTest.cpp (krn_market_tests, ENC-1562).
+//     krn-common's tests/market/ClockCoherentCorpusSweepTest.cpp (krn_common_tests).
 //
 // Tests 1-4 drive the reference plugin's `ReferenceComputer` (ENC-1555,
 // SPEC specs/2026-10-15-gma-engine-purity D13) through inline requests; 5 and
