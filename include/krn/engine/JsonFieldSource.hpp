@@ -4,8 +4,8 @@
 //
 // Design: specs/2026-10-14-krn-data-layer/SPEC.md D1; krn-data's docs/data-layer.md §C2.
 //
-// This is the LEGACY ingress shape and it is unchanged: the TCP feed server
-// and `market.wsclient` both hand `Dispatcher::onTick` a
+// This is the LEGACY ingress shape and it is unchanged: JSON ingress sources
+// hand `Dispatcher::onTick` a
 // `shared_ptr<rapidjson::Document>`, and this class is the thin wrapper that
 // lets `onTick` share one body with `onRecord`.
 //

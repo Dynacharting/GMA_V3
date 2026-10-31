@@ -28,54 +28,8 @@ public:
   // remainder are silently dropped (forward-compat for stray keys).
   std::size_t dispatchPendingKeys();
 
-  // ENC-31: when no `ingress.*` entries were parsed, synthesize equivalent
-  // ones from the legacy keys (feedPort default + feedUrl + feeds.N.*).
-  // Idempotent — once `ingress` is non-empty, this is a no-op.
-  //
-  // ENC-1331: called ONLY by the composition root, and only once the config is
-  // settled — loadFromFile() must not call it. The synthesized
-  // `market.feedserver` entry copies `feedPort` into its params, and those
-  // params are what the connector binds; synthesizing before the CLI overrides
-  // (argv[3]) were applied made `krn_server <ws> <conf> <feed>` bind the file's
-  // feedPort while logging the argument's. Anything that reads `ingress` after
-  // a loadFromFile() must therefore call this first.
-  //
-  // Returns true if it synthesized entries, false if it was a no-op because
-  // `ingress` was already populated (explicit `ingress.N.*` keys) — callers
-  // use that to tell the user their legacy feedPort override went nowhere.
-  bool synthesizeIngressFromLegacy();
-
-  // --- Public fields (referenced elsewhere in your code) ---
-  // TA params (now actually members so those C2039 errors go away)
-  int    taMACD_fast  = 12;   // fast EMA period
-  int    taMACD_slow  = 26;   // slow EMA period
-  int    taBBands_n   = 20;   // lookback
-  double taBBands_stdK = 2.0; // width in standard deviations
-
-  // SMA periods (default: 5, 20)
-  std::vector<int> taSMA = {5, 20};
-
-  // EMA periods (default: 12, 26)
-  std::vector<int> taEMA = {12, 26};
-
-  // RSI period (default: 14)
-  int taRSI = 14;
-
-  // ATR period (default: 14)
-  int taATR = 14;
-
-  // Momentum/ROC period (default: 10)
-  int taMomentum = 10;
-
-  // MACD signal EMA period (default: 9)
-  int taMACD_signal = 9;
-
-  // Volume average period (default: 20)
-  int taVolAvg = 20;
-
-  // Server ports
-  int wsPort   = 8080;
-  int feedPort = 9001;
+  // Server port
+  int wsPort = 8080;
 
   // Thread pool size (0 = use hardware_concurrency)
   int threadPoolSize = 0;
@@ -113,23 +67,8 @@ public:
   // Logging
   std::string logLevel = "info";
 
-  // External WebSocket feed URL (empty = disabled)
-  // e.g. "wss://feed-sim.v3m.xyz/feed" or "ws://localhost:8100/feed"
-  std::string feedUrl;
-
-  // Symbols to subscribe to on the feed (empty or ["*"] = all)
-  std::vector<std::string> feedSymbols = {"*"};
-
   // Allow negative prices in order book (for bonds with negative yields, spreads, etc.)
   bool allowNegativePrices = false;
-
-  // Per-feed configuration for external WebSocket feeds.
-  struct FeedConfig {
-      std::string url;
-      std::string adapter = "itch";       // "itch" or "generic"
-      std::vector<std::string> symbols = {"*"};
-  };
-  std::vector<FeedConfig> feeds;
 
   // ENC-31: engine-driven ingress entries (`ingress.N.kind = ..., ingress.N.X = ...`).
   // The engine reads this list after connectors register their factories,

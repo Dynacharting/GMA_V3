@@ -277,6 +277,7 @@ set(KRN_ENGINE_HEADERS
   include/krn/engine/IngressRegistry.hpp
   include/krn/engine/JsonFieldSource.hpp
   include/krn/engine/NodeTypeRegistry.hpp
+  include/krn/engine/ProtocolIngressRegistry.hpp
   include/krn/engine/Registries.hpp
   include/krn/engine/SymbolTable.hpp
   include/krn/forum/ConnectorsClient.hpp

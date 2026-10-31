@@ -3,6 +3,7 @@
 #include "krn/engine/EventTypeRegistry.hpp"
 #include "krn/engine/IEventComputer.hpp"
 #include "krn/engine/IngressRegistry.hpp"
+#include "krn/engine/ProtocolIngressRegistry.hpp"
 #include "krn/engine/NodeTypeRegistry.hpp"
 #include "krn/nodes/INode.hpp"
 #include "krn/Event.hpp"
@@ -248,4 +249,29 @@ TEST(ConfigNamespaceRegistryTest, DuplicatePrefixRejected) {
   ConfigNamespaceRegistry::clear();
   EXPECT_TRUE(ConfigNamespaceRegistry::registerNamespace("p", [](auto, auto) { return true; }));
   EXPECT_FALSE(ConfigNamespaceRegistry::registerNamespace("p", [](auto, auto) { return true; }));
+}
+
+// ---------- ProtocolIngressRegistry (ENC-1574) ----------
+
+namespace {
+std::string uniqueProtocol() {
+  static std::atomic<int> n{0};
+  return "__test_protocol_" + std::to_string(n.fetch_add(1)) + "__";
+}
+}  // namespace
+
+TEST(ProtocolIngressRegistryTest, RegisterAndFind) {
+  const std::string protocol = uniqueProtocol();
+  EXPECT_FALSE(ProtocolIngressRegistry::find(protocol).has_value());
+  EXPECT_TRUE(ProtocolIngressRegistry::registerProtocol(protocol, "kind.a"));
+  EXPECT_TRUE(ProtocolIngressRegistry::contains(protocol));
+  ASSERT_TRUE(ProtocolIngressRegistry::find(protocol).has_value());
+  EXPECT_EQ(*ProtocolIngressRegistry::find(protocol), "kind.a");
+}
+
+TEST(ProtocolIngressRegistryTest, FirstRegistrationWins) {
+  const std::string protocol = uniqueProtocol();
+  EXPECT_TRUE(ProtocolIngressRegistry::registerProtocol(protocol, "kind.first"));
+  EXPECT_FALSE(ProtocolIngressRegistry::registerProtocol(protocol, "kind.second"));
+  EXPECT_EQ(*ProtocolIngressRegistry::find(protocol), "kind.first");
 }

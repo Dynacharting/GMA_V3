@@ -242,6 +242,7 @@ TEST(ListenerTest, ReferencePluginDeclaresItsNamespacePipelineOnly) {
     regs.dispatcher = &dispatcher;
     regs.io         = &ioc;
     regs.computers  = &engine::EventComputerRegistry::singleton();
+    regs.protocols  = &engine::ProtocolIngressRegistry::singleton();
     ReferenceConnector connector;
     connector.registerWith(regs);
 
